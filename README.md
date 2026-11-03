@@ -1,39 +1,72 @@
-# 🌙 별일컴퍼니
-> **"별이 뜨는 시간에 시작하는 작은 일, 별일 아닌 일부터 특별한 내일까지"**  
-> 시차 기반 단계형 일경험 및 사회적 연결 회복 플랫폼
+# 🌱 말씨앗
+> **"다시 말을 건넬 힘이 생길 때까지"**  
+> 고립·은둔 청년의 연락 부담을 덜어 주는 온디바이스 AI 소통 지원 안드로이드 앱
 
-![Status](https://img.shields.io/badge/status-Planning-ffc107.svg)
+![Status](https://img.shields.io/badge/status-In%20Development-8BC34A.svg)
 
-**[🎯 Target Tech Stack]**
-![React](https://img.shields.io/badge/Frontend-React%20%7C%20TypeScript-61DAFB?logo=react&logoColor=white)
+**[🎯 Tech Stack]**
+![React Native](https://img.shields.io/badge/App-React%20Native%20%7C%20TypeScript-61DAFB?logo=react&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Native-Kotlin-7F52FF?logo=kotlin&logoColor=white)
+![llama.cpp](https://img.shields.io/badge/On--Device%20AI-llama.cpp%20%7C%20Kanana--2%201.3B-FFB000)
 ![NestJS](https://img.shields.io/badge/Backend-NestJS%20%7C%20TypeScript-E0234E?logo=nestjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 
 <br>
 
 ## 📖 프로젝트 개요
-**별일컴퍼니**는 일반적인 취업 절차나 대면 근무에 바로 참여하기 어려운 고립·은둔 청년들을 위한 **웹 기반 원격 마이크로태스크 플랫폼**입니다. 
-청년들의 주야역전 생활 리듬을 강제로 교정하는 대신, 한국의 밤 시간과 해외의 낮 시간이 겹치는 **'시차'**를 경제 활동의 자원으로 활용합니다. 집에서 수행할 수 있는 짧은 실제 업무부터 시작하여 점진적으로 성취 경험과 자기효능감을 쌓고, 궁극적으로 사회 진입의 안전한 징검다리 역할을 수행합니다.
+**말씨앗**은 자신의 상황을 설명하거나 상대의 반응을 마주하는 부담 때문에 연락을 미루다 관계가 끊어지기 쉬운 고립·은둔 청년을 위한 **안드로이드 기반 AI 소통 지원 서비스**입니다.
+
+카카오톡, 인스타그램 DM, 문자 알림으로 쌓인 메시지를 요약하고, 상대와의 관계와 대화 상황에 맞는 **답장 후보 2~3개**를 제안합니다. 적극적인 대인관계를 요구하기보다 일상적인 소통의 부담을 낮춰, 사용자가 자신의 속도에 맞춰 기존 관계를 이어갈 수 있도록 돕습니다.
+
+개인적인 대화를 다루기 때문에 메시지 원문과 분석 결과는 **기기 안의 소형 AI 모델로만 처리·저장**하고, 서버는 회원 인증과 AI 모델 배포만 담당합니다.
 
 <br>
 
 ## ✨ 핵심 기능 (Key Features)
 
-### 1. 🕒 밤 11시, 시차 기반 업무 매칭 스케줄러
-- 타임존 연산을 통해 해외 기업의 업무 시간과 청년의 활동 가능 시간을 계산합니다.
-- 매일 밤 11시 정각, 백엔드 크론 워커(Cron Worker)를 통해 맞춤형 업무가 무중단으로 자동 오픈됩니다.
+### 1. 💬 메시지 요약 및 답장 제안
+- 알림으로 받은 메시지를 대화방 단위로 묶어 요약합니다. 1:1과 단톡을 구분하고, 단톡에서는 내 이름 언급과 나에게 온 질문을 강조합니다.
+- **짧게 / 다정하게 / 공손하게** 세 가지 말투의 답장 후보를 제안하고, 사용자는 고르거나 고친 뒤 복사해서 메신저에서 직접 보냅니다.
+- 알림에서 잘린 긴 메시지는 붙여넣기나 공유하기로 받아 바로 요약합니다.
 
-### 2. 📈 단계별 난이도 분할 (Level-based Task Routing)
-- 진입 장벽을 낮추기 위해 사회성 및 난이도 기준의 **레벨형 퀘스트**를 도입했습니다.
-- 혼자 하는 단순 작업(Lv.1)부터 의뢰자와의 소통(Lv.3), 협업(Lv.4)까지 단계적으로 확장됩니다.
+### 2. 📌 꼭 챙길 연락 관리
+- 경조사, 오래 답하지 못한 중요한 연락, 마감이 임박한 기관 연락을 **최대 3개까지만** 골라 보여줍니다.
+- 경조사와 기관 연락에서 일시·장소·마감·준비물을 뽑아 캘린더에 등록합니다.
+- 당장 답하기 어려운 연락은 **나중에 답하기**로 미뤄 두고 원하는 때에 다시 확인합니다.
 
-### 3. 🤖🤝 AI-Human 하이브리드 코디네이팅 시스템
-- **AI 코디네이터 (OpenAI/Gemini API):** 해외 원문 업무 자동 분할, 작업 가이드 생성, 결과물 1차 검수를 수행하여 야간 운영 부담을 최소화합니다.
-- **관리자 및 멘토 (Human Care):** 사기/피싱 공고 사전 차단(최종 승인) 및 대인 스트레스 관리, 정서적 힐링 피드백을 제공하여 심리적 안전망을 구축합니다.
+### 3. 🌱 관계 재연결 도우미
+- 오랫동안 연락하지 못한 친구에게 보낼 **부담 적은 첫 마디**를 제안합니다.
+- 앱별 계정을 같은 사람으로 합쳐 친구 단위로 관리합니다.
+
+### 4. 🔒 기기 안에서 끝나는 AI 처리
+- 한국어 특화 경량 모델(Kanana-2 1.3B)을 llama.cpp로 기기에서 직접 실행합니다.
+- 대화 원문과 분석 결과는 SQLCipher로 암호화된 로컬 DB에만 저장되며, 서버로 전송되지 않습니다.
+- 스팸·경조사 키워드·@언급·날짜 표현은 룰 필터가 먼저 거르고, 문맥 판단이 필요한 부분만 LLM이 처리합니다.
+- AI는 후보만 제안하고 **전송 여부와 시점은 사용자가 결정**합니다. 자동 전송은 없습니다.
 
 <br>
 
-## 📁 산출물 및 관리 문서 (Documentation)
+## 📁 레포 구조
+
+```
+2026-2-OSSProj-PING-02/
+├── Doc/            # 수행계획서, 발표자료, 회의록
+├── UI/             # 디자인 시스템 문서와 앱 에셋 (캐릭터, 일러스트, 아이콘)
+├── Src/
+│   └── Front/      # 안드로이드 앱 (React Native + Kotlin)
+└── CONTRIBUTING.md # 이슈·브랜치·커밋·PR 규칙
+```
+
+| 폴더 | 설명 | 안내 문서 |
+|---|---|---|
+| `Src/Front` | 안드로이드 앱 프론트엔드 | [Src/Front/README.md](./Src/Front/README.md) |
+| `UI` | Figma 기준 디자인 토큰과 확정 에셋 | [UI/README.md](./UI/README.md) |
+
+*(※ 백엔드는 `Src/` 아래에 별도 폴더로 추가될 예정입니다.)*
+
+<br>
+
+## 📄 산출물 및 관리 문서 (Documentation)
 강의 요구사항 및 프로젝트 진행 간 작성된 핵심 문서들은 `Doc` 폴더 내에서 확인할 수 있습니다.
 
 | 문서명 | 링크 | 설명 |
@@ -42,29 +75,27 @@
 | **주간 회의록** | [📝 9월 1~4주차 회의록](./Doc/회의록) | 아이디어 도출 및 멘토 피드백 반영 사항 아카이빙 |
 | **발표 자료** | [📎 수행계획 발표자료](./Doc/1_2_OSSProj_02_PING_수행계획발표자료.pdf) | 제안발표용 핵심 요약 PT 자료 |
 | **질의응답** | `업로드 예정` | 제안발표 이후 Q&A 및 피드백 정리 문서 |
-
-*(※ 소스코드 및 제품 배포 관련 문서는 향후 `Src` 폴더 및 MVP 개발 진행 시 업데이트됩니다.)*
+| **디자인** | [🎨 Figma – OSSP-PING](https://www.figma.com/design/MGVPVLr17JxvhsA6TDXf2N/OSSP-PING) | 화면 시안과 디자인 시스템 원본 |
 
 <br>
 
-## 🛠 목표 기술 스택 (Target Tech Stack)
-본 프로젝트의 MVP 구현을 위해 검토 및 확정된 도입 예정 기술입니다.
+## 🛠 기술 스택 (Tech Stack)
 
-### Frontend
-- **Framework:** React
-- **Language:** TypeScript
-- **UI/UX:** Figma (설계 및 와이어프레임)
+### App (Android)
+- **UI:** React Native, TypeScript, styled-components, React Navigation
+- **Native Module:** Kotlin (NotificationListenerService, WorkManager, 공유 인텐트)
+- **Local DB:** SQLite + SQLCipher (암호화 키는 Android Keystore에 보관)
+- **On-Device AI:** llama.cpp (JNI), Kakao Kanana-2 1.3B (4bit 양자화, GGUF)
 
 ### Backend
 - **Framework:** NestJS
 - **Language:** TypeScript
-- **Database:** PostgreSQL, TypeORM
-- **Auth & Security:** JWT, Passport.js, RBAC(Role-Based Access Control)
+- **Database:** PostgreSQL
+- **역할:** 회원 인증, 약관 동의 내역, AI 모델 버전·배포 정보 관리
 
-### AI & Infra
-- **AI Model:** OpenAI API (GPT-5.6 Luna), Gemini API (3.8 Flash)
-- **Infrastructure:** AWS (Ubuntu Linux VM, Managed PostgreSQL)
-- **Collaboration:** GitHub, Notion
+### Infra & Collaboration
+- **Infrastructure:** AWS EC2 또는 Azure (Ubuntu 22.04 LTS), Docker Compose
+- **Collaboration:** GitHub, Notion, Figma, Postman
 
 <br>
 
