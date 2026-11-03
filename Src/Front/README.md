@@ -3,7 +3,7 @@
 > 고립·은둔 청년의 연락 부담을 덜어 주는 **안드로이드(갤럭시) 앱**의 프론트엔드입니다.
 > 알림으로 받은 메시지를 기기 안에서 요약하고 답장 후보를 제안합니다.
 
-화면은 **React Native**로 만들고, 알림 수집·온디바이스 AI·암호화 DB 같은 시스템 기능은 **Kotlin 네이티브 모듈**로 구현합니다. 기획·설계 문서는 [Doc 폴더](../Doc)에 있습니다.
+화면은 **React Native**로 만들고, 알림 수집·온디바이스 AI·암호화 DB 같은 시스템 기능은 **Kotlin 네이티브 모듈**로 구현합니다. 기획·설계 문서는 [Doc 폴더](../../Doc)에 있습니다.
 
 | 구분 | 사용 기술 |
 |---|---|
@@ -27,7 +27,7 @@
 
 - **Node.js 22.11 이상**: `node -v`로 확인
 - **Yarn**: `yarn -v`가 동작하면 됩니다. 없으면 `npm install -g yarn`으로 설치하세요.
-  - 전역으로 설치된 버전과 상관없이, `Front/` 안에서는 레포에 포함된 Yarn 4.10.3이 자동으로 쓰입니다.
+  - 전역으로 설치된 버전과 상관없이, `Src/Front/` 안에서는 레포에 포함된 Yarn 4.10.3이 자동으로 쓰입니다.
 - **[Android Studio](https://developer.android.com/studio)**: JDK와 Android SDK가 함께 설치됩니다.
 
 > 📱 **안드로이드 폰을 쓰고 있다면 에뮬레이터 없이 폰을 USB로 연결해서 테스트할 수 있습니다.** 맥이 가볍고 실제 기기라 더 정확합니다. 빌드에 필요해서 Android Studio 설치는 그대로 해야 합니다. 방법은 [3. 테스트 기기 준비](#3-테스트-기기-준비)를 참고하세요.
@@ -78,7 +78,7 @@ Android Studio → **Device Manager** → **+ (Create Virtual Device)** 에서 P
 ### 4. 의존성 설치
 
 ```bash
-cd Front
+cd Src/Front
 yarn install
 ```
 
@@ -91,11 +91,11 @@ yarn install
    - 에뮬레이터: Device Manager에서 ▶ 버튼을 누르고 홈 화면이 뜰 때까지 기다리세요.
 2. **터미널 1:** Metro(개발 서버)를 켭니다. 켜 둔 채로 개발합니다.
    ```bash
-   cd Front && yarn start
+   cd Src/Front && yarn start
    ```
 3. **터미널 2:** 앱을 빌드해서 에뮬레이터에 설치합니다.
    ```bash
-   cd Front && yarn android
+   cd Src/Front && yarn android
    ```
 
 > 첫 빌드는 Gradle과 라이브러리를 내려받느라 **5~10분** 걸립니다. 두 번째부터는 빠릅니다.
@@ -113,7 +113,7 @@ yarn install
 
 ## 🧰 명령어
 
-`Front/` 폴더에서 실행합니다.
+`Src/Front/` 폴더에서 실행합니다.
 
 | 명령어 | 설명 |
 |---|---|
@@ -166,7 +166,7 @@ Front/
 
 ## 🎨 디자인 시스템
 
-디자이너가 정리한 [UI/docs/design-system.md](../UI/docs/design-system.md)(Figma Variables 기준)를 그대로 옮겨 둔 값입니다. 문서가 바뀌면 `src/core/styles/`도 같이 맞춰 주세요. **색상 hex 값이나 폰트 크기를 직접 쓰지 말고 테마 값을 쓰세요.**
+디자이너가 정리한 [UI/docs/design-system.md](../../UI/docs/design-system.md)(Figma Variables 기준)를 그대로 옮겨 둔 값입니다. 문서가 바뀌면 `src/core/styles/`도 같이 맞춰 주세요. **색상 hex 값이나 폰트 크기를 직접 쓰지 말고 테마 값을 쓰세요.**
 
 ### 색상
 
@@ -272,7 +272,7 @@ navigation.navigate("Login");
 - **안전 영역:** 상태바와 하단 제스처 영역은 `useSafeAreaInsets()`로 여백을 줍니다 (`Splash.tsx` 참고).
 - **크기 단위:** Figma 수치를 `px` 그대로 씁니다. React Native에서는 `rem`, `%` 폰트 크기를 쓸 수 없습니다.
 - **이미지:** `src/assets/img/<도메인>/`에 `name.png`, `name@2x.png`, `name@3x.png` 세 가지를 넣고 `import`해서 씁니다. 기기 해상도에 맞는 파일이 자동으로 선택됩니다.
-  - 캐릭터·일러스트·아이콘 원본은 레포 루트 [UI/assets](../UI/assets)에 있습니다. 용도는 [asset-catalog.md](../UI/docs/asset-catalog.md)를 참고하세요.
+  - 캐릭터·일러스트·아이콘 원본은 레포 루트 [UI/assets](../../UI/assets)에 있습니다. 용도는 [asset-catalog.md](../../UI/docs/asset-catalog.md)를 참고하세요.
   - 원본(1000px 이상)을 그대로 쓰지 말고, 화면에 쓸 파일만 표시 크기의 1x/2x/3x로 줄여서 `src/assets`에 복사합니다.
   - `UI/references`는 참고용이라 앱에 넣지 않습니다.
 
@@ -280,12 +280,12 @@ navigation.navigate("Login");
 
 ## 🤝 협업 규칙
 
-[CONTRIBUTING.md](../CONTRIBUTING.md)를 따릅니다.
+[CONTRIBUTING.md](../../CONTRIBUTING.md)를 따릅니다.
 
 - **커밋:** `[feat] #12 로그인 화면 UI 구현`
 - **브랜치:** `feat/#12-login-screen`
 - **Type:** `feat` · `fix` · `docs` · `style` · `refactor` · `chore`
-- PR은 [템플릿](../.github/PULL_REQUEST_TEMPLATE.md)에 맞춰 작성하고, 화면 작업이면 에뮬레이터 스크린샷을 첨부해 주세요.
+- PR은 [템플릿](../../.github/PULL_REQUEST_TEMPLATE.md)에 맞춰 작성하고, 화면 작업이면 에뮬레이터 스크린샷을 첨부해 주세요.
 
 <br>
 
