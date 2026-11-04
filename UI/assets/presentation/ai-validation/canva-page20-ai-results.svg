@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="650" viewBox="0 0 1680 650">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#6E521C" flood-opacity=".09"/></filter>
+    <style>text{font-family:Pretendard,"Noto Sans KR",sans-serif;fill:#493720}.h{font-size:25px;font-weight:800}.b{font-size:19px;font-weight:700}.m{font-size:16px;font-weight:600}.s{font-size:14px;font-weight:600}.muted{fill:#84745D}.green{fill:#687C35}.red{fill:#A6533F}.brown{fill:#6E521C}</style>
+  </defs>
+  <rect width="1680" height="650" fill="#FFF9E7"/>
+
+  <!-- Metrics -->
+  <g filter="url(#shadow)">
+    <rect x="0" y="10" width="390" height="105" rx="22" fill="#FFFDF7" stroke="#E8D8AE"/>
+    <rect x="410" y="10" width="390" height="105" rx="22" fill="#FFFDF7" stroke="#E8D8AE"/>
+    <rect x="820" y="10" width="390" height="105" rx="22" fill="#FFFDF7" stroke="#E8D8AE"/>
+    <rect x="1230" y="10" width="450" height="105" rx="22" fill="#FFFDF7" stroke="#E8D8AE"/>
+  </g>
+  <text x="26" y="52" class="h brown">34건</text><text x="26" y="82" class="m muted">전체 테스트 입력</text>
+  <text x="436" y="52" class="h brown">30건 / 4건</text><text x="436" y="82" class="m muted">LLM 처리 / 가드 처리</text>
+  <text x="846" y="52" class="h brown">1,659.8초</text><text x="846" y="82" class="m muted">총 모델 생성 시간</text>
+  <text x="1256" y="52" class="h brown">약 55.3초</text><text x="1256" y="82" class="m muted">LLM 대상 평균 · 재시도 포함</text>
+
+  <!-- Positive findings -->
+  <rect x="0" y="138" width="500" height="342" rx="26" fill="#F4F7E9" stroke="#A6B66E" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="24" y="158" width="156" height="40" rx="20" fill="#93A657"/>
+  <text x="102" y="185" text-anchor="middle" class="b" fill="#FFFFFF">확인된 가능성</text>
+  <g>
+    <circle cx="48" cy="236" r="18" fill="#DDE8C0"/><text x="48" y="243" text-anchor="middle" class="b green">✓</text>
+    <text x="82" y="231" class="b">JSON 형식 안정성</text><text x="82" y="256" class="s muted">앱 처리용 구조를 대부분 안정적으로 생성</text>
+    <circle cx="48" cy="311" r="18" fill="#DDE8C0"/><text x="48" y="318" text-anchor="middle" class="b green">✓</text>
+    <text x="82" y="306" class="b">안전 가드 작동</text><text x="82" y="331" class="s muted">자해·인젝션·짧은 입력을 즉시 분기</text>
+    <circle cx="48" cy="386" r="18" fill="#DDE8C0"/><text x="48" y="393" text-anchor="middle" class="b green">✓</text>
+    <text x="82" y="381" class="b">민감 상황의 적절한 톤</text><text x="82" y="406" class="s muted">부고 등 일부 경조사 답장 품질 양호</text>
+    <circle cx="48" cy="449" r="18" fill="#DDE8C0"/><text x="48" y="456" text-anchor="middle" class="b green">✓</text>
+    <text x="82" y="454" class="m">복합 메시지의 주제별 후보 분리 가능</text>
+  </g>
+
+  <!-- Limitations -->
+  <rect x="520" y="138" width="610" height="342" rx="26" fill="#FFFDF7" stroke="#E8D8AE" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="544" y="158" width="142" height="40" rx="20" fill="#F7D867"/>
+  <text x="615" y="185" text-anchor="middle" class="b">확인된 한계</text>
+  <g>
+    <text x="548" y="238" class="b red">속도</text><text x="646" y="238" class="m">짧은 입력 약 20초 · 재시도 70~173초</text>
+    <text x="646" y="264" class="s red">일부 210.4초, 긴 입력은 3분 이상</text>
+    <line x1="548" y1="284" x2="1106" y2="284" stroke="#E8D8AE"/>
+    <text x="548" y="323" class="b red">관점</text><text x="646" y="323" class="m">발신자·수신자 역할 혼동과 요약 오류</text>
+    <line x1="548" y1="344" x2="1106" y2="344" stroke="#E8D8AE"/>
+    <text x="548" y="383" class="b red">품질</text><text x="646" y="383" class="m">말투 혼용 · 후보 중복 · 확정 표현 생성</text>
+    <line x1="548" y1="404" x2="1106" y2="404" stroke="#E8D8AE"/>
+    <text x="548" y="443" class="b red">형식</text><text x="646" y="443" class="m">일부 카테고리 오분류와 빈 후보 발생</text>
+  </g>
+
+  <!-- Decision -->
+  <rect x="1150" y="138" width="530" height="342" rx="26" fill="#FFFDF7" stroke="#E8D8AE" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="1174" y="158" width="130" height="40" rx="20" fill="#F7D867"/>
+  <text x="1239" y="185" text-anchor="middle" class="b">현재 판단</text>
+  <g class="m">
+    <circle cx="1194" cy="233" r="10" fill="#93A657"/><text x="1218" y="240">형식·가드 파이프라인 적용 가능</text>
+    <circle cx="1194" cy="281" r="10" fill="#E4C44F"/><text x="1218" y="288">한국어 품질과 후보 다양성 보완</text>
+    <circle cx="1194" cy="329" r="10" fill="#C76E56"/><text x="1218" y="336">CPU 응답 속도는 실제 사용에 부적합</text>
+    <circle cx="1194" cy="377" r="10" fill="#C9C2B5"/><text x="1218" y="384">모바일 메모리는 이번 실험 미측정</text>
+  </g>
+  <rect x="1174" y="414" width="482" height="44" rx="14" fill="#FFF1D0"/>
+  <text x="1415" y="442" text-anchor="middle" class="s brown">최종 모델 선정은 양자화·실기기 비교 후 확정</text>
+
+  <!-- Next action -->
+  <rect x="0" y="505" width="1680" height="92" rx="22" fill="#FFFDF7" stroke="#E8D8AE"/>
+  <text x="24" y="541" class="b">다음 실험</text>
+  <rect x="150" y="524" width="330" height="50" rx="15" fill="#F4F7E9"/><text x="315" y="555" text-anchor="middle" class="s green">Mi:dm 2.3B · Qwen 2B 우선 비교</text>
+  <rect x="496" y="524" width="310" height="50" rx="15" fill="#F4F7E9"/><text x="651" y="555" text-anchor="middle" class="s green">llama.cpp · 4bit 양자화</text>
+  <rect x="822" y="524" width="330" height="50" rx="15" fill="#F4F7E9"/><text x="987" y="555" text-anchor="middle" class="s green">Android 메모리·지연 측정</text>
+  <rect x="1168" y="524" width="488" height="50" rx="15" fill="#F4F7E9"/><text x="1412" y="555" text-anchor="middle" class="s green">역할 혼동률·톤 일치율·중복률 정량화</text>
+  <rect x="0" y="611" width="1680" height="34" rx="17" fill="#F4F7E9"/>
+  <text x="840" y="633" text-anchor="middle" class="s green">기준 모델의 가능성과 한계를 확인했으며, 실기기 검증을 거쳐 최종 모델을 선정합니다.</text>
+</svg>

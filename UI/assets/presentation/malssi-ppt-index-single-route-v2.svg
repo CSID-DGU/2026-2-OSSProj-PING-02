@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1674" height="944" viewBox="0 0 1674 944">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <image href="malssi-ppt-index-pathless-base-v2.png" x="0" y="0" width="1674" height="944"/>
+  <!-- One route only: 01 → 02 → 03 → 04 → 05. Each segment disappears behind a seed. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M220 305 C265 330 300 370 340 405" stroke="#7A5835" stroke-width="14" opacity=".55"/>
+    <path d="M220 305 C265 330 300 370 340 405" stroke="#FFE88B" stroke-width="5" filter="url(#glow)"/>
+    <path d="M460 485 C520 525 565 555 620 575" stroke="#7A5835" stroke-width="14" opacity=".55"/>
+    <path d="M460 485 C520 525 565 555 620 575" stroke="#FFE88B" stroke-width="5" filter="url(#glow)"/>
+    <path d="M748 565 C820 535 885 470 955 415" stroke="#7A5835" stroke-width="14" opacity=".55"/>
+    <path d="M748 565 C820 535 885 470 955 415" stroke="#FFE88B" stroke-width="5" filter="url(#glow)"/>
+    <path d="M1065 420 C1090 485 1110 570 1145 650" stroke="#7A5835" stroke-width="14" opacity=".55"/>
+    <path d="M1065 420 C1090 485 1110 570 1145 650" stroke="#FFE88B" stroke-width="5" filter="url(#glow)"/>
+  </g>
+</svg>

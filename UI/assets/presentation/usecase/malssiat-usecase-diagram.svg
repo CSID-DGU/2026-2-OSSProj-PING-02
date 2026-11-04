@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#6B4F1D" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      text { font-family: Pretendard, "Noto Sans KR", sans-serif; fill: #443424; }
+      .label { font-size: 18px; font-weight: 700; }
+      .small { font-size: 15px; font-weight: 600; }
+      .tiny { font-size: 13px; font-weight: 600; }
+      .section { font-size: 18px; font-weight: 800; fill: #72551B; }
+      .line { fill: none; stroke: #BDAF99; stroke-width: 2.2; stroke-linecap: round; }
+      .include { fill: none; stroke: #8DA153; stroke-width: 2.2; stroke-dasharray: 8 7; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8DA153"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" rx="28" fill="#FFF9E8"/>
+
+  <!-- System boundary -->
+  <rect x="220" y="48" width="1100" height="790" rx="30" fill="#FFFFFF" stroke="#E8D8B4" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="252" y="76" width="282" height="46" rx="23" fill="#F8D96B"/>
+  <circle cx="278" cy="99" r="9" fill="#91A655"/>
+  <path d="M278 89 C278 78 288 75 295 78 C290 88 283 91 278 89Z" fill="#91A655"/>
+  <text x="307" y="106" font-size="21" font-weight="800">말씨앗 시스템</text>
+  <text x="1268" y="105" text-anchor="end" font-size="14" font-weight="700" fill="#8B7A62">ON-DEVICE RELATIONSHIP SUPPORT</text>
+
+  <!-- Left actor: user -->
+  <circle cx="105" cy="330" r="31" fill="#FFF4C9" stroke="#72551B" stroke-width="4"/>
+  <line x1="105" y1="361" x2="105" y2="442" stroke="#72551B" stroke-width="5"/>
+  <line x1="55" y1="394" x2="155" y2="394" stroke="#72551B" stroke-width="5"/>
+  <line x1="105" y1="442" x2="66" y2="500" stroke="#72551B" stroke-width="5"/>
+  <line x1="105" y1="442" x2="144" y2="500" stroke="#72551B" stroke-width="5"/>
+  <text x="105" y="540" text-anchor="middle" font-size="22" font-weight="800">사용자</text>
+  <text x="105" y="566" text-anchor="middle" font-size="15" font-weight="600" fill="#8B7A62">최종 행동 결정</text>
+
+  <!-- Association bus behind use cases -->
+  <path class="line" d="M155 394 H195 V198 H304"/>
+  <path class="line" d="M195 286 H304"/>
+  <path class="line" d="M195 374 H304"/>
+  <path class="line" d="M195 394 H575 V198 H626"/>
+  <path class="line" d="M575 286 H626"/>
+  <path class="line" d="M575 374 H626"/>
+  <path class="line" d="M195 394 H897 V198 H948"/>
+  <path class="line" d="M897 286 H948"/>
+  <path class="line" d="M897 374 H948"/>
+
+  <!-- Three UX groups -->
+  <rect x="270" y="145" width="300" height="285" rx="24" fill="#FFFDF8" stroke="#F1E4C5" stroke-width="2"/>
+  <rect x="592" y="145" width="300" height="285" rx="24" fill="#FFFDF8" stroke="#F1E4C5" stroke-width="2"/>
+  <rect x="914" y="145" width="360" height="285" rx="24" fill="#FFFDF8" stroke="#F1E4C5" stroke-width="2"/>
+  <text class="section" x="294" y="176">01  시작 및 설정</text>
+  <text class="section" x="616" y="176">02  연락 확인 및 답장</text>
+  <text class="section" x="938" y="176">03  관계 및 정보 관리</text>
+
+  <!-- User-facing use cases -->
+  <g filter="url(#shadow)">
+    <ellipse cx="420" cy="218" rx="116" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="420" cy="306" rx="116" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="420" cy="394" rx="116" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="742" cy="218" rx="116" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="742" cy="306" rx="116" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="742" cy="394" rx="116" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="1094" cy="218" rx="145" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="1094" cy="306" rx="145" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+    <ellipse cx="1094" cy="394" rx="145" ry="38" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2.5"/>
+  </g>
+  <text class="label" x="420" y="225" text-anchor="middle">계정 생성 및 로그인</text>
+  <text class="label" x="420" y="313" text-anchor="middle">연동할 앱 선택</text>
+  <text class="label" x="420" y="401" text-anchor="middle">알림 접근 권한 설정</text>
+  <text class="label" x="742" y="225" text-anchor="middle">메시지 요약 확인</text>
+  <text class="label" x="742" y="313" text-anchor="middle">답장 후보 선택·수정</text>
+  <text class="label" x="742" y="401" text-anchor="middle">나중에 답하기</text>
+  <text class="label" x="1094" y="225" text-anchor="middle">일정·경조사 저장</text>
+  <text class="label" x="1094" y="313" text-anchor="middle">미뤄둔 연락 다시 시작</text>
+  <text class="label" x="1094" y="401" text-anchor="middle">저장 정보 수정·삭제</text>
+
+  <!-- Internal supporting use cases -->
+  <rect x="270" y="476" width="1004" height="278" rx="25" fill="#F5F8EA" stroke="#A8B778" stroke-width="2.5" stroke-dasharray="10 8"/>
+  <rect x="294" y="493" width="196" height="38" rx="19" fill="#91A655"/>
+  <text x="392" y="519" text-anchor="middle" font-size="16" font-weight="800" fill="#FFFFFF">기기 내부 처리</text>
+
+  <ellipse cx="456" cy="602" rx="142" ry="47" fill="#E7EED1" stroke="#91A655" stroke-width="2.5"/>
+  <ellipse cx="772" cy="602" rx="148" ry="47" fill="#E7EED1" stroke="#91A655" stroke-width="2.5"/>
+  <ellipse cx="1092" cy="602" rx="148" ry="47" fill="#E7EED1" stroke="#91A655" stroke-width="2.5"/>
+  <text class="label" x="456" y="596" text-anchor="middle">알림 수집·분류 및</text>
+  <text class="label" x="456" y="620" text-anchor="middle">로컬 암호화 저장</text>
+  <text class="label" x="772" y="596" text-anchor="middle">온디바이스 AI</text>
+  <text class="label" x="772" y="620" text-anchor="middle">요약·답장 후보 생성</text>
+  <text class="label" x="1092" y="596" text-anchor="middle">사용자 확인 후</text>
+  <text class="label" x="1092" y="620" text-anchor="middle">메신저로 전달</text>
+
+  <path class="include" d="M420 432 C420 500 438 520 456 551"/>
+  <path class="include" d="M742 256 C742 450 760 500 772 551"/>
+  <path class="include" d="M742 344 C820 420 965 510 1040 557"/>
+  <text class="tiny" x="430" y="498" fill="#7D9145">«include»</text>
+  <text class="tiny" x="750" y="476" fill="#7D9145">«include»</text>
+  <text class="tiny" x="891" y="474" fill="#7D9145">«include»</text>
+  <path d="M598 602 H618" stroke="#91A655" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M920 602 H940" stroke="#91A655" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- Right-side external actors -->
+  <text x="1450" y="84" text-anchor="middle" font-size="17" font-weight="800" fill="#72551B">외부 연동</text>
+  <rect x="1348" y="108" width="204" height="92" rx="20" fill="#FFFFFF" stroke="#E1D5BE" stroke-width="2"/>
+  <circle cx="1382" cy="145" r="16" fill="#F8D96B"/>
+  <path d="M1375 145 h14 M1382 138 v14" stroke="#72551B" stroke-width="2"/>
+  <text class="small" x="1410" y="142">Android</text>
+  <text class="small" x="1410" y="166">알림 시스템</text>
+
+  <rect x="1348" y="224" width="204" height="185" rx="20" fill="#FFFFFF" stroke="#E1D5BE" stroke-width="2"/>
+  <text class="small" x="1450" y="254" text-anchor="middle">지원 메신저 앱</text>
+  <rect x="1370" y="271" width="160" height="34" rx="17" fill="#FFF4C9"/>
+  <rect x="1370" y="315" width="160" height="34" rx="17" fill="#FFF4C9"/>
+  <rect x="1370" y="359" width="160" height="34" rx="17" fill="#FFF4C9"/>
+  <circle cx="1390" cy="288" r="7" fill="#F8D96B"/>
+  <circle cx="1390" cy="332" r="7" fill="#91A655"/>
+  <circle cx="1390" cy="376" r="7" fill="#D6B47E"/>
+  <text class="tiny" x="1410" y="293">카카오톡</text>
+  <text class="tiny" x="1410" y="337">인스타그램</text>
+  <text class="tiny" x="1410" y="381">기본 메시지</text>
+
+  <rect x="1348" y="435" width="204" height="96" rx="20" fill="#FFFFFF" stroke="#E1D5BE" stroke-width="2"/>
+  <circle cx="1382" cy="483" r="16" fill="#E7EED1"/>
+  <path d="M1374 483 h16 M1378 477 v12 M1386 477 v12" stroke="#66763D" stroke-width="2"/>
+  <text class="small" x="1410" y="480">인증·모델</text>
+  <text class="small" x="1410" y="504">관리 서버</text>
+
+  <!-- External associations -->
+  <path class="line" d="M1348 154 H1288 V394 H1239"/>
+  <path class="line" d="M1348 316 H1286 V306 H858"/>
+  <path class="line" d="M1348 346 H1298 V602 H1240"/>
+  <path class="line" d="M1348 483 H1290 V218 H536"/>
+  <path class="line" d="M1348 483 H1256 V700 H886"/>
+  <ellipse cx="772" cy="701" rx="114" ry="32" fill="#FFFFFF" stroke="#91A655" stroke-width="2"/>
+  <text class="small" x="772" y="707" text-anchor="middle">AI 모델 다운로드</text>
+
+  <!-- Legend -->
+  <rect x="270" y="780" width="1004" height="38" rx="19" fill="#FFF9E8"/>
+  <ellipse cx="316" cy="799" rx="27" ry="13" fill="#FFF4C9" stroke="#D8B74F" stroke-width="2"/>
+  <text class="tiny" x="354" y="804">사용자 기능</text>
+  <ellipse cx="480" cy="799" rx="27" ry="13" fill="#E7EED1" stroke="#91A655" stroke-width="2"/>
+  <text class="tiny" x="518" y="804">기기 내부 처리</text>
+  <line x1="650" y1="799" x2="704" y2="799" class="include"/>
+  <text class="tiny" x="720" y="804">«include»</text>
+  <rect x="856" y="786" width="52" height="26" rx="8" fill="#FFFFFF" stroke="#E1D5BE"/>
+  <text class="tiny" x="924" y="804">외부 연동 시스템</text>
+  <text class="tiny" x="1248" y="804" text-anchor="end" fill="#8B7A62">캘린더는 말씨앗 내부 기능</text>
+</svg>
