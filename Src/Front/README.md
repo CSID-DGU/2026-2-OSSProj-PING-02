@@ -140,11 +140,13 @@ Front/
 │   ├── App.tsx                 # 앱 진입점 (Provider + Navigation)
 │   ├── core/                   # 🎨 공용 디자인 시스템
 │   │   ├── styles/             #   colors.ts · fonts.ts · theme.ts
-│   │   ├── ui/                 #   공용 UI 컴포넌트 (Button 등)
+│   │   ├── ui/                 #   공용 UI 컴포넌트 (Button, TextField, Dialog 등)
 │   │   └── components/         #   MalssiatProvider
 │   ├── routes/router.tsx       # 화면 목록과 이동 설정
 │   ├── pages/<도메인>/         # 화면 (Page.tsx + Page_styled.ts)
-│   ├── components/<도메인>/    # 화면에서 쓰는 컴포넌트
+│   ├── components/<도메인>/    # 화면에서 쓰는 컴포넌트 (auth: AuthLayout 등)
+│   ├── hooks/                  # 공용 훅
+│   ├── constants/              # 선택지·검증 기준·안내 문구
 │   └── assets/img/<도메인>/    # 이미지 (@2x, @3x 포함)
 └── __tests__/                  # Jest 테스트
 ```
@@ -182,6 +184,7 @@ color: #2B2724;                                             // ❌ 직접 입력
   - 아이콘·경계선: `iconDefault`, `iconSubtle`, `iconBrand`, `borderDefault`, `borderStrong`
   - 브랜드·버튼: `brandSeed`, `brandSeedStrong`, `brandBrown`, `brandSprout`, `actionPrimaryBg/Text`, `actionSecondaryBg/Text`
   - 상태·피드백: `stateSelectedBg`, `stateSelectedContent`, `stateFocus`, `stateError`, `feedbackSuccess/Danger/InfoBg`, `feedbackSuccess/Danger/InfoText`
+  - 기타: `overlayDim` (다이얼로그·시트 뒤 딤 배경, 문서에 없는 값이라 Figma 화면에서 가져옴)
 - **`theme.palette`**: 원색 팔레트입니다. `seed`, `brown`, `green` 50~900 / `neutral` 0~900 / `danger50·600`, `info50·600`
 
 > 디자인 규칙: 노랑 위에는 진한 브라운 텍스트를 쓰고, 흰 글씨는 쓰지 않습니다. 넓은 배경은 웜 뉴트럴을 씁니다. 선택·오류·완료 상태는 색만으로 구분하지 말고 아이콘이나 라벨을 함께 씁니다.
@@ -205,40 +208,53 @@ const Title = styled.Text`
 
 > ⚠️ 안드로이드는 `font-weight`로 굵기가 바뀌지 않습니다. 굵기마다 폰트 파일이 따로 있어서, 위 스타일 키를 쓰면 알맞은 파일(`Pretendard-Medium` 등)이 자동으로 지정됩니다.
 
-### 버튼
+### 공용 컴포넌트
+
+`src/core/ui/`에 Figma 컴포넌트를 옮겨 두었습니다. 같은 모양이 필요하면 새로 만들지 말고 이걸 쓰세요.
+
+| 컴포넌트 | 불러오기 | Figma 이름 | 비고 |
+|---|---|---|---|
+| `Button` | `@core/ui/button` | Action / splash.next | `primary`(노랑, 누르면 브라운) · `secondary`(연노랑) · `text` |
+| `Header` | `@core/ui/header` | Navigation / Auth Header | 뒤로가기 + 화면 제목 |
+| `TextField` | `@core/ui/field` | Input / Text Field | 라벨+입력창+도움말. `error`에 문구를 넣으면 오류 상태 |
+| `Field` · `Input` | `@core/ui/field` | | 라벨 영역만 / 입력창만 따로 쓸 때 (`size="small"`은 44px) |
+| `Select` | `@core/ui/select` | Select / Birth Year 등 | 누르면 아래에서 목록 시트가 열림 |
+| `ChoiceGroup` | `@core/ui/choice` | Choice / Signup Gender Option | 하나만 고르는 버튼 묶음 |
+| `Checkbox` | `@core/ui/checkbox` | Control / Checkbox | `emphasis`로 라벨 강조 |
+| `Dialog` | `@core/ui/dialog` | Dialog / 아이디 찾기 완료 등 | 완료 아이콘 + 제목 + 확인·닫기 |
+| 아이콘 | `@core/ui/icon` | `UI/assets/icons/ui` | `BackIcon`, `ChevronDownIcon`, `CheckIcon`, `SuccessIcon` |
 
 ```tsx
-import { Button } from "@core/ui/button";
-
-<Button variant="primary" fullWidth onPress={handleLogin}>로그인</Button>        // 노랑 (brand/seed)
-<Button variant="secondary" fullWidth onPress={handleSignup}>회원가입</Button>  // 연노랑
-<Button variant="text" onPress={handleFindId}>아이디 찾기</Button>              // 텍스트 버튼
+<Button variant="primary" fullWidth onPress={handleLogin}>로그인</Button>
+<TextField label="아이디" placeholder="아이디를 입력해주세요" value={id} onChangeText={setId} error={errors.id} />
 ```
+
+로그인·회원가입처럼 뒤로가기 헤더가 있는 인증 화면은 `@components/auth/AuthLayout`으로 감싸면 헤더, 스크롤, 키보드 대응이 한 번에 들어갑니다.
 
 <br>
 
 ## ✍️ 화면 추가하는 방법
 
-예시: `01-2 로그인` 화면을 추가하는 경우
+예시: `02 / 온보딩` 화면을 추가하는 경우 (완성된 예시는 `src/pages/auth/Login.tsx`를 참고하세요)
 
-**1. 화면 파일 만들기:** `src/pages/auth/Login.tsx` + `Login_styled.ts`
+**1. 화면 파일 만들기:** `src/pages/onboarding/Onboarding.tsx` + `Onboarding_styled.ts`
 
 ```tsx
-// Login.tsx
-import * as s from "./Login_styled";
+// Onboarding.tsx
+import * as s from "./Onboarding_styled";
 
-const Login = () => {
-  return <s.LoginWrapper>{/* ... */}</s.LoginWrapper>;
+const Onboarding = () => {
+  return <s.OnboardingWrapper>{/* ... */}</s.OnboardingWrapper>;
 };
 
-export default Login;
+export default Onboarding;
 ```
 
 ```ts
-// Login_styled.ts
+// Onboarding_styled.ts
 import styled from "styled-components/native";
 
-export const LoginWrapper = styled.View`
+export const OnboardingWrapper = styled.View`
   flex: 1;
   background-color: ${({ theme }) => theme.colors.surfaceDefault};
 `;
@@ -248,20 +264,21 @@ export const LoginWrapper = styled.View`
 
 ```tsx
 export type RootStackParamList = {
-  Splash: undefined;
-  AccountStart: undefined;
-  Login: undefined; // 추가
+  // ...
+  Onboarding: undefined; // 추가
 };
 
-<Stack.Screen name="Login" component={Login} />; // 추가
+<Stack.Screen name="Onboarding" component={Onboarding} />; // 추가
 ```
 
 **3. 이동하기**
 
 ```tsx
 const navigation = useNavigation();
-navigation.navigate("Login");
+navigation.navigate("Onboarding");
 ```
+
+> 스택에 이미 있는 화면으로 **돌아가려면** `navigate` 대신 `popTo`를 씁니다 (React Navigation 7부터 `navigate`는 되돌아가지 않음). `popTo`는 `@hooks/useAuthNavigation`처럼 native-stack 타입을 지정한 navigation에서 쓸 수 있습니다.
 
 ### 코드 컨벤션
 
@@ -275,6 +292,7 @@ navigation.navigate("Login");
   - 캐릭터·일러스트·아이콘 원본은 레포 루트 [UI/assets](../../UI/assets)에 있습니다. 용도는 [asset-catalog.md](../../UI/docs/asset-catalog.md)를 참고하세요.
   - 원본(1000px 이상)을 그대로 쓰지 말고, 화면에 쓸 파일만 표시 크기의 1x/2x/3x로 줄여서 `src/assets`에 복사합니다.
   - `UI/references`는 참고용이라 앱에 넣지 않습니다.
+- **아이콘:** `UI/assets/icons/ui`의 SVG는 `react-native-svg`로 그립니다. 새 아이콘이 필요하면 SVG의 `path` 값을 `src/core/ui/icon/Icon.tsx`에 옮기고, 색은 prop으로 받게 만드세요.
 
 <br>
 
