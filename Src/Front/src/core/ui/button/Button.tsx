@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import type { TouchableOpacityProps } from "react-native";
+import { Pressable } from "react-native";
+import type { PressableProps } from "react-native";
 import styled, { css } from "styled-components/native";
 import { fonts } from "../../styles/fonts";
 
-// Figma: Action / Primary and secondary full-width action button, 인증 화면 텍스트 버튼
+// Figma: Action / splash.next (default · pressed · disabled)
+// 기준: design-system.md - 노랑 위에는 진한 브라운 텍스트, 누르면 갈색 배경 + 흰 텍스트
 export type Variant = "primary" | "secondary" | "text";
 type FontKey = keyof typeof fonts;
 
-export interface ButtonProps extends TouchableOpacityProps {
+export interface ButtonProps extends Omit<PressableProps, "children"> {
   variant?: Variant;
   fullWidth?: boolean;
   leftIcon?: ReactNode;
@@ -16,52 +18,63 @@ export interface ButtonProps extends TouchableOpacityProps {
   children?: ReactNode;
 }
 
-// 버튼 스타일
-const Base = styled.TouchableOpacity<{
+// 바깥: 눌림 감지 + 가로 꽉 채우기만 담당
+const Touch = styled(Pressable)<{ $fullWidth: boolean }>`
+  ${({ $fullWidth }) => $fullWidth && "align-self: stretch;"}
+`;
+
+// 안쪽: 실제 버튼 모양 (눌림 상태에 따라 색이 바뀜)
+const Inner = styled.View<{
   $variant: Variant;
-  $fullWidth: boolean;
+  $pressed: boolean;
+  $disabled: boolean;
 }>`
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  ${({ $fullWidth }) => $fullWidth && "align-self: stretch;"}
 
-  /* variant */
-  ${({ theme, $variant, disabled }) => {
+  ${({ theme, $variant, $pressed, $disabled }) => {
     if ($variant === "text") {
       return css`
         padding: 6px 8px;
+        opacity: ${$pressed ? 0.6 : 1};
       `;
+    }
+
+    let bg: string;
+    if ($disabled) {
+      bg = theme.palette.neutral200;
+    } else if ($variant === "primary") {
+      bg = $pressed ? theme.colors.actionPrimaryBg : theme.colors.brandSeed;
+    } else {
+      bg = $pressed ? theme.palette.seed200 : theme.colors.actionSecondaryBg;
     }
 
     return css`
       height: 48px;
       padding: 0px 16px;
       border-radius: 10px;
-      background-color: ${disabled
-        ? theme.palette.neutral200
-        : $variant === "primary"
-        ? theme.colors.brandSeed
-        : theme.colors.actionSecondaryBg};
+      background-color: ${bg};
     `;
   }}
 `;
 
 const Label = styled.Text<{
   $variant: Variant;
-  $disabled?: boolean | null;
+  $pressed: boolean;
+  $disabled: boolean;
   $typo?: FontKey;
 }>`
   ${({ theme, $variant }) =>
     $variant === "text" ? theme.fonts.captionSmall : theme.fonts.labelButton};
   ${({ $typo }) => $typo && fonts[$typo]};
   text-align: center;
-  color: ${({ theme, $variant, $disabled }) => {
+  color: ${({ theme, $variant, $pressed, $disabled }) => {
     if ($disabled) return theme.palette.neutral400;
-    return $variant === "text"
-      ? theme.colors.textTertiary
-      : theme.colors.textPrimary;
+    if ($variant === "text") return theme.colors.textTertiary;
+    if ($variant === "primary" && $pressed) return theme.colors.actionPrimaryText; // 갈색 위 흰 글씨
+    return theme.colors.actionSecondaryText; // 노랑 위 진한 브라운 글씨
   }};
 `;
 
@@ -73,28 +86,37 @@ export const Button = ({
   typo,
   children,
   disabled,
-  activeOpacity = 0.8,
   ...rest
 }: ButtonProps) => {
+  const isDisabled = Boolean(disabled);
+
   return (
-    <Base
+    <Touch
       {...rest}
+      disabled={isDisabled}
       accessibilityRole="button"
-      activeOpacity={activeOpacity}
-      disabled={disabled}
-      $variant={variant}
+      accessibilityState={{ disabled: isDisabled }}
       $fullWidth={fullWidth}
     >
-      {leftIcon}
-      {typeof children === "string" ? (
-        <Label $variant={variant} $disabled={disabled} $typo={typo}>
-          {children}
-        </Label>
-      ) : (
-        children
+      {({ pressed }) => (
+        <Inner $variant={variant} $pressed={pressed} $disabled={isDisabled}>
+          {leftIcon}
+          {typeof children === "string" ? (
+            <Label
+              $variant={variant}
+              $pressed={pressed}
+              $disabled={isDisabled}
+              $typo={typo}
+            >
+              {children}
+            </Label>
+          ) : (
+            children
+          )}
+          {rightIcon}
+        </Inner>
       )}
-      {rightIcon}
-    </Base>
+    </Touch>
   );
 };
 
