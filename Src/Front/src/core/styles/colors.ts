@@ -100,4 +100,7 @@ export const colors = {
   feedbackInfoBg: palette.info50, // 정보 안내 배경
   feedbackInfoText: palette.info600, // 정보 안내 텍스트
   stateError: palette.danger600, // 오류 상태 입력창 테두리
+
+  //overlay
+  overlayDim: "rgba(0, 0, 0, 0.3)", // 다이얼로그·시트 뒤 딤 배경 (Figma 01-4-1)
 } as const;

@@ -18,14 +18,3 @@ export const AccountBtnContainer = styled.View`
   align-items: center;
   gap: 12px;
 `;
-
-export const FindContainer = styled.View`
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-`;
-
-export const Divider = styled.Text`
-  ${({ theme }) => theme.fonts.captionSmall};
-  color: ${({ theme }) => theme.colors.textTertiary};
-`;
