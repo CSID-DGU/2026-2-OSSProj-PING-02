@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@core/ui/button";
 import { TextField } from "@core/ui/field";
-import { Dialog, DialogDescription } from "@core/ui/dialog";
+import { Dialog, DialogDescription, DialogHighlight } from "@core/ui/dialog";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import { AUTH_ERROR, EMAIL_REGEX } from "@constants/auth";
@@ -94,9 +94,7 @@ const FindId = () => {
         onConfirm={goLogin}
         onClose={() => setFoundId(undefined)}
       >
-        <s.ResultBox>
-          <s.ResultId>{maskId(foundId ?? "")}</s.ResultId>
-        </s.ResultBox>
+        <DialogHighlight>{maskId(foundId ?? "")}</DialogHighlight>
         <DialogDescription>개인정보 보호를 위해 일부만 표시했어요.</DialogDescription>
       </Dialog>
     </AuthLayout>

@@ -1,22 +1,16 @@
-
 import { useState } from "react";
 import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import styled from "styled-components/native";
 
-import { Button } from "../../core/ui/button";
-import { TextField } from "../../core/ui/textField";
-import { AppBar } from "../../core/ui/appBar";
-import { Checkbox } from "../../core/ui/checkbox";
-import { ChoiceButton } from "../../core/ui/choiceButton";
-import { Dialog, DialogHighlight } from "../../core/ui/dialog";
-import { Select } from "../../core/ui/select";
-import {
-  Card,
-  CardTitle,
-  CardDescription,
-  CardMeta,
-} from "../../core/ui/card";
+import { Button } from "@core/ui/button";
+import { Field, TextField } from "@core/ui/field";
+import { Header } from "@core/ui/header";
+import { Checkbox } from "@core/ui/checkbox";
+import { ChoiceGroup } from "@core/ui/choice";
+import { Dialog, DialogHighlight } from "@core/ui/dialog";
+import { Select } from "@core/ui/select";
+import { Card, CardTitle, CardDescription, CardMeta } from "@core/ui/card";
 
 // 공통 컴포넌트 확인용 임시 화면 (개발용)
 
@@ -54,9 +48,11 @@ const Row = styled.View`
   gap: 8px;
 `;
 
-const GENDERS = ["여성", "남성", "기타"];
-const TONES = ["짧게", "다정하게", "공손하게"];
+const toOptions = (labels: string[]) =>
+  labels.map((label) => ({ label, value: label }));
 
+const GENDERS = toOptions(["여성", "남성", "기타"]);
+const TONES = toOptions(["짧게", "다정하게", "공손하게"]);
 
 // Select 테스트용 선택지
 
@@ -75,12 +71,9 @@ const DAYS = Array.from({ length: 31 }, (_, i) => {
   return { label: `${d}일`, value: d };
 });
 
-const DOMAINS = [
-  "gmail.com",
-  "naver.com",
-  "daum.net",
-  "kakao.com",
-].map((d) => ({ label: d, value: d }));
+const DOMAINS = ["gmail.com", "naver.com", "daum.net", "kakao.com"].map(
+  (d) => ({ label: d, value: d })
+);
 
 // Card 테스트용 답장 후보
 const REPLIES = [
@@ -93,34 +86,32 @@ const Playground = () => {
   const [email, setEmail] = useState("");
   const [checkA, setCheckA] = useState(false);
   const [checkB, setCheckB] = useState(true);
-  const [gender, setGender] = useState<string | null>(null);
+  const [gender, setGender] = useState<string>();
   const [tone, setTone] = useState("다정하게");
   const [resultOpen, setResultOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [year, setYear] = useState<string | null>(null);
-  const [month, setMonth] = useState<string | null>(null);
-  const [day, setDay] = useState<string | null>(null);
-  const [domain, setDomain] = useState<string | null>("gmail.com");
+  const [year, setYear] = useState<string>();
+  const [month, setMonth] = useState<string>();
+  const [day, setDay] = useState<string>();
+  const [domain, setDomain] = useState<string>("gmail.com");
   const [replyIndex, setReplyIndex] = useState(0);
 
   return (
     <Screen>
-      <AppBar
+      <Header
         title="컴포넌트 테스트"
+        titleAlign="center"
         onBack={() => console.log("뒤로가기 눌림")}
         divider
       />
 
       <Content>
         <Section>
-          {/* ───────── AppBar ───────── */}
-          <SectionTitle>
-            AppBar - 왼쪽 정렬 (로그인 화면용)
-          </SectionTitle>
+          {/* ───────── Header ───────── */}
+          <SectionTitle>Header - 왼쪽 정렬 (로그인 화면용)</SectionTitle>
           <AppBarPreview>
-            <AppBar
+            <Header
               title="로그인"
-              titleAlign="left"
               onBack={() => console.log("뒤로가기 눌림")}
             />
           </AppBarPreview>
@@ -132,18 +123,18 @@ const Playground = () => {
             placeholder="이메일을 입력해주세요"
             value={email}
             onChangeText={setEmail}
-            helperText="로그인에 사용할 이메일이에요"
+            helper="로그인에 사용할 이메일이에요"
           />
           <TextField
             label="비밀번호"
             placeholder="비밀번호를 입력해주세요"
             secureTextEntry
-            errorText="비밀번호가 올바르지 않아요"
+            error="비밀번호가 올바르지 않아요"
           />
           <TextField
             label="이메일 (비활성)"
             placeholder="이메일을 입력해주세요"
-            editable={false}
+            disabled
           />
 
           {/* ───────── Checkbox ───────── */}
@@ -160,51 +151,34 @@ const Playground = () => {
           />
           <Checkbox
             checked={false}
+            onChange={() => {}}
             disabled
             label="비활성 (unchecked)"
           />
           <Checkbox
             checked
+            onChange={() => {}}
             disabled
             label="비활성 (checked)"
           />
 
-          {/* ───────── ChoiceButton ───────── */}
-          <SectionTitle>
-            ChoiceButton - option (성별)
-          </SectionTitle>
-          <Row>
-            {GENDERS.map((g) => (
-              <ChoiceButton
-                key={g}
-                selected={gender === g}
-                onPress={() => setGender(g)}
-                style={styles.flex1}
-              >
-                {g}
-              </ChoiceButton>
-            ))}
-          </Row>
+          {/* ───────── ChoiceGroup ───────── */}
+          <SectionTitle>ChoiceGroup - option (성별)</SectionTitle>
+          <ChoiceGroup options={GENDERS} value={gender} onChange={setGender} />
 
-          <SectionTitle>
-            ChoiceButton - chip (톤)
-          </SectionTitle>
-          <Row>
-            {TONES.map((t) => (
-              <ChoiceButton
-                key={t}
-                shape="chip"
-                selected={tone === t}
-                onPress={() => setTone(t)}
-              >
-                {t}
-              </ChoiceButton>
-            ))}
-            <ChoiceButton shape="chip" disabled>
-              비활성
-            </ChoiceButton>
-          </Row>
-
+          <SectionTitle>ChoiceGroup - chip (톤)</SectionTitle>
+          <ChoiceGroup
+            shape="chip"
+            options={TONES}
+            value={tone}
+            onChange={setTone}
+          />
+          <ChoiceGroup
+            shape="chip"
+            options={toOptions(["비활성"])}
+            onChange={() => {}}
+            disabled
+          />
 
           {/* ───────── Select ───────── */}
           <SectionTitle>Select - 생년월일</SectionTitle>
@@ -216,7 +190,7 @@ const Playground = () => {
               onChange={setYear}
               placeholder="YYYY"
               sheetTitle="태어난 해"
-              style={styles.flexYear}
+              flex={1.4}
             />
 
             <Select
@@ -225,7 +199,6 @@ const Playground = () => {
               onChange={setMonth}
               placeholder="MM"
               sheetTitle="태어난 달"
-              style={styles.flex1}
             />
 
             <Select
@@ -234,55 +207,56 @@ const Playground = () => {
               onChange={setDay}
               placeholder="DD"
               sheetTitle="태어난 날"
-              style={styles.flex1}
             />
           </Row>
 
           <SectionTitle>Select - 이메일 도메인 / 상태</SectionTitle>
 
-          <Select
-            label="이메일 도메인"
-            options={DOMAINS}
-            value={domain}
-            onChange={setDomain}
-          />
+          {/* 라벨·오류 문구는 Field로 감쌈 */}
+          <Field label="이메일 도메인">
+            <Row>
+              <Select
+                placeholder="도메인 선택"
+                options={DOMAINS}
+                value={domain}
+                onChange={setDomain}
+              />
+            </Row>
+          </Field>
 
-          <Select
-            label="에러 상태"
-            options={DOMAINS}
-            value={null}
-            onChange={() => { }}
-            placeholder="선택해주세요"
-            errorText="도메인을 선택해주세요"
-          />
+          <Field label="에러 상태" helper="도메인을 선택해주세요" state="error">
+            <Row>
+              <Select
+                options={DOMAINS}
+                onChange={() => {}}
+                placeholder="선택해주세요"
+                error
+              />
+            </Row>
+          </Field>
 
-          <Select
-            label="비활성 상태"
-            options={DOMAINS}
-            value={null}
-            onChange={() => { }}
-            placeholder="선택해주세요"
-            disabled
-          />
-
+          <Field label="비활성 상태" state="disabled">
+            <Row>
+              <Select
+                options={DOMAINS}
+                onChange={() => {}}
+                placeholder="선택해주세요"
+                disabled
+              />
+            </Row>
+          </Field>
 
           {/* ───────── Card ───────── */}
 
-          <SectionTitle>
-            Card - default (연락 요약, 누를 수 있음)
-          </SectionTitle>
+          <SectionTitle>Card - default (연락 요약, 누를 수 있음)</SectionTitle>
 
           <Card onPress={() => console.log("민지 카드 눌림")}>
             <CardTitle>민지 · 오늘</CardTitle>
-            <CardDescription>
-              이번 주말에 시간 괜찮아?
-            </CardDescription>
+            <CardDescription>이번 주말에 시간 괜찮아?</CardDescription>
             <CardMeta>카카오톡 · 1:1</CardMeta>
           </Card>
 
-          <SectionTitle>
-            Card - highlight (꼭 챙길 연락)
-          </SectionTitle>
+          <SectionTitle>Card - highlight (꼭 챙길 연락)</SectionTitle>
 
           <Card
             variant="highlight"
@@ -295,9 +269,7 @@ const Playground = () => {
             <CardMeta>경조사 · 3일 남음</CardMeta>
           </Card>
 
-          <SectionTitle>
-            Card - selected (답장 후보 고르기)
-          </SectionTitle>
+          <SectionTitle>Card - selected (답장 후보 고르기)</SectionTitle>
 
           {REPLIES.map((text, i) => (
             <Card
@@ -311,9 +283,7 @@ const Playground = () => {
             </Card>
           ))}
 
-          <SectionTitle>
-            Card - 누를 수 없는 카드
-          </SectionTitle>
+          <SectionTitle>Card - 누를 수 없는 카드</SectionTitle>
 
           <Card>
             <CardTitle>안내</CardTitle>
@@ -345,12 +315,10 @@ const Playground = () => {
           <Dialog
             visible={resultOpen}
             onClose={() => setResultOpen(false)}
-            icon="success"
             title="아이디를 찾았어요"
             description="회원님의 아이디는 아래와 같아요."
-            primaryLabel="로그인"
-            onPrimary={() => setResultOpen(false)}
-            secondaryLabel="닫기"
+            confirmLabel="로그인"
+            onConfirm={() => setResultOpen(false)}
           >
             <DialogHighlight>mals****</DialogHighlight>
           </Dialog>
@@ -359,17 +327,17 @@ const Playground = () => {
           <Dialog
             visible={confirmOpen}
             onClose={() => setConfirmOpen(false)}
+            icon={null}
             title="이 답장을 보낼까요?"
             description="보낸 메시지는 취소할 수 없어요."
-            primaryLabel="보내기"
-            onPrimary={() => {
+            confirmLabel="보내기"
+            onConfirm={() => {
               console.log("전송!");
               setConfirmOpen(false);
             }}
-            secondaryLabel="취소"
+            closeLabel="취소"
             dismissOnBackdrop={false}
           />
-
 
           {/* ───────── Button ───────── */}
           <SectionTitle>Button</SectionTitle>
@@ -382,9 +350,7 @@ const Playground = () => {
           <Button variant="primary" fullWidth disabled>
             disabled 버튼
           </Button>
-          <Button variant="text">
-            텍스트 버튼
-          </Button>
+          <Button variant="text">텍스트 버튼</Button>
         </Section>
       </Content>
     </Screen>
@@ -392,8 +358,6 @@ const Playground = () => {
 };
 
 const styles = StyleSheet.create({
-  flex1: { flex: 1 },
-  flexYear: { flex: 1.4 },
   noMarginTop: { marginTop: 0 },
 });
 
