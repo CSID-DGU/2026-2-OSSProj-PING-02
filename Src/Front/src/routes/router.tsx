@@ -7,6 +7,7 @@ import Login from "@pages/auth/Login";
 import Signup from "@pages/auth/Signup";
 import FindId from "@pages/auth/FindId";
 import FindPassword from "@pages/auth/FindPassword";
+import Playground from "@pages/dev/Playground";
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   Signup: undefined;
   FindId: undefined;
   FindPassword: undefined;
+  Playground: undefined;
 };
 
 // useNavigation()에서 화면 이름 자동완성
@@ -39,6 +41,9 @@ const Router = () => {
       <Stack.Screen name="Signup" component={Signup} />
       <Stack.Screen name="FindId" component={FindId} />
       <Stack.Screen name="FindPassword" component={FindPassword} />
+
+      {/* Dev (개발용 테스트 화면) */}
+      <Stack.Screen name="Playground" component={Playground} />
     </Stack.Navigator>
   );
 };

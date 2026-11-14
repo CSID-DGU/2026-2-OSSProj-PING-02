@@ -1,19 +1,22 @@
 import type { ReactNode } from "react";
-import { Modal } from "react-native";
+import { Modal, Pressable, StyleSheet } from "react-native";
 import styled from "styled-components/native";
 import { Button } from "../button";
 import { SuccessIcon } from "../icon";
 
 // Figma: Dialog / 아이디 찾기 완료, Dialog / 임시 비밀번호 발송 완료
+// 사용처: 결과 안내, 바로 보내기 전 확인, 데이터 삭제 확인 등
 export interface DialogProps {
   visible: boolean;
   title: string;
   description?: string;
   children?: ReactNode; // 설명 아래 추가 내용 (결과 박스, 안내 문구 등)
+  icon?: "success" | ReactNode; // null이면 아이콘 없음 (확인형 팝업)
   confirmLabel: string;
   onConfirm: () => void;
   closeLabel?: string;
   onClose: () => void;
+  dismissOnBackdrop?: boolean; // 바깥 딤을 누르면 닫기
 }
 
 const Dim = styled.View`
@@ -21,6 +24,9 @@ const Dim = styled.View`
   justify-content: center;
   align-items: center;
   padding: 0px 20px;
+`;
+
+const Backdrop = styled(Pressable)`
   background-color: ${({ theme }) => theme.colors.overlayDim};
 `;
 
@@ -70,10 +76,12 @@ export const Dialog = ({
   title,
   description,
   children,
+  icon = "success",
   confirmLabel,
   onConfirm,
   closeLabel = "닫기",
   onClose,
+  dismissOnBackdrop = true,
 }: DialogProps) => {
   return (
     <Modal
@@ -85,8 +93,13 @@ export const Dialog = ({
       onRequestClose={onClose}
     >
       <Dim>
-        <Card accessibilityRole="alert">
-          <SuccessIcon />
+        <Backdrop
+          style={StyleSheet.absoluteFill}
+          onPress={dismissOnBackdrop ? onClose : undefined}
+          accessibilityLabel="팝업 닫기"
+        />
+        <Card accessibilityRole="alert" accessibilityViewIsModal>
+          {icon === "success" ? <SuccessIcon /> : icon}
           <Title>{title}</Title>
           {description && <Description>{description}</Description>}
           {children}
@@ -105,6 +118,28 @@ export const Dialog = ({
     </Modal>
   );
 };
+
+// 다이얼로그 안 강조 박스 (Figma: Result / Masked ID의 "mals****")
+const HighlightBox = styled.View`
+  align-self: stretch;
+  justify-content: center;
+  align-items: center;
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid ${({ theme }) => theme.colors.borderDefault};
+  background-color: ${({ theme }) => theme.colors.surfaceSeed};
+`;
+
+const HighlightText = styled.Text`
+  ${({ theme }) => theme.fonts.headingDialog};
+  color: ${({ theme }) => theme.colors.textPrimary};
+`;
+
+export const DialogHighlight = ({ children }: { children: ReactNode }) => (
+  <HighlightBox>
+    <HighlightText>{children}</HighlightText>
+  </HighlightBox>
+);
 
 export { Description as DialogDescription };
 export default Dialog;
