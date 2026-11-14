@@ -215,19 +215,22 @@ const Title = styled.Text`
 | 컴포넌트 | 불러오기 | Figma 이름 | 비고 |
 |---|---|---|---|
 | `Button` | `@core/ui/button` | Action / splash.next | `primary`(노랑, 누르면 브라운) · `secondary`(연노랑) · `text` |
-| `Header` | `@core/ui/header` | Navigation / Auth Header | 뒤로가기 + 화면 제목 |
+| `Header` | `@core/ui/header` | Navigation / Auth Header · Main App Bar | 기본은 왼쪽 제목+뒤로가기. `titleAlign="center"`, `left`·`right` 슬롯으로 메인 화면 앱바 |
 | `TextField` | `@core/ui/field` | Input / Text Field | 라벨+입력창+도움말. `error`에 문구를 넣으면 오류 상태 |
 | `Field` · `Input` | `@core/ui/field` | | 라벨 영역만 / 입력창만 따로 쓸 때 (`size="small"`은 44px) |
-| `Select` | `@core/ui/select` | Select / Birth Year 등 | 누르면 아래에서 목록 시트가 열림 |
-| `ChoiceGroup` | `@core/ui/choice` | Choice / Signup Gender Option | 하나만 고르는 버튼 묶음 |
+| `Select` | `@core/ui/select` | Select / Birth Year 등 | 누르면 아래에서 목록 시트가 열림. 라벨·오류 문구는 `Field`로 감쌈 |
+| `ChoiceGroup` | `@core/ui/choice` | Choice / Signup Gender Option · choice | 하나만 고르는 버튼 묶음. `shape="chip"`은 알약 모양(말투 선택 등) |
 | `Checkbox` | `@core/ui/checkbox` | Control / Checkbox | `emphasis`로 라벨 강조 |
-| `Dialog` | `@core/ui/dialog` | Dialog / 아이디 찾기 완료 등 | 완료 아이콘 + 제목 + 확인·닫기 |
+| `Dialog` | `@core/ui/dialog` | Dialog / 아이디 찾기 완료 등 | 완료 아이콘 + 제목 + 확인·닫기. `icon={null}`이면 확인형 팝업, `DialogHighlight`로 강조 박스 |
+| `Card` | `@core/ui/card` | 00 Design System / Seed Yellow Usage | `default` · `highlight`(꼭 챙길 연락) · `selected`(답장 후보) |
 | 아이콘 | `@core/ui/icon` | `UI/assets/icons/ui` | `BackIcon`, `ChevronDownIcon`, `CheckIcon`, `SuccessIcon` |
 
 ```tsx
 <Button variant="primary" fullWidth onPress={handleLogin}>로그인</Button>
 <TextField label="아이디" placeholder="아이디를 입력해주세요" value={id} onChangeText={setId} error={errors.id} />
 ```
+
+모든 공용 컴포넌트는 개발용 화면 `src/pages/dev/Playground.tsx`에서 한 번에 확인할 수 있습니다. `router.tsx`의 `initialRouteName`을 잠시 `"Playground"`로 바꾸면 앱이 그 화면에서 시작합니다 (커밋 전에 되돌려 주세요).
 
 로그인·회원가입처럼 뒤로가기 헤더가 있는 인증 화면은 `@components/auth/AuthLayout`으로 감싸면 헤더, 스크롤, 키보드 대응이 한 번에 들어갑니다.
 
