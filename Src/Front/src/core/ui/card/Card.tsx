@@ -1,11 +1,6 @@
-
 import type { ReactNode } from "react";
 import { Pressable } from "react-native";
-import type {
-  PressableProps,
-  StyleProp,
-  ViewStyle,
-} from "react-native";
+import type { PressableProps, StyleProp, ViewStyle } from "react-native";
 import styled from "styled-components/native";
 
 // Figma: 00 Design System / Seed Yellow Usage
@@ -15,8 +10,7 @@ import styled from "styled-components/native";
 
 export type CardVariant = "default" | "highlight" | "selected";
 
-export interface CardProps
-  extends Omit<PressableProps, "children" | "style"> {
+export interface CardProps extends Omit<PressableProps, "children" | "style"> {
   variant?: CardVariant;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -33,25 +27,19 @@ const Surface = styled.View<{
     $variant === "selected" ? "1.5px" : "1px"};
 
   border-color: ${({ theme, $variant }) => {
-    if ($variant === "selected")
-      return theme.colors.stateSelectedContent;
+    if ($variant === "selected") return theme.colors.stateSelectedContent;
 
-    if ($variant === "highlight")
-      return theme.palette.seed200;
+    if ($variant === "highlight") return theme.palette.seed200;
 
     return theme.colors.borderDefault;
   }};
 
   background-color: ${({ theme, $variant, $pressed }) => {
     if ($variant === "selected")
-      return $pressed
-        ? theme.palette.seed200
-        : theme.colors.stateSelectedBg;
+      return $pressed ? theme.palette.seed200 : theme.colors.stateSelectedBg;
 
     if ($variant === "highlight")
-      return $pressed
-        ? theme.colors.stateSelectedBg
-        : theme.colors.surfaceSeed;
+      return $pressed ? theme.colors.stateSelectedBg : theme.colors.surfaceSeed;
 
     return $pressed
       ? theme.colors.backgroundSubtle
@@ -70,11 +58,7 @@ export const Card = ({
   // 누를 수 없는 카드: 단순한 상자
   if (!onPress) {
     return (
-      <Surface
-        $variant={variant}
-        $pressed={false}
-        style={style}
-      >
+      <Surface $variant={variant} $pressed={false} style={style}>
         {children}
       </Surface>
     );
@@ -94,10 +78,7 @@ export const Card = ({
       }}
     >
       {({ pressed }) => (
-        <Surface
-          $variant={variant}
-          $pressed={pressed}
-        >
+        <Surface $variant={variant} $pressed={pressed}>
           {children}
         </Surface>
       )}

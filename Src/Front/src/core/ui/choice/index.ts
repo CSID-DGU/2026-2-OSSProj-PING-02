@@ -1,2 +1,2 @@
 export { ChoiceGroup } from "./Choice";
-export type { ChoiceGroupProps, ChoiceOption } from "./Choice";
+export type { ChoiceGroupProps, ChoiceOption, ChoiceShape } from "./Choice";

@@ -17,6 +17,7 @@ export interface SelectProps<T extends string | number> {
   value?: T;
   onChange: (value: T) => void;
   error?: boolean;
+  disabled?: boolean;
   sheetTitle?: string;
   flex?: number;
 }
@@ -27,6 +28,7 @@ export const Select = <T extends string | number>({
   value,
   onChange,
   error = false,
+  disabled = false,
   sheetTitle,
   flex = 1,
 }: SelectProps<T>) => {
@@ -44,13 +46,16 @@ export const Select = <T extends string | number>({
     <>
       <Trigger
         onPress={() => setOpen(true)}
+        disabled={disabled}
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={sheetTitle ?? placeholder}
         accessibilityValue={{ text: selected?.label }}
+        accessibilityState={{ disabled }}
         $flex={flex}
         $open={open}
         $error={error}
+        $disabled={disabled}
       >
         <Value $filled={!!selected} numberOfLines={1}>
           {selected?.label ?? placeholder}
@@ -116,6 +121,7 @@ const Trigger = styled.TouchableOpacity<{
   $flex: number;
   $open: boolean;
   $error: boolean;
+  $disabled: boolean;
 }>`
   flex: ${({ $flex }) => $flex};
   flex-direction: row;
@@ -125,7 +131,9 @@ const Trigger = styled.TouchableOpacity<{
   height: 44px;
   padding: 0px 12px;
   border-radius: 8px;
-  background-color: ${({ theme }) => theme.colors.surfaceDefault};
+  opacity: ${({ $disabled }) => ($disabled ? 0.6 : 1)};
+  background-color: ${({ theme, $disabled }) =>
+    $disabled ? theme.colors.backgroundSubtle : theme.colors.surfaceDefault};
   ${({ theme, $open, $error }) => {
     if ($error) {
       return css`
