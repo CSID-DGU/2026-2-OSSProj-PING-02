@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: malssiat-postgres
+    environment:
+      POSTGRES_USER: malssiat
+      POSTGRES_PASSWORD: malssiat
+      POSTGRES_DB: malssiat
+    ports:
+      - "5432:5432"
+    volumes:
+      - malssiat-pg:/var/lib/postgresql/data
+
+volumes:
+  malssiat-pg:
