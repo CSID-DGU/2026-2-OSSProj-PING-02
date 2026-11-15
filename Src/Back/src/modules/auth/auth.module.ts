@@ -8,7 +8,6 @@ import { User } from '../../database/entities/user.entity';
 import { TermsModule } from '../terms/terms.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { KakaoClient } from './kakao.client';
 
 @Module({
   imports: [
@@ -17,6 +16,6 @@ import { KakaoClient } from './kakao.client';
     MailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, KakaoClient],
+  providers: [AuthService],
 })
 export class AuthModule {}

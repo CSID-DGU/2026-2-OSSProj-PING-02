@@ -5,21 +5,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'crypto';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
-import { AuthProviderType, Gender } from '../../common/enums';
-import { AppException, ErrorDetail } from '../../common/errors/app.exception';
+import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-codes';
 import { addDays, isValidBirthdate } from '../../common/utils/date.util';
 import { isUniqueViolation } from '../../common/utils/db.util';
 import { randomToken, sha256Hex } from '../../common/utils/crypto.util';
-import { AuthProvider } from '../../database/entities/auth-provider.entity';
 import { EmailVerification } from '../../database/entities/email-verification.entity';
 import { RefreshToken } from '../../database/entities/refresh-token.entity';
 import { User } from '../../database/entities/user.entity';
 import { MailService } from '../mail/mail.service';
 import { TermsService } from '../terms/terms.service';
-import { TermsAgreementDto } from '../terms/dto/terms-agreement.dto';
-import { KakaoClient } from './kakao.client';
-import { KakaoLoginDto, LoginDto, SignupDto, VerifyEmailDto } from './dto/auth.dto';
+import { LoginDto, SignupDto, VerifyEmailDto } from './dto/auth.dto';
 
 const BCRYPT_ROUNDS = 12;
 const VERIFY_CODE_TTL_MINUTES = 10;
@@ -55,13 +51,11 @@ export class AuthService {
 
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
-    @InjectRepository(AuthProvider) private readonly providers: Repository<AuthProvider>,
     @InjectRepository(RefreshToken) private readonly refreshTokens: Repository<RefreshToken>,
     private readonly dataSource: DataSource,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly terms: TermsService,
-    private readonly kakao: KakaoClient,
     private readonly mail: MailService,
   ) {}
 
@@ -176,71 +170,6 @@ export class AuthService {
 
     const { tokens } = await this.issueTokens(this.dataSource.manager, user.id, dto.deviceId ?? null);
     return { user: toUserSummary(user), tokens };
-  }
-
-  // ── 카카오 로그인 (1.2.3, COULD) ─────────────────────────
-  async kakaoLogin(dto: KakaoLoginDto): Promise<AuthResult & { isNewUser: boolean }> {
-    const kakaoUser = await this.kakao.fetchUser(dto.kakaoAccessToken);
-
-    const linked = await this.providers.findOne({
-      where: { provider: AuthProviderType.KAKAO, providerUserId: kakaoUser.id },
-      relations: { user: true },
-    });
-    if (linked) {
-      const { tokens } = await this.issueTokens(
-        this.dataSource.manager,
-        linked.user.id,
-        dto.deviceId ?? null,
-      );
-      return { isNewUser: false, user: toUserSummary(linked.user), tokens };
-    }
-
-    // 신규 가입: 카카오가 주지 않는 이름·생년월일·성별과 약관 동의가 필요하다
-    const profile = dto.profile;
-    const missing: ErrorDetail[] = [];
-    if (!profile) missing.push({ field: 'profile', reason: 'required' });
-    if (profile) this.assertBirthdate(profile.birthdate);
-    if (missing.length) {
-      throw new AppException(ErrorCode.VALIDATION_FAILED, '입력값이 올바르지 않습니다.', 400, missing);
-    }
-    const agreements: TermsAgreementDto[] = dto.termsAgreements ?? [];
-    await this.terms.assertRequiredAgreed(agreements);
-
-    // 카카오 이메일이 이미 다른 계정에 있으면 연결하지 않고 비운다 (확인 필요 항목)
-    const email =
-      kakaoUser.email && !(await this.users.existsBy({ email: kakaoUser.email }))
-        ? kakaoUser.email
-        : null;
-
-    try {
-      const result = await this.dataSource.transaction(async (manager) => {
-        const user = await manager.getRepository(User).save(
-          manager.getRepository(User).create({
-            email,
-            passwordHash: null,
-            name: profile!.name,
-            birthdate: profile!.birthdate,
-            gender: profile!.gender as Gender,
-            // 카카오 계정은 카카오 쪽에서 본인 확인을 마친 것으로 보고 이메일 인증을 생략한다
-            emailVerifiedAt: new Date(),
-          }),
-        );
-        await manager.getRepository(AuthProvider).save(
-          manager.getRepository(AuthProvider).create({
-            userId: user.id,
-            provider: AuthProviderType.KAKAO,
-            providerUserId: kakaoUser.id,
-          }),
-        );
-        await this.terms.saveAgreements(manager, user.id, agreements);
-        const { tokens } = await this.issueTokens(manager, user.id, dto.deviceId ?? null);
-        return { user: toUserSummary(user), tokens };
-      });
-      return { isNewUser: true, ...result };
-    } catch (error) {
-      if (isUniqueViolation(error)) throw emailExists();
-      throw error;
-    }
   }
 
   // ── 토큰 갱신 (1.2.4, 명세 3-1 회전 + 재사용 감지) ─────────

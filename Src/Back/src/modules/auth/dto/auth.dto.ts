@@ -90,42 +90,6 @@ export class LoginDto {
   deviceId?: string;
 }
 
-export class KakaoProfileDto {
-  @IsString()
-  @Length(1, 50)
-  name: string;
-
-  @Matches(BIRTHDATE_FORMAT, { message: 'YYYY-MM-DD 형식이어야 합니다.' })
-  birthdate: string;
-
-  @IsEnum(Gender)
-  gender: Gender;
-}
-
-export class KakaoLoginDto {
-  @IsString()
-  @IsNotEmpty()
-  kakaoAccessToken: string;
-
-  // 신규 가입일 때 필요 (명세 4-5)
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => TermsAgreementDto)
-  termsAgreements?: TermsAgreementDto[];
-
-  // 신규 가입일 때 필요. 카카오가 주지 않는 항목이다.
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => KakaoProfileDto)
-  profile?: KakaoProfileDto;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  deviceId?: string;
-}
-
 export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()

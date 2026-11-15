@@ -34,9 +34,6 @@ export default () => {
       pass: process.env.MAIL_PASS ?? '',
       from: process.env.MAIL_FROM ?? 'no-reply@example.com',
     },
-    kakao: {
-      apiBaseUrl: process.env.KAKAO_API_BASE_URL ?? 'https://kapi.kakao.com',
-    },
     model: {
       cdnBaseUrl: process.env.MODEL_CDN_BASE_URL ?? 'https://cdn.example.com/models',
       urlTtlMinutes: toInt(process.env.MODEL_URL_TTL_MINUTES, 15),
