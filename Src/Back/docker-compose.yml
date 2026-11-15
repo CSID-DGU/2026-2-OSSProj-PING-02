@@ -10,6 +10,35 @@ services:
       - "5432:5432"
     volumes:
       - malssiat-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U malssiat -d malssiat"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 운영 형태로 컨테이너에서 API를 띄울 때: docker compose --profile app up -d --build
+  backend:
+    profiles: ["app"]
+    build: .
+    container_name: malssiat-backend
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_SYNCHRONIZE: "false"
+      DB_MIGRATIONS_RUN: "true"
+    ports:
+      - "5010:5010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(5010,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
 volumes:
   malssiat-pg:
