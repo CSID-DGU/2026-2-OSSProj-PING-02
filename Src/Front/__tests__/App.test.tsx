@@ -102,12 +102,11 @@ test("로그인 화면에서 빈 값으로 로그인하면 오류 문구를 보�
   expect(findText(root, "다시 만나서 반가워요").length).toBe(1);
   await press(root, "로그인");
 
-  // 백엔드가 이메일 로그인이라 아이디 → 이메일로 변경 (Doc/API_목록.md 4.5)
-  expect(findText(root, "이메일을 입력해주세요.").length).toBe(1);
+  expect(findText(root, "아이디를 입력해주세요.").length).toBe(1);
   expect(findText(root, "비밀번호를 입력해주세요.").length).toBe(1);
 
-  await type(root, "이메일", "malssiat@example.com");
-  expect(findText(root, "이메일을 입력해주세요.").length).toBe(0);
+  await type(root, "아이디", "malssiat");
+  expect(findText(root, "아이디를 입력해주세요.").length).toBe(0);
 });
 
 test("회원가입은 필수 항목과 비밀번호 확인을 검사한다", async () => {
@@ -128,9 +127,57 @@ test("회원가입은 필수 항목과 비밀번호 확인을 검사한다", asy
   expect(findText(root, "이메일을 입력해주세요.").length).toBe(1);
   expect(findText(root, "비밀번호가 일치하지 않아요.").length).toBe(1);
   expect(findText(root, "필수 약관에 모두 동의해주세요.").length).toBe(1);
+  expect(findText(root, "아이디를 입력해주세요.").length).toBe(1);
   expect(
     findText(root, "비밀번호는 8자 이상 입력해주세요.").length
   ).toBe(0);
+});
+
+test("회원가입 아이디는 규칙(임시)과 중복을 확인한다", async () => {
+  const root = await renderApp();
+  await press(root, "시작하기");
+  await press(root, "회원가입");
+
+  // 규칙에 맞지 않으면 서버에 묻지 않고 안내
+  await type(root, "아이디", "Ab");
+  await press(root, "중복 확인");
+  expect(
+    findText(root, "아이디는 영문 소문자와 숫자 4~20자로 입력해주세요.").length
+  ).toBe(1);
+
+  // mock 테스트 계정과 같으면 이미 쓰는 아이디
+  await type(root, "아이디", "malssiat");
+  await press(root, "중복 확인");
+  await waitForText(
+    root,
+    "이미 쓰고 있는 아이디예요. 다른 아이디를 입력해 주세요."
+  );
+
+  // 새 아이디는 사용 가능, 아이디를 고치면 다시 확인해야 함
+  await type(root, "아이디", "newseed01");
+  await press(root, "중복 확인");
+  await waitForText(root, "사용할 수 있는 아이디예요.");
+  expect(findText(root, "확인 완료").length).toBe(1);
+  await type(root, "아이디", "newseed02");
+  expect(findText(root, "중복 확인").length).toBe(1);
+});
+
+test("비밀번호 찾기는 아이디와 이메일이 맞을 때만 임시 비밀번호를 보낸다", async () => {
+  const root = await renderApp();
+  await press(root, "시작하기");
+  await press(root, "비밀번호 찾기");
+
+  await type(root, "아이디", "malssiat");
+  await type(root, "이메일", "other@example.com");
+  await press(root, "임시 비밀번호 받기");
+  await waitForText(
+    root,
+    "아이디와 이메일이 맞는 계정을 찾지 못했어요. 다시 확인해 주세요."
+  );
+
+  await type(root, "이메일", "demo@malssiat.app");
+  await press(root, "임시 비밀번호 받기");
+  await waitForText(root, "이메일 전송을 완료했어요");
 });
 
 test("아이디 찾기에 정보를 입력하면 결과 다이얼로그를 띄운다", async () => {
@@ -173,7 +220,8 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   await press(root, "시작하기");
   await press(root, "로그인");
 
-  await type(root, "이메일", "demo@malssiat.app");
+  // mock 테스트 계정 (아이디 기준)
+  await type(root, "아이디", "malssiat");
   await type(root, "비밀번호", "abcd1234");
   await press(root, "로그인");
 

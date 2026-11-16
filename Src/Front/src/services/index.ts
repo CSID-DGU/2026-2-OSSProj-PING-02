@@ -31,7 +31,7 @@ export const DEV_HINTS: { verificationCode?: string; demoAccount?: string } =
   __DEV__
     ? {
         verificationCode: MOCK_VERIFICATION_CODE,
-        demoAccount: `${MOCK_DEMO_ACCOUNT.email} / ${MOCK_DEMO_ACCOUNT.password}`,
+        demoAccount: `${MOCK_DEMO_ACCOUNT.loginId} / ${MOCK_DEMO_ACCOUNT.password}`,
       }
     : {};
 

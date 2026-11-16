@@ -4,11 +4,14 @@
 // 화면은 code로 분기하고, message는 사용자에게 보여 줄 수 있는 문장으로 둠
 export class ServiceError extends Error {
   code: string;
+  // 화면에서 다음 행동에 필요한 값 (예: 인증 전 계정의 이메일)
+  data?: Record<string, string>;
 
-  constructor(code: string, message: string) {
+  constructor(code: string, message: string, data?: Record<string, string>) {
     super(message);
     this.name = "ServiceError";
     this.code = code;
+    this.data = data;
   }
 }
 

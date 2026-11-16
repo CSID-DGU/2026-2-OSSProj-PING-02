@@ -37,6 +37,15 @@ export const AgreeAllBox = styled.View<{ $error: boolean }>`
   background-color: ${({ theme }) => theme.colors.surfaceSeed};
 `;
 
+// 아이디 입력란 + 아래 오른쪽 "중복 확인" 텍스트 버튼
+export const IdField = styled.View`
+  gap: 2px;
+`;
+
+export const IdCheckAction = styled.View`
+  align-items: flex-end;
+`;
+
 export const TermRow = styled.View`
   flex-direction: row;
   align-items: center;

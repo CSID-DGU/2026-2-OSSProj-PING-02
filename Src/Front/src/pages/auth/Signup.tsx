@@ -15,7 +15,9 @@ import {
   DOMAIN_REGEX,
   EMAIL_DOMAINS,
   GENDER_OPTIONS,
+  LOGIN_ID_RULE,
   PASSWORD_MIN_LENGTH,
+  isValidLoginId,
   type Gender,
 } from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
@@ -39,10 +41,12 @@ type SignupField =
   | "birth"
   | "gender"
   | "email"
+  | "loginId"
   | "password"
   | "passwordConfirm"
   | "terms";
 type SignupErrors = Partial<Record<SignupField, string>>;
+type IdCheck = "idle" | "checking" | "available" | "taken";
 
 // 생년월일 선택지: 올해부터 100년 전까지
 const THIS_YEAR = new Date().getFullYear();
@@ -81,6 +85,9 @@ const Signup = () => {
   const [emailDomain, setEmailDomain] = useState<string>(EMAIL_DOMAINS[0]);
   const [customDomain, setCustomDomain] = useState(false);
   const [domainInput, setDomainInput] = useState("");
+  const [loginId, setLoginId] = useState("");
+  // 중복 확인 결과. 아이디를 고치면 다시 확인해야 함
+  const [idCheck, setIdCheck] = useState<IdCheck>("idle");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [termsState, setTermsState] = useState<TermsState>({
@@ -120,6 +127,31 @@ const Signup = () => {
     clearError("birth");
   };
 
+  // 아이디 중복 확인 (Figma에 없어 입력란 아래 텍스트 버튼으로)
+  const handleCheckId = async () => {
+    const id = loginId.trim();
+    if (!id) {
+      setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idRequired }));
+      return;
+    }
+    if (!isValidLoginId(id)) {
+      setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idInvalid }));
+      return;
+    }
+    setIdCheck("checking");
+    clearError("loginId");
+    try {
+      const { available } = await services.auth.checkLoginId(id);
+      setIdCheck(available ? "available" : "taken");
+      if (!available) {
+        setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idTaken }));
+      }
+    } catch {
+      setIdCheck("idle");
+      setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.network }));
+    }
+  };
+
   const handleAgreeAll = (checked: boolean) => {
     setAgreed(Object.fromEntries(terms.map(t => [t.id, checked])));
     clearError("terms");
@@ -140,6 +172,10 @@ const Signup = () => {
     if (!emailLocal.trim() || !domain) next.email = AUTH_ERROR.emailRequired;
     else if (/[\s@]/.test(emailLocal) || !DOMAIN_REGEX.test(domain))
       next.email = AUTH_ERROR.emailInvalid;
+    if (!loginId.trim()) next.loginId = AUTH_ERROR.idRequired;
+    else if (!isValidLoginId(loginId.trim())) next.loginId = AUTH_ERROR.idInvalid;
+    else if (idCheck === "taken") next.loginId = AUTH_ERROR.idTaken;
+    else if (idCheck !== "available") next.loginId = AUTH_ERROR.idCheckRequired;
     if (password.length < PASSWORD_MIN_LENGTH)
       next.password = AUTH_ERROR.passwordTooShort;
     if (!passwordConfirm || passwordConfirm !== password)
@@ -162,6 +198,7 @@ const Signup = () => {
     setSubmitting(true);
     try {
       await services.auth.signup({
+        loginId: loginId.trim(),
         name: name.trim(),
         birthdate: `${year}-${pad2(month)}-${pad2(day)}`,
         gender,
@@ -175,7 +212,11 @@ const Signup = () => {
       navigation.navigate("EmailVerify", { email });
     } catch (error) {
       const code = getErrorCode(error);
-      if (code === AUTH_ERROR_CODE.emailAlreadyExists) {
+      if (code === AUTH_ERROR_CODE.loginIdAlreadyExists) {
+        // 확인 뒤 그사이 다른 사람이 가입한 경우
+        setIdCheck("taken");
+        setErrors({ loginId: AUTH_ERROR.idTaken });
+      } else if (code === AUTH_ERROR_CODE.emailAlreadyExists) {
         setErrors({ email: AUTH_ERROR.emailTaken });
       } else if (code === AUTH_ERROR_CODE.requiredTermsNotAgreed) {
         setErrors({ terms: AUTH_ERROR.termsRequired });
@@ -331,6 +372,47 @@ const Signup = () => {
             }}
           />
         </Field>
+
+        {/* 팀 결정으로 추가 (Figma 01-3에 없음): 계정 정보끼리 묶이도록 비밀번호 바로 위 */}
+        <s.IdField>
+          <TextField
+            label="아이디"
+            placeholder={LOGIN_ID_RULE.guide}
+            value={loginId}
+            onChangeText={text => {
+              setLoginId(text);
+              setIdCheck("idle");
+              clearError("loginId");
+            }}
+            error={errors.loginId}
+            helper={
+              idCheck === "available"
+                ? AUTH_ERROR.idAvailable
+                : `${LOGIN_ID_RULE.guide}로 만들어 주세요`
+            }
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="username-new"
+            maxLength={LOGIN_ID_RULE.maxLength}
+          />
+          <s.IdCheckAction>
+            <Button
+              variant="text"
+              onPress={handleCheckId}
+              disabled={idCheck === "checking" || idCheck === "available"}
+              accessibilityState={{
+                busy: idCheck === "checking",
+                disabled: idCheck === "checking" || idCheck === "available",
+              }}
+            >
+              {idCheck === "checking"
+                ? "확인하는 중…"
+                : idCheck === "available"
+                ? "확인 완료"
+                : "중복 확인"}
+            </Button>
+          </s.IdCheckAction>
+        </s.IdField>
 
         <TextField
           label="비밀번호"

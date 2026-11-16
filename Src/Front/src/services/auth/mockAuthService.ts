@@ -7,13 +7,15 @@ import {
   type Terms,
 } from "./AuthService";
 
-// mock 인증: 서버 대신 메모리에 회원을 저장
+// mock 인증: 서버 대신 메모리에 회원을 저장 (아이디 기준)
 // - 인증 코드는 항상 MOCK_VERIFICATION_CODE
 // - 바로 로그인해 볼 수 있는 테스트 계정: MOCK_DEMO_ACCOUNT
 export const MOCK_VERIFICATION_CODE = "123456";
 export const MOCK_DEMO_ACCOUNT = {
-  email: "demo@malssiat.app",
+  loginId: "malssiat",
   password: "abcd1234",
+  name: "말씨",
+  email: "demo@malssiat.app",
 };
 
 const MOCK_TERMS: Terms[] = [
@@ -50,13 +52,18 @@ interface MockUser extends AuthUser {
 
 const LATENCY = 600;
 
+const mask = (loginId: string) =>
+  loginId.slice(0, 4) + "*".repeat(Math.max(loginId.length - 4, 4));
+
 export const createMockAuthService = (): AuthService => {
+  // key: 아이디
   const users = new Map<string, MockUser>([
     [
-      MOCK_DEMO_ACCOUNT.email,
+      MOCK_DEMO_ACCOUNT.loginId,
       {
         id: "mock-user-demo",
-        name: "말씨",
+        loginId: MOCK_DEMO_ACCOUNT.loginId,
+        name: MOCK_DEMO_ACCOUNT.name,
         email: MOCK_DEMO_ACCOUNT.email,
         password: MOCK_DEMO_ACCOUNT.password,
         verified: true,
@@ -64,8 +71,18 @@ export const createMockAuthService = (): AuthService => {
     ],
   ]);
 
+  const findByEmail = (email: string) =>
+    [...users.values()].find(u => u.email === email.toLowerCase());
+
+  const toUser = ({ id, loginId, name, email }: MockUser): AuthUser => ({
+    id,
+    loginId,
+    name,
+    email,
+  });
+
   const issue = (user: MockUser): AuthResult => ({
-    user: { id: user.id, name: user.name, email: user.email },
+    user: toUser(user),
     tokens: {
       accessToken: `mock-access-${user.id}-${Date.now()}`,
       refreshToken: `mock-refresh-${user.id}-${Date.now()}`,
@@ -79,10 +96,21 @@ export const createMockAuthService = (): AuthService => {
       return MOCK_TERMS;
     },
 
+    async checkLoginId(loginId) {
+      await delay(400);
+      return { available: !users.has(loginId) };
+    },
+
     async signup(input) {
       await delay(LATENCY);
       const email = input.email.toLowerCase();
-      if (users.has(email)) {
+      if (users.has(input.loginId)) {
+        throw new ServiceError(
+          AUTH_ERROR_CODE.loginIdAlreadyExists,
+          "이미 사용 중인 아이디입니다."
+        );
+      }
+      if (findByEmail(email)) {
         throw new ServiceError(
           AUTH_ERROR_CODE.emailAlreadyExists,
           "이미 가입된 이메일입니다."
@@ -99,21 +127,19 @@ export const createMockAuthService = (): AuthService => {
       }
       const user: MockUser = {
         id: `mock-user-${users.size + 1}`,
+        loginId: input.loginId,
         name: input.name,
         email,
         password: input.password,
         verified: false,
       };
-      users.set(email, user);
-      return {
-        user: { id: user.id, name: user.name, email },
-        verificationRequired: true,
-      };
+      users.set(user.loginId, user);
+      return { user: toUser(user), verificationRequired: true };
     },
 
     async verifyEmail(email, code) {
       await delay(LATENCY);
-      const user = users.get(email.toLowerCase());
+      const user = findByEmail(email);
       if (!user || user.verified || code !== MOCK_VERIFICATION_CODE) {
         throw new ServiceError(
           AUTH_ERROR_CODE.verificationCodeInvalid,
@@ -128,19 +154,20 @@ export const createMockAuthService = (): AuthService => {
       await delay(LATENCY);
     },
 
-    async login(email, password) {
+    async login(loginId, password) {
       await delay(LATENCY);
-      const user = users.get(email.toLowerCase());
+      const user = users.get(loginId);
       if (!user || user.password !== password) {
         throw new ServiceError(
           AUTH_ERROR_CODE.invalidCredentials,
-          "이메일 또는 비밀번호가 올바르지 않습니다."
+          "아이디 또는 비밀번호가 올바르지 않습니다."
         );
       }
       if (!user.verified) {
         throw new ServiceError(
           AUTH_ERROR_CODE.emailNotVerified,
-          "이메일 인증이 필요합니다."
+          "이메일 인증이 필요합니다.",
+          { email: user.email }
         );
       }
       return issue(user);
@@ -148,6 +175,31 @@ export const createMockAuthService = (): AuthService => {
 
     async logout() {
       await delay(200);
+    },
+
+    async findLoginId(input) {
+      await delay(LATENCY);
+      // TODO(팀 결정): 전화번호 방식은 회원 정보에 전화번호가 없어 mock에서 항상 못 찾음
+      const user =
+        input.method === "email" ? findByEmail(input.email) : undefined;
+      if (!user || user.name !== input.name) {
+        throw new ServiceError(
+          AUTH_ERROR_CODE.accountNotFound,
+          "일치하는 계정이 없습니다."
+        );
+      }
+      return { maskedLoginId: mask(user.loginId) };
+    },
+
+    async requestPasswordReset(loginId, email) {
+      await delay(LATENCY);
+      const user = users.get(loginId);
+      if (!user || user.email !== email.toLowerCase()) {
+        throw new ServiceError(
+          AUTH_ERROR_CODE.accountNotFound,
+          "일치하는 계정이 없습니다."
+        );
+      }
     },
   };
 };

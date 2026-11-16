@@ -6,18 +6,23 @@ import AuthIntro from "@components/auth/AuthIntro";
 import AuthPrompt from "@components/auth/AuthPrompt";
 import FindLinks from "@components/auth/FindLinks";
 import Notice from "@components/onboarding/Notice";
-import { AUTH_ERROR, EMAIL_REGEX } from "@constants/auth";
+import { AUTH_ERROR } from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
-import { AUTH_ERROR_CODE, getErrorCode, services } from "@services";
+import {
+  AUTH_ERROR_CODE,
+  getErrorCode,
+  ServiceError,
+  services,
+} from "@services";
 import { useSession } from "@stores/SessionProvider";
 import * as s from "./Login_styled";
 
-type LoginErrors = Partial<Record<"email" | "password", string>>;
+type LoginErrors = Partial<Record<"id" | "password", string>>;
 
 const Login = () => {
   const navigation = useAuthNavigation();
   const { signIn } = useSession();
-  const [email, setEmail] = useState("");
+  const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<LoginErrors>({});
   const [formError, setFormError] = useState<string>();
@@ -25,10 +30,10 @@ const Login = () => {
 
   const handleLogin = async () => {
     if (submitting) return;
-    const trimmed = email.trim();
+    const trimmed = id.trim();
     const next: LoginErrors = {};
-    if (!trimmed) next.email = AUTH_ERROR.emailRequired;
-    else if (!EMAIL_REGEX.test(trimmed)) next.email = AUTH_ERROR.emailInvalid;
+    // 로그인에서는 형식 검사 없이 비어 있는지만 확인 (규칙이 바뀌어도 기존 아이디로 로그인 가능하게)
+    if (!trimmed) next.id = AUTH_ERROR.idRequired;
     if (!password) next.password = AUTH_ERROR.passwordRequired;
     setErrors(next);
     setFormError(undefined);
@@ -45,7 +50,9 @@ const Login = () => {
       if (code === AUTH_ERROR_CODE.invalidCredentials) {
         setErrors({ password: AUTH_ERROR.loginFailed });
       } else if (code === AUTH_ERROR_CODE.emailNotVerified) {
-        navigation.navigate("EmailVerify", { email: trimmed, resend: true });
+        const email = error instanceof ServiceError ? error.data?.email : undefined;
+        if (email) navigation.navigate("EmailVerify", { email, resend: true });
+        else setFormError(AUTH_ERROR.network);
       } else {
         setFormError(AUTH_ERROR.network);
       }
@@ -63,18 +70,17 @@ const Login = () => {
 
       <s.Fields>
         <TextField
-          label="이메일"
-          placeholder="이메일을 입력해주세요"
-          value={email}
+          label="아이디"
+          placeholder="아이디를 입력해주세요"
+          value={id}
           onChangeText={text => {
-            setEmail(text);
-            setErrors(prev => ({ ...prev, email: undefined }));
+            setId(text);
+            setErrors(prev => ({ ...prev, id: undefined }));
           }}
-          error={errors.email}
+          error={errors.id}
           autoCapitalize="none"
           autoCorrect={false}
-          autoComplete="email"
-          keyboardType="email-address"
+          autoComplete="username"
           returnKeyType="next"
         />
         <TextField

@@ -5,6 +5,8 @@ import { Dialog, DialogDescription } from "@core/ui/dialog";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import { AUTH_ERROR, EMAIL_REGEX } from "@constants/auth";
+import Notice from "@components/onboarding/Notice";
+import { AUTH_ERROR_CODE, getErrorCode, services } from "@services";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import * as s from "./FindPassword_styled";
 
@@ -16,18 +18,34 @@ const FindPassword = () => {
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<FindPasswordErrors>({});
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [formError, setFormError] = useState<string>();
 
-  const handleSend = () => {
+  const handleSend = async () => {
+    if (sending) return;
     const next: FindPasswordErrors = {};
     if (!id.trim()) next.id = AUTH_ERROR.idRequired;
     if (!email.trim()) next.email = AUTH_ERROR.emailRequired;
     else if (!EMAIL_REGEX.test(email.trim()))
       next.email = AUTH_ERROR.emailInvalid;
     setErrors(next);
+    setFormError(undefined);
     if (Object.keys(next).length > 0) return;
 
-    // TODO: 임시 비밀번호 발급 API 연결. 지금은 완료 다이얼로그만 띄움
-    setSent(true);
+    // 아이디 규칙이 바뀌어도 기존 아이디로 찾을 수 있게 형식 검사는 하지 않음
+    setSending(true);
+    try {
+      await services.auth.requestPasswordReset(id.trim(), email.trim());
+      setSent(true);
+    } catch (error) {
+      setFormError(
+        getErrorCode(error) === AUTH_ERROR_CODE.accountNotFound
+          ? AUTH_ERROR.accountNotFound
+          : AUTH_ERROR.network
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   const goLogin = () => {
@@ -74,9 +92,17 @@ const FindPassword = () => {
         />
       </s.Fields>
 
+      {formError && <Notice tone="danger" title={formError} />}
+
       <s.Actions>
-        <Button variant="primary" fullWidth onPress={handleSend}>
-          임시 비밀번호 받기
+        <Button
+          variant="primary"
+          fullWidth
+          onPress={handleSend}
+          disabled={sending}
+          accessibilityState={{ busy: sending, disabled: sending }}
+        >
+          {sending ? "확인하는 중…" : "임시 비밀번호 받기"}
         </Button>
         <s.Hint>메일이 오지 않으면 스팸함도 함께 확인해주세요.</s.Hint>
         <Button variant="text" onPress={() => navigation.popTo("Login")}>
