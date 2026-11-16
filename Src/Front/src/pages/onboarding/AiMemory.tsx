@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { View } from "react-native";
 import { Button } from "@core/ui/button";
 import { ChoiceGroup } from "@core/ui/choice";
 import { Field, Input } from "@core/ui/field";
@@ -106,11 +107,41 @@ const AiMemory = () => {
 
       <s.Examples>
         <s.ExamplesTitle>이렇게 써 볼 수 있어요 (누르면 추가돼요)</s.ExamplesTitle>
-        <ChoiceGroup
-          shape="chip"
-          options={EXAMPLE_OPTIONS}
-          onChange={handleExample}
-        />
+        <s.ExampleList>
+          {EXAMPLE_OPTIONS.map(option => {
+            const added = text.includes(option.value);
+            return (
+              // ChoiceGroup은 항목을 "라디오 버튼"으로 읽어서, 예시마다 감싸
+              // 스크린리더에는 "버튼" 하나로 보이게 함 (두 번 탭 = activate → 추가)
+              <View
+                key={option.value}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={option.label}
+                accessibilityHint={
+                  added ? "이미 메모에 들어 있어요" : "누르면 메모에 추가돼요"
+                }
+                accessibilityActions={[{ name: "activate" }]}
+                onAccessibilityAction={({ nativeEvent }) => {
+                  if (nativeEvent.actionName === "activate") {
+                    handleExample(option.value);
+                  }
+                }}
+              >
+                <View
+                  importantForAccessibility="no-hide-descendants"
+                  accessibilityElementsHidden
+                >
+                  <ChoiceGroup
+                    shape="chip"
+                    options={[option]}
+                    onChange={handleExample}
+                  />
+                </View>
+              </View>
+            );
+          })}
+        </s.ExampleList>
       </s.Examples>
     </AuthLayout>
   );

@@ -61,16 +61,17 @@ const PrivacyNotice = () => {
         </CardDescription>
       </Card>
 
+      {/* Dialog는 닫기 버튼·뒤로가기·바깥 누르기가 모두 onClose라서,
+          앱 종료는 confirm에만 두고 onClose는 팝업만 닫게 함 */}
       <Dialog
         visible={leaveOpen}
         icon={null}
         title="여기서 잠시 쉬어 갈까요?"
         description="지금 앱을 닫아도 다음에 열면 이 단계부터 이어서 할 수 있어요."
-        confirmLabel="계속할게요"
-        onConfirm={() => setLeaveOpen(false)}
-        closeLabel="앱 닫기"
-        onClose={() => BackHandler.exitApp()}
-        dismissOnBackdrop={false}
+        confirmLabel="쉬어 갈게요 (앱 닫기)"
+        onConfirm={() => BackHandler.exitApp()}
+        closeLabel="계속할게요"
+        onClose={() => setLeaveOpen(false)}
       />
     </AuthLayout>
   );

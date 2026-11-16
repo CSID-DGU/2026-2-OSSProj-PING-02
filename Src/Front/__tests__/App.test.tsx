@@ -178,4 +178,29 @@ test("로그인하면 온보딩을 시작하고, 연동 앱은 하나 이상 골
   // 4단계: AI 모델 받기로 이동
   await press(root, "다음");
   expect(findText(root, "휴대폰 안에서 쓸 AI를 받아요").length).toBe(1);
+  await press(root, "나중에 받을게요");
+
+  // 5단계: AI 메모리 - 예시 칩은 스크린리더에 "버튼"으로 보이고, activate하면 입력창에 추가
+  const example = "답장은 짧게 쓰는 편이에요";
+  const chip = root
+    .findAll(
+      node =>
+        typeof node.type === "string" &&
+        node.props.accessibilityLabel === example
+    )
+    .at(-1);
+  expect(chip?.props.accessibilityRole).toBe("button");
+  await ReactTestRenderer.act(async () => {
+    chip!.props.onAccessibilityAction({
+      nativeEvent: { actionName: "activate" },
+    });
+  });
+  const memo = root
+    .findAll(
+      node =>
+        typeof node.type === "string" &&
+        node.props.accessibilityLabel === "나에 대한 메모"
+    )
+    .at(-1);
+  expect(memo?.props.value).toBe(example);
 });

@@ -15,6 +15,13 @@ export const Examples = styled.View`
   gap: 10px;
 `;
 
+// 예시 칩 줄바꿈 배치 (ChoiceGroup 내부 Group과 같은 row·wrap·gap 8)
+export const ExampleList = styled.View`
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
 export const ExamplesTitle = styled.Text`
   ${({ theme }) => theme.fonts.labelForm};
   color: ${({ theme }) => theme.colors.textSecondary};
