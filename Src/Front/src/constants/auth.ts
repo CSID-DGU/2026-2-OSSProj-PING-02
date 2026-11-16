@@ -32,4 +32,15 @@ export const AUTH_ERROR = {
   passwordTooShort: `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상 입력해주세요.`,
   passwordMismatch: "비밀번호가 일치하지 않아요.",
   termsRequired: "필수 약관에 모두 동의해주세요.",
+  // 서버 응답에 따른 안내 (탓하지 않고 다음 행동을 알려 주는 문장)
+  loginFailed: "이메일이나 비밀번호가 맞지 않아요. 천천히 다시 확인해 주세요.",
+  emailTaken: "이미 가입된 이메일이에요. 로그인해 보시겠어요?",
+  codeRequired: "메일로 받은 숫자 6자리를 입력해주세요.",
+  codeInvalid: "코드가 맞지 않거나 시간이 지났어요. 새 코드를 받아 볼 수 있어요.",
+  network: "연결이 잠시 불안정해요. 잠시 뒤에 다시 시도해 주세요.",
+  termsLoadFailed: "약관을 불러오지 못했어요.",
 } as const;
+
+// 이메일 인증 코드 (Doc/API_목록.md 4.4-1)
+export const VERIFICATION_CODE_LENGTH = 6;
+export const RESEND_COOLDOWN_SEC = 30;

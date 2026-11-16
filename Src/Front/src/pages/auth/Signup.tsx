@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Linking } from "react-native";
+import { useTheme } from "styled-components/native";
 import { Button } from "@core/ui/button";
 import { Field, Input, TextField } from "@core/ui/field";
 import { Select } from "@core/ui/select";
@@ -7,6 +9,7 @@ import { Checkbox } from "@core/ui/checkbox";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import AuthPrompt from "@components/auth/AuthPrompt";
+import Notice from "@components/onboarding/Notice";
 import {
   AUTH_ERROR,
   DOMAIN_REGEX,
@@ -16,7 +19,20 @@ import {
   type Gender,
 } from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
+import {
+  AUTH_ERROR_CODE,
+  getErrorCode,
+  services,
+  type Terms,
+} from "@services";
 import * as s from "./Signup_styled";
+
+type TermsState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; terms: Terms[] };
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
 
 type SignupField =
   | "name"
@@ -54,6 +70,7 @@ const getDayOptions = (year?: number, month?: number) => {
 
 const Signup = () => {
   const navigation = useAuthNavigation();
+  const theme = useTheme();
 
   const [name, setName] = useState("");
   const [year, setYear] = useState<number>();
@@ -66,15 +83,35 @@ const Signup = () => {
   const [domainInput, setDomainInput] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [agreeService, setAgreeService] = useState(false);
-  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [termsState, setTermsState] = useState<TermsState>({
+    status: "loading",
+  });
+  const [agreed, setAgreed] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [formError, setFormError] = useState<string>();
+  const [submitting, setSubmitting] = useState(false);
 
   const dayOptions = getDayOptions(year, month);
-  const agreeAll = agreeService && agreePrivacy;
+  const terms = termsState.status === "ready" ? termsState.terms : [];
+  const agreeAll = terms.length > 0 && terms.every(t => agreed[t.id]);
+  const agreeRequired = terms.filter(t => t.required).every(t => agreed[t.id]);
 
   const clearError = (field: SignupField) =>
     setErrors(prev => ({ ...prev, [field]: undefined }));
+
+  // 약관은 서버(GET /terms)에서 받아 필수·선택을 구분
+  const loadTerms = useCallback(async () => {
+    setTermsState({ status: "loading" });
+    try {
+      setTermsState({ status: "ready", terms: await services.auth.getTerms() });
+    } catch {
+      setTermsState({ status: "error" });
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTerms();
+  }, [loadTerms]);
 
   // 연·월이 바뀌어 고른 날짜가 없어지면(2/30 등) 일 선택을 비움
   const handleBirthChange = (nextYear?: number, nextMonth?: number) => {
@@ -84,8 +121,12 @@ const Signup = () => {
   };
 
   const handleAgreeAll = (checked: boolean) => {
-    setAgreeService(checked);
-    setAgreePrivacy(checked);
+    setAgreed(Object.fromEntries(terms.map(t => [t.id, checked])));
+    clearError("terms");
+  };
+
+  const handleAgree = (id: string, checked: boolean) => {
+    setAgreed(prev => ({ ...prev, [id]: checked }));
     clearError("terms");
   };
 
@@ -103,16 +144,47 @@ const Signup = () => {
       next.password = AUTH_ERROR.passwordTooShort;
     if (!passwordConfirm || passwordConfirm !== password)
       next.passwordConfirm = AUTH_ERROR.passwordMismatch;
-    if (!agreeAll) next.terms = AUTH_ERROR.termsRequired;
+    if (termsState.status !== "ready") next.terms = AUTH_ERROR.termsLoadFailed;
+    else if (!agreeRequired) next.terms = AUTH_ERROR.termsRequired;
 
     setErrors(next);
+    setFormError(undefined);
     return Object.keys(next).length === 0;
   };
 
-  const handleSignup = () => {
-    if (!validate()) return;
+  const handleSignup = async () => {
+    if (submitting || !validate() || !year || !month || !day || !gender) {
+      return;
+    }
+    const domain = customDomain ? domainInput.trim() : emailDomain;
+    const email = `${emailLocal.trim()}@${domain}`;
 
-    // TODO: 회원가입 API 연결 (이름, 생년월일, 성별, 이메일, 비밀번호, 약관 동의)
+    setSubmitting(true);
+    try {
+      await services.auth.signup({
+        name: name.trim(),
+        birthdate: `${year}-${pad2(month)}-${pad2(day)}`,
+        gender,
+        email,
+        password,
+        termsAgreements: terms.map(t => ({
+          termsId: t.id,
+          agreed: !!agreed[t.id],
+        })),
+      });
+      navigation.navigate("EmailVerify", { email });
+    } catch (error) {
+      const code = getErrorCode(error);
+      if (code === AUTH_ERROR_CODE.emailAlreadyExists) {
+        setErrors({ email: AUTH_ERROR.emailTaken });
+      } else if (code === AUTH_ERROR_CODE.requiredTermsNotAgreed) {
+        setErrors({ terms: AUTH_ERROR.termsRequired });
+      } else {
+        setFormError(AUTH_ERROR.network);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -290,38 +362,74 @@ const Signup = () => {
           helper={errors.terms}
           state={errors.terms ? "error" : "default"}
         >
-          <s.Terms>
-            <s.AgreeAllBox $error={!!errors.terms}>
-              <Checkbox
-                label="필수 약관에 모두 동의해요"
-                checked={agreeAll}
-                onChange={handleAgreeAll}
-                emphasis
+          {termsState.status === "loading" && (
+            <s.TermsStatus>
+              <ActivityIndicator
+                color={theme.colors.iconSubtle}
+                accessibilityLabel="약관을 불러오는 중"
               />
-            </s.AgreeAllBox>
-            <Checkbox
-              label="[필수] 서비스 이용약관 동의"
-              checked={agreeService}
-              onChange={checked => {
-                setAgreeService(checked);
-                clearError("terms");
-              }}
-            />
-            <Checkbox
-              label="[필수] 개인정보 수집·이용 동의"
-              checked={agreePrivacy}
-              onChange={checked => {
-                setAgreePrivacy(checked);
-                clearError("terms");
-              }}
-            />
-          </s.Terms>
+            </s.TermsStatus>
+          )}
+
+          {termsState.status === "error" && (
+            <Notice tone="danger" title={AUTH_ERROR.termsLoadFailed}>
+              <Button variant="secondary" onPress={loadTerms}>
+                다시 불러오기
+              </Button>
+            </Notice>
+          )}
+
+          {termsState.status === "ready" && terms.length === 0 && (
+            <Notice title="지금은 동의할 약관이 없어요" />
+          )}
+
+          {terms.length > 0 && (
+            <s.Terms>
+              <s.AgreeAllBox $error={!!errors.terms}>
+                <Checkbox
+                  label="모두 동의해요 (선택 항목 포함)"
+                  checked={agreeAll}
+                  onChange={handleAgreeAll}
+                  emphasis
+                />
+              </s.AgreeAllBox>
+              {terms.map(t => (
+                <s.TermRow key={t.id}>
+                  <s.TermCheck>
+                    <Checkbox
+                      label={`[${t.required ? "필수" : "선택"}] ${t.title}`}
+                      checked={!!agreed[t.id]}
+                      onChange={checked => handleAgree(t.id, checked)}
+                    />
+                  </s.TermCheck>
+                  <Button
+                    variant="text"
+                    onPress={() => Linking.openURL(t.url).catch(() => {})}
+                    accessibilityLabel={`${t.title} 전문 보기`}
+                  >
+                    보기
+                  </Button>
+                </s.TermRow>
+              ))}
+              <s.TermsNote>
+                선택 항목은 동의하지 않아도 가입할 수 있어요.
+              </s.TermsNote>
+            </s.Terms>
+          )}
         </Field>
       </s.Fields>
 
+      {formError && <Notice tone="danger" title={formError} />}
+
       <s.Actions>
-        <Button variant="secondary" fullWidth onPress={handleSignup}>
-          회원가입
+        <Button
+          variant="secondary"
+          fullWidth
+          onPress={handleSignup}
+          disabled={submitting}
+          accessibilityState={{ busy: submitting, disabled: submitting }}
+        >
+          {submitting ? "가입하는 중…" : "회원가입"}
         </Button>
         <AuthPrompt
           message="이미 계정이 있나요?"

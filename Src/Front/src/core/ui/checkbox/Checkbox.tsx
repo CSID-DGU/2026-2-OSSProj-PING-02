@@ -56,8 +56,8 @@ export const Checkbox = ({
     <Wrapper
       onPress={() => onChange(!checked)}
       disabled={disabled}
-      // 박스는 20px이라 위아래로 터치 영역을 넓힘
-      hitSlop={{ top: 12, bottom: 12 }}
+      // 박스는 20px이라 위아래로 터치 영역을 넓힘 (20 + 14×2 = 48dp)
+      hitSlop={{ top: 14, bottom: 14 }}
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled }}
       $disabled={disabled}

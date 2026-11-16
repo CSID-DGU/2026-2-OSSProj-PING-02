@@ -110,6 +110,8 @@ export const Dialog = ({
             onPress={onClose}
             activeOpacity={0.7}
             accessibilityRole="button"
+            // 보이는 높이는 36px 그대로, 터치 영역만 48dp
+            hitSlop={{ top: 6, bottom: 6 }}
           >
             <CloseLabel>{closeLabel}</CloseLabel>
           </CloseButton>

@@ -16,6 +16,8 @@ export interface ButtonProps extends TouchableOpacityProps {
   children?: ReactNode;
 }
 
+const TEXT_HIT_SLOP = { top: 10, bottom: 10 };
+
 // 버튼 스타일
 const Base = styled.TouchableOpacity<{
   $variant: Variant;
@@ -81,6 +83,7 @@ export const Button = ({
   activeOpacity,
   onPressIn,
   onPressOut,
+  hitSlop,
   ...rest
 }: ButtonProps) => {
   const [pressed, setPressed] = useState(false);
@@ -97,6 +100,8 @@ export const Button = ({
   return (
     <Base
       {...rest}
+      // text 버튼은 보이는 높이가 28px이라 터치 영역만 48dp로 넓힘
+      hitSlop={hitSlop ?? (variant === "text" ? TEXT_HIT_SLOP : undefined)}
       accessibilityRole="button"
       // primary는 눌림을 배경색(브라운)으로 보여 주므로 투명도 변화 없음
       activeOpacity={activeOpacity ?? (variant === "primary" ? 1 : 0.7)}

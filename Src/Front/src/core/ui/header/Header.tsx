@@ -45,7 +45,7 @@ const Side = styled.View`
   align-items: center;
 `;
 
-// 아이콘은 24px이지만 터치 영역은 hitSlop으로 44px 확보
+// 아이콘은 24px이지만 터치 영역은 hitSlop으로 48px 확보 (Android 권장 48dp)
 const BackButton = styled.TouchableOpacity`
   width: 24px;
   height: 24px;
@@ -73,7 +73,7 @@ export const Header = ({
         onPress={onBack}
         accessibilityRole="button"
         accessibilityLabel="뒤로 가기"
-        hitSlop={10}
+        hitSlop={12}
       >
         <BackIcon />
       </BackButton>
