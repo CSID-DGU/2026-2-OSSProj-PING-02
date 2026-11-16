@@ -1,15 +1,11 @@
 import { useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import {
-  getNextStep,
-  getStepNumber,
-  ONBOARDING_TOTAL,
-  type OnboardingStep,
-} from "@constants/onboarding";
+import { getNextStep, type OnboardingStep } from "@constants/onboarding";
 import { useOnboarding } from "@stores/OnboardingProvider";
 import { useAuthNavigation } from "./useAuthNavigation";
 
-// 온보딩 단계 화면 공통: 진행 단계 값, 다음 단계 이동, "이어서 하기" 위치 저장
+// 온보딩 단계 화면 공통: 다음 단계 이동, "이어서 하기" 위치 저장
+// (Figma에 헤더·진행 표시가 없어서 뒤로가기는 안드로이드 기본 동작: 이전 단계)
 export const useOnboardingStep = (step: OnboardingStep) => {
   const navigation = useAuthNavigation();
   const { data, update } = useOnboarding();
@@ -27,9 +23,5 @@ export const useOnboardingStep = (step: OnboardingStep) => {
     [navigation, step]
   );
 
-  return {
-    navigation,
-    goNext,
-    progress: { current: getStepNumber(step), total: ONBOARDING_TOTAL },
-  };
+  return { navigation, goNext };
 };

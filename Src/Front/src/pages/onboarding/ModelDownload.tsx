@@ -18,7 +18,7 @@ import * as s from "./ModelDownload_styled";
 // 다운로드는 OnboardingProvider가 들고 있어서 다음 단계로 넘어가도 계속됨
 const ModelDownload = () => {
   const theme = useTheme();
-  const { goNext, progress } = useOnboardingStep("ModelDownload");
+  const { goNext } = useOnboardingStep("ModelDownload");
   const { model, loadModelInfo, startModelDownload } = useOnboarding();
   const [connection, setConnection] = useState<ConnectionType>("unknown");
   const [cellularOpen, setCellularOpen] = useState(false);
@@ -167,8 +167,6 @@ const ModelDownload = () => {
 
   return (
     <AuthLayout
-      title="AI 모델 받기"
-      progress={progress}
       footer={renderFooter()}
     >
       <AuthIntro

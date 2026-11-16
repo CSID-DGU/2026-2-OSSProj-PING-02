@@ -12,7 +12,7 @@ import * as s from "./LinkedApps_styled";
 // 05 / 연동 앱 선택 (온보딩 3단계)
 // 앱 아이콘 위에 Checkbox가 붙은 가로 3칸 다중 선택, 최소 1개를 골라야 다음으로
 const LinkedApps = () => {
-  const { goNext, progress } = useOnboardingStep("LinkedApps");
+  const { goNext } = useOnboardingStep("LinkedApps");
   const { data, update } = useOnboarding();
   const [selected, setSelected] = useState<LinkedApp[]>(data.linkedApps);
 
@@ -32,8 +32,6 @@ const LinkedApps = () => {
 
   return (
     <AuthLayout
-      title="연동 앱 선택"
-      progress={progress}
       footer={
         <Button
           variant="primary"

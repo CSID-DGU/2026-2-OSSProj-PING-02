@@ -8,10 +8,16 @@ import Signup from "@pages/auth/Signup";
 import EmailVerify from "@pages/auth/EmailVerify";
 import FindId from "@pages/auth/FindId";
 import FindPassword from "@pages/auth/FindPassword";
+import ServiceIntro from "@pages/onboarding/ServiceIntro";
 import PrivacyNotice from "@pages/onboarding/PrivacyNotice";
-import Permissions from "@pages/onboarding/Permissions";
+import NotificationAccess from "@pages/onboarding/NotificationAccess";
 import LinkedApps from "@pages/onboarding/LinkedApps";
 import ModelDownload from "@pages/onboarding/ModelDownload";
+import NotificationTypes from "@pages/onboarding/NotificationTypes";
+import BatteryOptimization from "@pages/onboarding/BatteryOptimization";
+import ContactsImport from "@pages/onboarding/ContactsImport";
+import ContactsSelect from "@pages/onboarding/ContactsSelect";
+import FriendsReady from "@pages/onboarding/FriendsReady";
 import AiMemory from "@pages/onboarding/AiMemory";
 import OnboardingDone from "@pages/onboarding/OnboardingDone";
 import Home from "@pages/home/Home";
@@ -26,10 +32,16 @@ export type RootStackParamList = {
   EmailVerify: { email: string; resend?: boolean };
   FindId: undefined;
   FindPassword: undefined;
+  ServiceIntro: undefined;
   PrivacyNotice: undefined;
-  Permissions: undefined;
+  NotificationAccess: undefined;
   LinkedApps: undefined;
   ModelDownload: undefined;
+  NotificationTypes: undefined;
+  BatteryOptimization: undefined;
+  ContactsImport: undefined;
+  ContactsSelect: undefined;
+  FriendsReady: undefined;
   AiMemory: undefined;
   OnboardingDone: undefined;
   Home: undefined;
@@ -61,10 +73,19 @@ const Router = () => {
       <Stack.Screen name="FindPassword" component={FindPassword} />
 
       {/* Onboarding (로그인 이후, constants/onboarding의 ONBOARDING_STEPS 순서) */}
+      <Stack.Screen name="ServiceIntro" component={ServiceIntro} />
       <Stack.Screen name="PrivacyNotice" component={PrivacyNotice} />
-      <Stack.Screen name="Permissions" component={Permissions} />
+      <Stack.Screen name="NotificationAccess" component={NotificationAccess} />
       <Stack.Screen name="LinkedApps" component={LinkedApps} />
       <Stack.Screen name="ModelDownload" component={ModelDownload} />
+      <Stack.Screen name="NotificationTypes" component={NotificationTypes} />
+      <Stack.Screen
+        name="BatteryOptimization"
+        component={BatteryOptimization}
+      />
+      <Stack.Screen name="ContactsImport" component={ContactsImport} />
+      <Stack.Screen name="ContactsSelect" component={ContactsSelect} />
+      <Stack.Screen name="FriendsReady" component={FriendsReady} />
       <Stack.Screen name="AiMemory" component={AiMemory} />
       <Stack.Screen name="OnboardingDone" component={OnboardingDone} />
 

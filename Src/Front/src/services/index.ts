@@ -3,6 +3,7 @@ import {
   MOCK_DEMO_ACCOUNT,
   MOCK_VERIFICATION_CODE,
 } from "./auth/mockAuthService";
+import { createMockContactsService } from "./contacts/ContactsService";
 import { createMockModelService } from "./model/mockModelService";
 import { createMockNetworkService } from "./network/NetworkService";
 import { createMockPermissionService } from "./permission/mockPermissionService";
@@ -19,6 +20,7 @@ export const services = {
   permission: createMockPermissionService(),
   model: createMockModelService(),
   network: createMockNetworkService(),
+  contacts: createMockContactsService(),
   storage: createMemoryStorage(),
 };
 
@@ -38,4 +40,5 @@ export * from "./auth/AuthService";
 export * from "./permission/PermissionService";
 export * from "./model/ModelService";
 export * from "./network/NetworkService";
+export * from "./contacts/ContactsService";
 export * from "./storage/KeyValueStorage";

@@ -17,21 +17,26 @@ import {
   type ModelInfo,
 } from "@services";
 import {
+  NOTIFICATION_PREF_OPTIONS,
   ONBOARDING_STEPS,
   type LinkedApp,
+  type MemoryCategory,
+  type NotificationPref,
   type OnboardingStep,
-  type SkippableStep,
 } from "@constants/onboarding";
+import type { Contact } from "@services";
 import { useSession } from "./SessionProvider";
 
 // 사용자별로 저장하는 온보딩 진행 상황
+// 건너뛴 단계는 따로 저장하지 않고 완료 화면에서 실제 상태(권한·친구 수·메모)로 판단
 export interface OnboardingData {
   completed: boolean;
   lastStep: OnboardingStep;
   linkedApps: LinkedApp[];
-  memory: string;
-  // 권한·메모리처럼 사용자가 "나중에"를 고른 단계 (모델은 다운로드 상태로 판단)
-  skipped: Exclude<SkippableStep, "ModelDownload">[];
+  notificationPrefs: NotificationPref[];
+  // TODO(네이티브): 친구 목록은 기기 안 암호화 DB로 옮기기. 지금은 온보딩 저장소에 함께 둠
+  friends: Contact[];
+  memory: Record<MemoryCategory, string>;
 }
 
 // 모델 다운로드는 화면을 벗어나도 계속되므로 여기서 들고 있음
@@ -48,10 +53,6 @@ interface OnboardingContextValue {
   hydrated: boolean;
   data: OnboardingData;
   update: (patch: Partial<OnboardingData>) => Promise<void>;
-  setSkipped: (
-    step: OnboardingData["skipped"][number],
-    skipped: boolean
-  ) => Promise<void>;
   model: ModelState;
   loadModelInfo: () => Promise<void>;
   startModelDownload: () => void;
@@ -61,8 +62,10 @@ const DEFAULT_DATA: OnboardingData = {
   completed: false,
   lastStep: ONBOARDING_STEPS[0],
   linkedApps: [],
-  memory: "",
-  skipped: [],
+  // Figma 06: 전체 선택이 기본값
+  notificationPrefs: NOTIFICATION_PREF_OPTIONS.map(o => o.value),
+  friends: [],
+  memory: { status: "", avoid: "" },
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -101,7 +104,16 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       .getItem(storageKey)
       .then(raw => {
         if (!alive || !raw) return;
-        const next = { ...DEFAULT_DATA, ...JSON.parse(raw) };
+        const saved = JSON.parse(raw);
+        const next: OnboardingData = {
+          ...DEFAULT_DATA,
+          ...saved,
+          memory: { ...DEFAULT_DATA.memory, ...saved.memory },
+          // 단계 구성이 바뀌어 없는 단계가 저장돼 있으면 처음부터
+          lastStep: ONBOARDING_STEPS.includes(saved.lastStep)
+            ? saved.lastStep
+            : DEFAULT_DATA.lastStep,
+        };
         dataRef.current = next;
         setData(next);
       })
@@ -130,14 +142,6 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       }
     },
     [storageKey]
-  );
-
-  const setSkipped = useCallback<OnboardingContextValue["setSkipped"]>(
-    (step, skipped) => {
-      const rest = dataRef.current.skipped.filter(s => s !== step);
-      return update({ skipped: skipped ? [...rest, step] : rest });
-    },
-    [update]
   );
 
   const loadModelInfo = useCallback(async () => {
@@ -185,12 +189,11 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       hydrated,
       data,
       update,
-      setSkipped,
       model,
       loadModelInfo,
       startModelDownload,
     }),
-    [hydrated, data, update, setSkipped, model, loadModelInfo, startModelDownload]
+    [hydrated, data, update, model, loadModelInfo, startModelDownload]
   );
 
   return (

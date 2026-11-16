@@ -137,8 +137,24 @@ test("아이디 찾기에 정보를 입력하면 결과 다이얼로그를 띄�
   expect(findText(root, "mals****").length).toBe(1);
 });
 
+// 체크박스(또는 role이 checkbox인 요소)를 라벨로 찾아 누름
+const toggle = async (root: Instance, label: string) => {
+  const box = root
+    .findAll(
+      node =>
+        node.props.accessibilityRole === "checkbox" &&
+        typeof node.props.onPress === "function"
+    )
+    .filter(node => findText(node, label).length > 0)
+    .at(-1);
+  if (!box) throw new Error(`"${label}" 체크박스가 없습니다`);
+  await ReactTestRenderer.act(async () => {
+    box.props.onPress();
+  });
+};
+
 // 로그인하면 mock 저장소에 세션이 남으므로 이 파일의 마지막 테스트로 둠
-test("로그인하면 온보딩을 시작하고, 연동 앱은 하나 이상 골라야 넘어간다", async () => {
+test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () => {
   const root = await renderApp();
   await press(root, "시작하기");
   await press(root, "로그인");
@@ -147,60 +163,21 @@ test("로그인하면 온보딩을 시작하고, 연동 앱은 하나 이상 골
   await type(root, "비밀번호", "abcd1234");
   await press(root, "로그인");
 
-  // 1단계: 개인정보 안내
-  await waitForText(root, "대화는 이 휴대폰 안에서만\n다뤄요");
-  expect(findText(root, "1 / 6").length).toBeGreaterThan(0);
+  // 02 서비스 소개 → 03 개인정보 처리 안내
+  await waitForText(root, "작은 한마디가,\n다시 이어질 씨앗이 되도록");
+  await press(root, "다음");
+  expect(findText(root, "원문은 기기에,\nAI에는 가린 내용만").length).toBe(1);
   await press(root, "확인했어요");
 
-  // 2단계: 권한 - 상태를 불러온 뒤 나중에 하기
-  await waitForText(root, "알림 읽기");
-  await press(root, "나중에 할게요");
-
-  // 3단계: 연동 앱 - 아무것도 고르지 않으면 넘어가지 않음
-  expect(findText(root, "어떤 앱의 연락을 함께 볼까요?").length).toBe(1);
-  expect(findText(root, "하나 이상 골라 주세요.").length).toBe(1);
+  // 04 알림 접근 → 05 연동 앱
+  await press(root, "알림 접근 허용하기");
+  await waitForText(root, "카카오톡");
+  await toggle(root, "카카오톡");
   await press(root, "다음");
-  expect(findText(root, "어떤 앱의 연락을 함께 볼까요?").length).toBe(1);
 
-  const kakao = root
-    .findAll(
-      node =>
-        node.props.accessibilityRole === "checkbox" &&
-        typeof node.props.onPress === "function"
-    )
-    .filter(node => findText(node, "카카오톡").length > 0)
-    .at(-1);
-  await ReactTestRenderer.act(async () => {
-    kakao!.props.onPress();
-  });
-  expect(findText(root, "1개를 골랐어요.").length).toBe(1);
-
-  // 4단계: AI 모델 받기로 이동
-  await press(root, "다음");
-  expect(findText(root, "휴대폰 안에서 쓸 AI를 받아요").length).toBe(1);
+  // AI 모델 다운로드 → 06 받을 알림
+  await waitForText(root, "나중에 받을게요");
   await press(root, "나중에 받을게요");
-
-  // 5단계: AI 메모리 - 예시 칩은 스크린리더에 "버튼"으로 보이고, activate하면 입력창에 추가
-  const example = "답장은 짧게 쓰는 편이에요";
-  const chip = root
-    .findAll(
-      node =>
-        typeof node.type === "string" &&
-        node.props.accessibilityLabel === example
-    )
-    .at(-1);
-  expect(chip?.props.accessibilityRole).toBe("button");
-  await ReactTestRenderer.act(async () => {
-    chip!.props.onAccessibilityAction({
-      nativeEvent: { actionName: "activate" },
-    });
-  });
-  const memo = root
-    .findAll(
-      node =>
-        typeof node.type === "string" &&
-        node.props.accessibilityLabel === "나에 대한 메모"
-    )
-    .at(-1);
-  expect(memo?.props.value).toBe(example);
+  expect(findText(root, "받을 알림을\n선택해 주세요").length).toBe(1);
 });
+
