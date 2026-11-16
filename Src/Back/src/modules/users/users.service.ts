@@ -37,6 +37,7 @@ export class UsersService {
 
     return {
       id: user.id,
+      username: user.username,
       name: user.name,
       email: user.email,
       birthdate: toDateOnly(user.birthdate),
@@ -66,7 +67,7 @@ export class UsersService {
       if (!(await bcrypt.compare(password, user.passwordHash))) {
         throw new AppException(
           ErrorCode.INVALID_CREDENTIALS,
-          '이메일 또는 비밀번호가 올바르지 않습니다.',
+          '아이디 또는 비밀번호가 올바르지 않습니다.',
           401,
         );
       }

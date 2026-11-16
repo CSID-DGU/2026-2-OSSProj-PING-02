@@ -10,6 +10,10 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // 로그인용 아이디. 소문자 영문으로 시작하는 4~20자(영문 소문자·숫자·밑줄)
+  @Column({ type: 'varchar', length: 20, unique: true })
+  username: string;
+
   // 카카오 가입자가 이메일 제공에 동의하지 않으면 null
   @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
   email: string | null;
