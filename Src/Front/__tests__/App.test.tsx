@@ -169,8 +169,13 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   expect(findText(root, "원문은 기기에,\nAI에는 가린 내용만").length).toBe(1);
   await press(root, "확인했어요");
 
-  // 04 알림 접근 → 05 연동 앱
+  // 04 알림 접근: 설정으로 보냈다가 돌아오면(mock) 켜짐 안내 → 다음
+  await waitForText(root, "알림 접근 허용하기");
   await press(root, "알림 접근 허용하기");
+  await waitForText(root, "알림 접근 권한이 켜져 있어요");
+  await press(root, "다음");
+
+  // 05 연동 앱
   await waitForText(root, "카카오톡");
   await toggle(root, "카카오톡");
   await press(root, "다음");
@@ -179,5 +184,18 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   await waitForText(root, "나중에 받을게요");
   await press(root, "나중에 받을게요");
   expect(findText(root, "받을 알림을\n선택해 주세요").length).toBe(1);
+
+  // 06: 다음 → 시스템 알림 팝업 거절(mock) → 부드러운 안내 후 넘어가기
+  await waitForText(root, "다음 단계에서 기기 권한을 요청해요");
+  await press(root, "다음");
+  await waitForText(root, "괜찮아요, 나중에 켜도 돼요");
+  await press(root, "이대로 넘어갈게요");
+
+  // 07 배터리: 나중에 하기
+  await waitForText(root, "배터리 사용 제한 해제");
+  await press(root, "나중에 할게요");
+  expect(
+    findText(root, "연락처로 친구 목록을\n먼저 만들어볼까요?").length
+  ).toBe(1);
 });
 
