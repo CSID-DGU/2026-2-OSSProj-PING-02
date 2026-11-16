@@ -1,0 +1,52 @@
+import type {
+  Analysis,
+  ConversationDetail,
+  ConversationSummary,
+  DeferredReply,
+  MessengerApp,
+  ReplyCandidate,
+  ReplyStance,
+  ReplyTone,
+} from "./types";
+
+// 연락·요약·답장 후보 (나중에 Kotlin 네이티브 모듈의 로컬 DB + 분석 파이프라인으로 교체)
+// - 원문은 기기 안, 가리기 모델이 이름·전화번호를 가린 뒤 중간 서버를 거쳐 외부 AI로
+// - 자동 전송은 없음: 보내기는 MessengerService.sendReply를 사용자가 확인한 뒤에만
+export interface ConversationService {
+  list(): Promise<ConversationSummary[]>;
+  get(conversationId: string): Promise<ConversationDetail>;
+  // 분석이 끝나지 않은(pending) 대화를 분석 (가리기 모델이 준비돼 있어야 함)
+  analyze(conversationId: string): Promise<Analysis>;
+  getReplyCandidates(
+    conversationId: string,
+    options: { tone: ReplyTone; stance?: ReplyStance }
+  ): Promise<ReplyCandidate[]>;
+  // 잘린 메시지: 메신저에서 복사해 붙여 넣은 전체 내용을 기기 안에서 요약
+  summarizePasted(conversationId: string, text: string): Promise<string>;
+  // 답장 없이 확인만 (단톡·정보)
+  markChecked(conversationId: string): Promise<void>;
+  markReplied(conversationId: string): Promise<void>;
+  deferReply(
+    conversationId: string,
+    remindAt: string | null
+  ): Promise<DeferredReply>;
+  cancelDeferred(conversationId: string): Promise<void>;
+  // 홈 "오늘의 작은 행동"
+  getSmallAction(): Promise<{ conversationId: string | null; text: string }>;
+}
+
+// 메신저 연결 (나중에 네이티브: 알림 바로 답장(RemoteInput)·클립보드·앱 열기)
+export interface MessengerService {
+  // TODO(네이티브): @react-native-clipboard/clipboard 설치 후 실제 복사
+  copyText(text: string): Promise<void>;
+  // TODO(네이티브): 연동 앱 패키지명(LINKED_APP_OPTIONS)으로 실행 인텐트
+  openApp(app: MessengerApp): Promise<void>;
+  // 알림의 바로 답장으로 보냄. 화면에서 확인 팝업을 거친 뒤에만 호출
+  sendReply(conversationId: string, text: string): Promise<void>;
+}
+
+export const CONVERSATION_ERROR_CODE = {
+  analysisFailed: "ANALYSIS_FAILED",
+  notFound: "CONVERSATION_NOT_FOUND",
+  replyUnavailable: "REPLY_UNAVAILABLE", // 알림이 사라져 바로 답장 불가
+} as const;
