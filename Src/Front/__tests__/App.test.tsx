@@ -1,3 +1,4 @@
+import { Dimensions } from "react-native";
 import ReactTestRenderer from "react-test-renderer";
 import App from "../src/App";
 
@@ -163,8 +164,30 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   await type(root, "비밀번호", "abcd1234");
   await press(root, "로그인");
 
-  // 02 서비스 소개 → 03 개인정보 처리 안내
+  // 02 서비스 소개: 손으로 넘기면 점 표시가 따라가고, "다음"으로 끝까지 가면 03
   await waitForText(root, "작은 한마디가,\n다시 이어질 씨앗이 되도록");
+  const dots = (n: number) =>
+    root.findAll(
+      node =>
+        typeof node.type === "string" &&
+        node.props.accessibilityLabel === `서비스 소개 5쪽 중 ${n}쪽`
+    ).length;
+  expect(dots(1)).toBe(1);
+
+  const pager = root
+    .findAll(node => typeof node.props.onMomentumScrollEnd === "function")
+    .at(-1)!;
+  const { width } = Dimensions.get("window");
+  await ReactTestRenderer.act(async () => {
+    pager.props.onMomentumScrollEnd({
+      nativeEvent: { contentOffset: { x: width * 2, y: 0 } },
+    });
+  });
+  expect(dots(3)).toBe(1);
+
+  await press(root, "다음"); // 4쪽
+  await press(root, "다음"); // 5쪽
+  expect(dots(5)).toBe(1);
   await press(root, "다음");
   expect(findText(root, "원문은 기기에,\nAI에는 가린 내용만").length).toBe(1);
   await press(root, "확인했어요");
