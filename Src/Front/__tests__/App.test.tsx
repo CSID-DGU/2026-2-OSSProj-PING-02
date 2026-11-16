@@ -214,7 +214,7 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   // 05 연동 앱
   await waitForText(root, "카카오톡");
   await toggle(root, "카카오톡");
-  await press(root, "다음");
+  await press(root, "말씨앗 시작하기");
 
   // AI 모델 다운로드 → 06 받을 알림
   await waitForText(root, "나중에 받을게요");
@@ -259,6 +259,44 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   expect(findText(root, "친구 41명 추가 완료").length).toBe(1);
   await press(root, "다음");
   expect(findText(root, "내 상황을 조금\n알려주실래요?").length).toBe(1);
+
+  // 11 → 상세 작성: 예시 칩은 스크린리더에 "버튼"으로 보이고, activate하면 입력창에 추가
+  await press(root, "내용 작성하기");
+  const example = "답장은 짧게 쓰는 편이에요";
+  const chip = root
+    .findAll(
+      node =>
+        typeof node.type === "string" &&
+        node.props.accessibilityLabel === example
+    )
+    .at(-1);
+  expect(chip?.props.accessibilityRole).toBe("button");
+  await ReactTestRenderer.act(async () => {
+    chip!.props.onAccessibilityAction({
+      nativeEvent: { actionName: "activate" },
+    });
+  });
+  const memo = root
+    .findAll(
+      node =>
+        typeof node.type === "string" &&
+        node.props.accessibilityLabel === "요즘 나의 상태 메모"
+    )
+    .at(-1);
+  expect(memo?.props.value).toBe(example);
+  await press(root, "저장할게요");
+
+  // 11로 돌아오면 쓴 내용이 카드에 보이고 주 버튼은 "다음"
+  expect(findText(root, example).length).toBeGreaterThan(0);
+  await press(root, "다음");
+
+  // 12 완료: 실제 상태로 건너뛴 단계 안내 (앱 알림·배터리·모델은 아직)
+  await waitForText(root, "건너뛴 단계가 있어요");
+  expect(findText(root, "앱 알림").length).toBe(1);
+  expect(findText(root, "배터리 최적화 예외").length).toBe(1);
+  expect(findText(root, "친구 목록 만들기").length).toBe(0);
+  await press(root, "말씨앗 시작하기");
+  await waitForText(root, "홈 화면은 준비 중이에요.");
   // 12개 화면을 mock 지연과 함께 거쳐서 기본 5초보다 오래 걸림
 }, 30000);
 

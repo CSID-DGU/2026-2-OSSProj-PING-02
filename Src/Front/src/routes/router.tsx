@@ -19,6 +19,8 @@ import ContactsImport from "@pages/onboarding/ContactsImport";
 import ContactsSelect from "@pages/onboarding/ContactsSelect";
 import FriendsReady from "@pages/onboarding/FriendsReady";
 import AiMemory from "@pages/onboarding/AiMemory";
+import AiMemoryEdit from "@pages/onboarding/AiMemoryEdit";
+import type { MemoryCategory } from "@constants/onboarding";
 import OnboardingDone from "@pages/onboarding/OnboardingDone";
 import Home from "@pages/home/Home";
 import Playground from "@pages/dev/Playground";
@@ -43,6 +45,8 @@ export type RootStackParamList = {
   ContactsSelect: undefined;
   FriendsReady: undefined;
   AiMemory: undefined;
+  // 11의 상세 작성 화면 (온보딩 단계가 아니라 11에서 열고 닫는 화면)
+  AiMemoryEdit: { category: MemoryCategory };
   OnboardingDone: undefined;
   Home: undefined;
   Playground: undefined;
@@ -87,6 +91,7 @@ const Router = () => {
       <Stack.Screen name="ContactsSelect" component={ContactsSelect} />
       <Stack.Screen name="FriendsReady" component={FriendsReady} />
       <Stack.Screen name="AiMemory" component={AiMemory} />
+      <Stack.Screen name="AiMemoryEdit" component={AiMemoryEdit} />
       <Stack.Screen name="OnboardingDone" component={OnboardingDone} />
 
       {/* Main */}
