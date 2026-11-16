@@ -41,3 +41,6 @@ yarn-error.log
 
 # Claude Code 로컬 설정
 .claude/
+
+# Figma 시안 캡처 (로컬 참고용)
+docs/figma/
