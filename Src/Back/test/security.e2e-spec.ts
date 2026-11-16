@@ -1,8 +1,9 @@
 import { createHmac } from 'crypto';
 import request from 'supertest';
-import { registerVerified, startApp, TestContext } from './support/app';
+import { registerVerified, startApp, TestContext, usernameOf } from './support/app';
 
 const PASSWORD = 'abcd1234';
+const USERNAME = usernameOf('sec@example.com');
 let ctx: TestContext;
 
 beforeEach(async () => {
@@ -17,11 +18,13 @@ const http = () => request(ctx.app.getHttpServer());
 const JSON_TYPE = 'application/json';
 
 function signupBody(overrides: Record<string, unknown> = {}) {
+  const email = String(overrides.email ?? 'sec@example.com');
   return {
+    username: usernameOf(email),
     name: '홍길동',
     birthdate: '1999-01-01',
     gender: 'MALE',
-    email: 'sec@example.com',
+    email,
     password: PASSWORD,
     termsAgreements: [
       { termsId: ctx.termsIds.service, agreed: true },
@@ -62,14 +65,14 @@ describe('1. 인젝션: 입력값이 SQL·NoSQL·스크립트로 해석되지 �
     "1' UNION SELECT password_hash FROM users --",
   ];
 
-  it.each(sqlPayloads)('로그인 이메일에 %s 를 넣으면 400, DB 는 그대로다', async (payload) => {
+  it.each(sqlPayloads)('로그인 아이디에 %s 를 넣어도 구문으로 해석되지 않고 401, DB 는 그대로다', async (payload) => {
     await signup();
     const before = await countRows('users');
 
-    const res = await http().post('/v1/auth/login').send({ email: payload, password: PASSWORD });
-    expect(res.status).toBe(400);
-    // 이메일 형식이 아니므로 명세대로 INVALID_EMAIL_FORMAT 으로 거부된다
-    expect(res.body.error.code).toBe('INVALID_EMAIL_FORMAT');
+    const res = await http().post('/v1/auth/login').send({ username: payload, password: PASSWORD });
+    // 파라미터로만 쓰이므로 그냥 없는 아이디로 취급된다 (500 이나 우회 로그인이 아니다)
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
     expect(await countRows('users')).toBe(before);
   });
 
@@ -90,15 +93,15 @@ describe('1. 인젝션: 입력값이 SQL·NoSQL·스크립트로 해석되지 �
     expect(stored[0].name).toBe(name.slice(0, 50));
   });
 
-  it('NoSQL 스타일 객체·배열을 이메일이나 비밀번호로 보내면 400 이다', async () => {
+  it('NoSQL 스타일 객체·배열을 아이디나 비밀번호로 보내면 400 이다', async () => {
     await signup();
-    let res = await http().post('/v1/auth/login').send({ email: { $ne: null }, password: PASSWORD });
+    let res = await http().post('/v1/auth/login').send({ username: { $ne: null }, password: PASSWORD });
     expect(res.status).toBe(400);
 
-    res = await http().post('/v1/auth/login').send({ email: 'sec@example.com', password: { $gt: '' } });
+    res = await http().post('/v1/auth/login').send({ username: USERNAME, password: { $gt: '' } });
     expect(res.status).toBe(400);
 
-    res = await http().post('/v1/auth/login').send({ email: ['sec@example.com'], password: PASSWORD });
+    res = await http().post('/v1/auth/login').send({ username: [USERNAME], password: PASSWORD });
     expect(res.status).toBe(400);
   });
 
@@ -148,7 +151,7 @@ describe('2. 대량 할당: 정의되지 않은 필드는 거부한다 (Validati
   });
 
   it('로그인 요청에 정의되지 않은 필드가 있으면 400 이다', async () => {
-    const res = await http().post('/v1/auth/login').send({ email: 'sec@example.com', password: PASSWORD, isAdmin: true });
+    const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD, isAdmin: true });
     expect(res.status).toBe(400);
   });
 });
@@ -281,7 +284,7 @@ describe('7. 메시지 관련 필드는 어떤 응답에도 없다 (기능명세
       expect.objectContaining({ id: expect.any(String), name: expect.any(String), email: expect.any(String) }),
     );
     expect(Object.keys(res.body).sort()).toEqual(
-      ['birthdate', 'createdAt', 'email', 'gender', 'id', 'name', 'provider', 'termsAgreements'].sort(),
+      ['birthdate', 'createdAt', 'email', 'gender', 'id', 'name', 'provider', 'termsAgreements', 'username'].sort(),
     );
     expect(collectKeys(res.body).filter((k) => forbiddenKeys.test(k))).toEqual([]);
   });
@@ -309,7 +312,7 @@ describe('8. 요청 제한과 과대 입력', () => {
     await signup();
     const statuses: number[] = [];
     for (let i = 0; i < 6; i++) {
-      const res = await http().post('/v1/auth/login').send({ email: 'sec@example.com', password: 'wrong1234' });
+      const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: 'wrong1234' });
       statuses.push(res.status);
       if (res.status === 429) {
         expect(res.body.error.code).toBe('RATE_LIMITED');

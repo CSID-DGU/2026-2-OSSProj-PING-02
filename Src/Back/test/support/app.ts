@@ -17,6 +17,8 @@ import { MailService } from '../../src/modules/mail/mail.service';
  */
 export class FakeMailService {
   readonly sent: Array<{ to: string; code: string }> = [];
+  readonly resets: Array<{ to: string; code: string }> = [];
+  readonly usernames: Array<{ to: string; username: string }> = [];
   failNext = false;
 
   async sendVerificationCode(to: string, code: string): Promise<void> {
@@ -27,13 +29,32 @@ export class FakeMailService {
     this.sent.push({ to, code });
   }
 
-  /** 해당 주소로 마지막에 보낸 코드 */
+  async sendPasswordResetCode(to: string, code: string): Promise<void> {
+    this.resets.push({ to, code });
+  }
+
+  async sendUsername(to: string, username: string): Promise<void> {
+    this.usernames.push({ to, username });
+  }
+
+  /** 해당 주소로 마지막에 보낸 비밀번호 재설정 코드 */
+  resetCodeFor(to: string): string {
+    const found = [...this.resets].reverse().find((m) => m.to === to);
+    if (!found) throw new Error(`no reset mail for ${to}`);
+    return found.code;
+  }
+
+  /** 해당 주소로 마지막에 보낸 인증 코드 */
   codeFor(to: string): string {
     const found = [...this.sent].reverse().find((m) => m.to === to);
     if (!found) throw new Error(`no verification mail for ${to}`);
     return found.code;
   }
 }
+
+/** 테스트용 아이디. 이메일 앞부분으로 만들어서 회원마다 다르고 규칙(4~20자)을 지킨다. */
+export const usernameOf = (email: string): string =>
+  `user_${email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')}`.slice(0, 20);
 
 export interface TestContext {
   app: INestApplication;

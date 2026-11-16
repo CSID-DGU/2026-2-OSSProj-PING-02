@@ -1,7 +1,8 @@
 import request from 'supertest';
-import { registerVerified, startApp, TestContext } from './support/app';
+import { registerVerified, startApp, TestContext, usernameOf } from './support/app';
 
 const EMAIL = 'flow@example.com';
+const USERNAME = usernameOf(EMAIL);
 const PASSWORD = 'abcd1234';
 
 let ctx: TestContext;
@@ -18,6 +19,7 @@ afterEach(async () => {
 const http = () => request(ctx.app.getHttpServer());
 
 const signupBody = (email = EMAIL, password = PASSWORD) => ({
+  username: usernameOf(email),
   name: '홍길동',
   birthdate: '1999-01-01',
   gender: 'MALE',
@@ -60,7 +62,7 @@ describe('회원가입', () => {
   it('성공하면 201 과 인증 필요 표시를 주고, 토큰은 주지 않는다. 인증 메일은 해당 주소로 간다', async () => {
     const res = await http().post('/v1/auth/signup').send(signupBody());
     expect(res.status).toBe(201);
-    expect(res.body.user).toMatchObject({ name: '홍길동', email: EMAIL });
+    expect(res.body.user).toMatchObject({ username: USERNAME, name: '홍길동', email: EMAIL });
     expect(res.body.verificationRequired).toBe(true);
     expect(res.body.tokens).toBeUndefined();
 
@@ -107,14 +109,14 @@ describe('회원가입', () => {
 describe('이메일 인증', () => {
   it('인증 전에는 비밀번호가 맞아도 로그인이 403 EMAIL_NOT_VERIFIED 로 막힌다', async () => {
     await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http().post('/v1/auth/login').send({ email: EMAIL, password: PASSWORD });
+    const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('EMAIL_NOT_VERIFIED');
   });
 
   it('인증 전 틀린 비밀번호는 401 이다 (인증 여부를 먼저 드러내지 않는다)', async () => {
     await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http().post('/v1/auth/login').send({ email: EMAIL, password: 'wrong1234' });
+    const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: 'wrong1234' });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
   });
@@ -127,7 +129,7 @@ describe('이메일 인증', () => {
     expect(res.status).toBe(200);
     expect(res.body.tokens.accessToken).toBeDefined();
 
-    const login = await http().post('/v1/auth/login').send({ email: EMAIL, password: PASSWORD });
+    const login = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
     expect(login.status).toBe(200);
   });
 
@@ -217,20 +219,20 @@ describe('이메일 인증', () => {
 describe('로그인과 내 정보', () => {
   it('맞는 비밀번호로 로그인하면 200 과 토큰을 준다', async () => {
     await signup();
-    const res = await http().post('/v1/auth/login').send({ email: EMAIL, password: PASSWORD });
+    const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
     expect(res.status).toBe(200);
     expect(res.body.tokens.accessToken).toBeDefined();
   });
 
   it('비밀번호가 틀리면 401 INVALID_CREDENTIALS', async () => {
     await signup();
-    const res = await http().post('/v1/auth/login').send({ email: EMAIL, password: 'wrong1234' });
+    const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: 'wrong1234' });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
   });
 
-  it('없는 이메일도 같은 INVALID_CREDENTIALS 로 응답한다 (계정 존재 여부를 숨긴다)', async () => {
-    const res = await http().post('/v1/auth/login').send({ email: 'nobody@example.com', password: PASSWORD });
+  it('없는 아이디도 같은 INVALID_CREDENTIALS 로 응답한다 (계정 존재 여부를 숨긴다)', async () => {
+    const res = await http().post('/v1/auth/login').send({ username: 'nobody', password: PASSWORD });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
   });
@@ -244,7 +246,7 @@ describe('로그인과 내 정보', () => {
 
     res = await http().get('/v1/users/me').set('Authorization', `Bearer ${accessToken}`);
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ email: EMAIL, provider: 'EMAIL', gender: 'MALE' });
+    expect(res.body).toMatchObject({ username: USERNAME, email: EMAIL, provider: 'EMAIL', gender: 'MALE' });
   });
 });
 
@@ -307,7 +309,7 @@ describe('토큰 갱신과 로그아웃 (세션 기준)', () => {
     const phone = await signup();
     const login = await http()
       .post('/v1/auth/login')
-      .send({ email: EMAIL, password: PASSWORD, deviceId: 'tablet-1' });
+      .send({ username: USERNAME, password: PASSWORD, deviceId: 'tablet-1' });
     const tablet = login.body.tokens;
 
     await http()
@@ -353,7 +355,7 @@ describe('회원 탈퇴', () => {
     res = await http().delete('/v1/users/me').set(auth).send({ password: PASSWORD });
     expect(res.status).toBe(204);
 
-    res = await http().post('/v1/auth/login').send({ email: EMAIL, password: PASSWORD });
+    res = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
     expect(res.status).toBe(401);
 
     res = await http().get('/v1/users/me').set(auth);
