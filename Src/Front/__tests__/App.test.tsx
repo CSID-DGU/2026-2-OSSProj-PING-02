@@ -58,18 +58,31 @@ const renderApp = async () => {
   return renderer.root;
 };
 
-// 서비스(mock)에서 비동기로 받아 오는 내용이 나타날 때까지 기다림
-const waitForText = async (root: Instance, text: string, timeout = 3000) => {
+// 조건이 맞을 때까지 기다림 (서비스 mock의 지연 때문)
+const waitUntil = async (
+  check: () => boolean,
+  what: string,
+  timeout = 3000
+) => {
   const start = Date.now();
-  while (findText(root, text).length === 0) {
+  while (!check()) {
     if (Date.now() - start > timeout) {
-      throw new Error(`"${text}"가 ${timeout}ms 안에 나타나지 않았습니다`);
+      throw new Error(`${what}: ${timeout}ms 안에 되지 않았습니다`);
     }
     await ReactTestRenderer.act(
       () => new Promise<void>(resolve => setTimeout(resolve, 50))
     );
   }
 };
+
+// 서비스(mock)에서 비동기로 받아 오는 내용이 나타날 때까지 기다림
+const waitForText = (root: Instance, text: string, timeout = 3000) =>
+  waitUntil(() => findText(root, text).length > 0, `"${text}" 표시`, timeout);
+
+// 권한 요청이 끝날 때까지 (요청 중에는 버튼이 "여는 중…")
+// 스택 아래 화면에도 같은 이름의 버튼이 남아 있어, 요청이 끝난 뒤에 눌러야 맨 위 화면 것을 누름
+const waitForRequestDone = (root: Instance) =>
+  waitUntil(() => findText(root, "여는 중…").length === 0, "권한 요청 완료");
 
 test("스플래시에서 시작하기를 누르면 계정 시작 화면으로 이동한다", async () => {
   const root = await renderApp();
@@ -220,5 +233,32 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   expect(
     findText(root, "연락처로 친구 목록을\n먼저 만들어볼까요?").length
   ).toBe(1);
-});
+
+  // 08 연락처: 거절(mock) → 다시 요청하면 "다시 묻지 않음" → 설정 열기로 허용
+  await waitForText(root, "나중에도 가능해요");
+  await press(root, "연락처 가져오기");
+  await waitForText(root, "괜찮아요, 나중에 켜도 돼요");
+  await waitForRequestDone(root);
+  await press(root, "다시 요청하기");
+  await waitForText(
+    root,
+    "이제는 휴대폰 설정에서만 켤 수 있어요. 연락처 없이도 메신저 알림으로 친구를 하나씩 추가할 수 있어요."
+  );
+  await waitForRequestDone(root);
+  await press(root, "설정 열기");
+
+  // 09 친구 선택: 전체 선택이 기본, 한 명 빼면 버튼 숫자가 바뀜
+  await waitForText(root, "연락처 42명 모두 선택됨");
+  expect(findText(root, "선택한 42명 추가").length).toBe(1);
+  await toggle(root, "김민지");
+  expect(findText(root, "선택한 41명 추가").length).toBe(1);
+  expect(findText(root, "연락처 42명 중 41명 선택됨").length).toBe(1);
+  await press(root, "선택한 41명 추가");
+
+  // 10 친구 목록 완료 → 11
+  expect(findText(root, "친구 41명 추가 완료").length).toBe(1);
+  await press(root, "다음");
+  expect(findText(root, "내 상황을 조금\n알려주실래요?").length).toBe(1);
+  // 12개 화면을 mock 지연과 함께 거쳐서 기본 5초보다 오래 걸림
+}, 30000);
 
