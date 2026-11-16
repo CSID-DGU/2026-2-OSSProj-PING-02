@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { Button } from "@core/ui/button";
-import { Checkbox } from "@core/ui/checkbox";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
+import CheckRow from "@components/onboarding/CheckRow";
 import { LINKED_APP_OPTIONS, type LinkedApp } from "@constants/onboarding";
 import { useOnboardingStep } from "@hooks/useOnboardingStep";
 import { useOnboarding } from "@stores/OnboardingProvider";
 import * as s from "./LinkedApps_styled";
 
-// 05 / 연동 앱 선택: 앱 아이콘 위에 Checkbox가 붙은 가로 3칸 다중 선택
-// 최소 1개를 골라야 버튼이 켜짐 (Figma에 빈 상태가 없어 아래 안내 문구로 알려 줌)
+// 05 / 연동 앱 선택: 앱 아이콘 위에 체크 줄이 붙은 가로 3칸 다중 선택
+// 칸 전체(체크·이름·아이콘)를 누르면 토글. 최소 1개를 골라야 버튼이 켜짐
 const LinkedApps = () => {
   const { goNext } = useOnboardingStep("LinkedApps");
   const { data, update } = useOnboarding();
@@ -33,6 +33,7 @@ const LinkedApps = () => {
     <AuthLayout
       centered
       gap={32}
+      // TODO(Figma 문구 확인): 시안은 "말씨앗 시작하기"지만 흐름 중간이라 "다음"으로 둠
       footer={
         <Button
           variant="primary"
@@ -43,7 +44,7 @@ const LinkedApps = () => {
             empty ? "앱을 하나 이상 고르면 누를 수 있어요" : undefined
           }
         >
-          말씨앗 시작하기
+          다음
         </Button>
       }
     >
@@ -54,27 +55,21 @@ const LinkedApps = () => {
       />
 
       <s.AppRow>
-        {LINKED_APP_OPTIONS.map(app => {
-          const checked = selected.includes(app.value);
-          return (
-            <s.AppCell key={app.value}>
-              <Checkbox
-                label={app.label}
-                checked={checked}
-                onChange={() => toggle(app.value)}
-                emphasis
-              />
-              {/* 아이콘을 눌러도 선택되게. 스크린리더는 체크박스 하나만 읽도록 숨김 */}
-              <s.IconButton
-                onPress={() => toggle(app.value)}
-                accessible={false}
-                importantForAccessibility="no-hide-descendants"
-              >
-                <s.AppIcon source={app.icon} />
-              </s.IconButton>
-            </s.AppCell>
-          );
-        })}
+        {LINKED_APP_OPTIONS.map(app => (
+          <CheckRow
+            key={app.value}
+            checked={selected.includes(app.value)}
+            onToggle={() => toggle(app.value)}
+            label={app.label}
+            labelTone="brand"
+            centered
+            style={s.cellStyle}
+          >
+            <s.IconWrap>
+              <s.AppIcon source={app.icon} />
+            </s.IconWrap>
+          </CheckRow>
+        ))}
       </s.AppRow>
 
       <s.Caption accessibilityLiveRegion="polite">

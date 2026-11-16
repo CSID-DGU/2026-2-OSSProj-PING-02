@@ -2,10 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList } from "react-native";
 import { useTheme } from "styled-components/native";
 import { Button } from "@core/ui/button";
-import { Card } from "@core/ui/card";
-import { Checkbox } from "@core/ui/checkbox";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
+import CheckRow from "@components/onboarding/CheckRow";
 import Notice from "@components/onboarding/Notice";
 import SkipButton from "@components/onboarding/SkipButton";
 import { useOnboardingStep } from "@hooks/useOnboardingStep";
@@ -86,28 +85,18 @@ const ContactsSelect = () => {
         }
       />
       {load === "ready" && contacts.length > 0 && (
-        <Card
-          variant={allSelected ? "selected" : "default"}
-          style={s.rowStyle}
-        >
-          <Checkbox
-            label="전체 선택"
-            checked={allSelected}
-            onChange={toggleAll}
-            emphasis
-          />
-          <s.SubPress
-            onPress={toggleAll}
-            accessible={false}
-            importantForAccessibility="no-hide-descendants"
-          >
-            <s.SubText>
-              {allSelected
-                ? `연락처 ${contacts.length}명 모두 선택됨`
-                : `연락처 ${contacts.length}명 중 ${count}명 선택됨`}
-            </s.SubText>
-          </s.SubPress>
-        </Card>
+        <CheckRow
+          card={allSelected ? "selected" : "default"}
+          cardStyle={s.rowStyle}
+          checked={allSelected}
+          onToggle={toggleAll}
+          label="전체 선택"
+          description={
+            allSelected
+              ? `연락처 ${contacts.length}명 모두 선택됨`
+              : `연락처 ${contacts.length}명 중 ${count}명 선택됨`
+          }
+        />
       )}
       {load === "loading" && (
         <s.Center>
@@ -165,22 +154,14 @@ const ContactsSelect = () => {
         contentContainerStyle={s.listContent}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
-          <Card style={s.rowStyle}>
-            <Checkbox
-              label={item.name}
-              checked={selected.has(item.id)}
-              onChange={() => toggle(item.id)}
-              emphasis
-            />
-            {/* 전화번호를 눌러도 선택되게. 스크린리더는 체크박스 하나만 읽음 */}
-            <s.SubPress
-              onPress={() => toggle(item.id)}
-              accessible={false}
-              importantForAccessibility="no-hide-descendants"
-            >
-              <s.SubText>{item.phone}</s.SubText>
-            </s.SubPress>
-          </Card>
+          <CheckRow
+            card="default"
+            cardStyle={s.rowStyle}
+            checked={selected.has(item.id)}
+            onToggle={() => toggle(item.id)}
+            label={item.name}
+            description={item.phone}
+          />
         )}
       />
     </AuthLayout>

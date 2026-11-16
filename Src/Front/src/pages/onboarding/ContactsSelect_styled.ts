@@ -25,14 +25,3 @@ export const Center = styled.View`
   justify-content: center;
   align-items: center;
 `;
-
-// 체크박스(20) + 간격(10) 만큼 들여서 이름 아래에 맞춤
-export const SubPress = styled.Pressable`
-  padding-left: 30px;
-  padding-top: 2px;
-`;
-
-export const SubText = styled.Text`
-  ${({ theme }) => theme.fonts.bodySmall};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`;

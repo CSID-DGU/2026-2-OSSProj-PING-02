@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Button } from "@core/ui/button";
-import { Card } from "@core/ui/card";
-import { Checkbox } from "@core/ui/checkbox";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
+import CheckRow from "@components/onboarding/CheckRow";
 import Notice from "@components/onboarding/Notice";
 import PermissionGuide from "@components/onboarding/PermissionGuide";
 import SkipButton from "@components/onboarding/SkipButton";
@@ -83,27 +82,17 @@ const NotificationTypes = () => {
       />
 
       <s.Options>
-        {NOTIFICATION_PREF_OPTIONS.map(option => {
-          const checked = selected.includes(option.value);
-          return (
-            <Card key={option.value}>
-              <Checkbox
-                label={option.title}
-                checked={checked}
-                onChange={() => toggle(option.value)}
-                emphasis
-              />
-              {/* 설명을 눌러도 선택되게. 스크린리더는 체크박스 하나만 읽도록 숨김 */}
-              <s.DescriptionPress
-                onPress={() => toggle(option.value)}
-                accessible={false}
-                importantForAccessibility="no-hide-descendants"
-              >
-                <s.Description>{option.description}</s.Description>
-              </s.DescriptionPress>
-            </Card>
-          );
-        })}
+        {NOTIFICATION_PREF_OPTIONS.map(option => (
+          <CheckRow
+            key={option.value}
+            card="default"
+            cardStyle={s.cardStyle}
+            checked={selected.includes(option.value)}
+            onToggle={() => toggle(option.value)}
+            label={option.title}
+            description={option.description}
+          />
+        ))}
       </s.Options>
 
       {askedAndOff || state.load === "error" ? (

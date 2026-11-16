@@ -214,7 +214,7 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   // 05 연동 앱
   await waitForText(root, "카카오톡");
   await toggle(root, "카카오톡");
-  await press(root, "말씨앗 시작하기");
+  await press(root, "다음");
 
   // AI 모델 다운로드 → 06 받을 알림
   await waitForText(root, "나중에 받을게요");
@@ -252,6 +252,16 @@ test("로그인하면 Figma 순서대로 온보딩을 진행한다", async () =>
   expect(findText(root, "선택한 42명 추가").length).toBe(1);
   await toggle(root, "김민지");
   expect(findText(root, "선택한 41명 추가").length).toBe(1);
+  // 줄 전체가 체크박스 하나로 읽힘 (이름 + 전화번호, 선택 상태)
+  const row = root
+    .findAll(
+      node =>
+        typeof node.type === "string" &&
+        node.props.accessibilityLabel === "김민지, 010-1234-5678"
+    )
+    .at(-1);
+  expect(row?.props.accessibilityRole).toBe("checkbox");
+  expect(row?.props.accessibilityState).toMatchObject({ checked: false });
   expect(findText(root, "연락처 42명 중 41명 선택됨").length).toBe(1);
   await press(root, "선택한 41명 추가");
 
