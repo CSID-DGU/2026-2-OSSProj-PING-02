@@ -130,7 +130,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/auth/email/resend" \
   -H 'Content-Type: application/json' -d "{\"email\":\"$EMAIL\"}"
 ```
 
-응답 204. 이전 코드는 무효가 됩니다. 1분에 3회까지입니다.
+응답 204. 이전 코드는 무효가 됩니다. 1분에 3회(IP), **계정당 60초에 한 통**까지입니다. 가입 직후 60초 안에는 메일이 가지 않지만 응답은 같은 204이므로, "코드 다시 받기" 버튼을 60초 동안 비활성화해 주세요.
 
 ### 2.6 로그인
 
@@ -145,7 +145,7 @@ curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
 |---|---|
 | 200 `{ user, tokens }` | 성공 |
 | 403 `EMAIL_NOT_VERIFIED` | 비밀번호는 맞음. 인증 코드 화면으로 |
-| 401 `INVALID_CREDENTIALS` | 아이디 또는 비밀번호 불일치 |
+| 401 `INVALID_CREDENTIALS` | 아이디 또는 비밀번호 불일치. 5번 연속 틀리면 5분 잠기는데, 잠긴 동안은 맞는 비밀번호도 같은 401이고 잠겼다는 안내는 오지 않음 |
 
 `deviceId`는 선택입니다. 기기별로 세션을 나눕니다.
 
@@ -265,6 +265,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/auth/password/reset" \
 ## 3. 공통 주의
 
 - **에러 분기는 `error.code`로** 합니다. `message`는 사용자에게 보여줄 한국어 문장입니다.
+- 같은 계정으로 나가는 메일(인증 재발송, 아이디 찾기, 비밀번호 코드)은 종류별 60초에 한 통, 합쳐서 24시간에 10통까지입니다. 막혀도 응답은 같습니다.
 - **429 `RATE_LIMITED`** 에는 `Retry-After: 60` 헤더가 옵니다. 그 시간 뒤에 다시 시도합니다.
 - 요청 본문에 DTO에 없는 필드가 있으면 400으로 거부됩니다. 메시지 원문은 어떤 요청에도 보내지 않습니다.
 - 이메일과 아이디는 서버에서 소문자로 바꾸고 앞뒤 공백을 지웁니다.
