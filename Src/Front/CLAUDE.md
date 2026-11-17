@@ -40,6 +40,7 @@
 - [src/services/index.ts](src/services/index.ts)가 교체 지점: 인터페이스 + mock. 실제 API·네이티브 모듈이 준비되면 여기만 바꿈
 - mock 테스트 계정: **아이디 `malssiat` / 비밀번호 `abcd1234`** (이메일 `demo@malssiat.app`), 인증 코드 `123456`
 - 개발 옵션 (services/index.ts): 권한 `DEV_PERMISSION_SCENARIO = "deny"`로 거부 흐름, 모델 `failFirstAttemptAt`로 다운로드 실패, 네트워크 `"cellular"`
+- 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
 - mock 저장소는 메모리라 앱을 완전히 끄면 로그인·진행 상황이 초기화됨
 
 ## 팀 Git 규칙
@@ -63,6 +64,7 @@
 - 07·08 설명 문구 (시안에서 제목과 겹침, 임시 문구)
 - 11 AI 메모리 상세 작성 시안 (입력창 + 예시 칩으로 임시)
 - Figma와 다르게 간 부분: 온보딩 뒤로가기 화살표 추가, 03 아이콘을 위로, 05 버튼 "다음", 11 버튼 "‘요즘 나의 상태’부터 쓰기", AI 모델 다운로드 화면 추가
+- 04 연락: 앱바 햄버거·프로필 생략, "Label" 자리는 화면 이름, ○/● 카드는 `RadioCard`(Card 조합), 09-C는 ○ 3줄+버튼 2개 → 안내 줄 + ○ 2개 + 버튼 1개로 합침, 09-C 질문 있을 때 제목·설명(임시), 10 "복사하고 메신저 열기" 추가, 잘린 메시지 화면 시안 없음
 
 팀 결정 필요
 - 자동 로그인 여부 미확정 (지금은 앱을 끄면 로그아웃, 토큰은 메모리에만)
@@ -74,9 +76,12 @@
 
 네이티브·API 연결
 - 권한·연락처·모델 다운로드·클립보드·메신저 열기·바로 답장: Kotlin 모듈로 교체
+- 연락: `MessengerService`(복사·앱 열기·`canReplyDirectly`·`sendReply`), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기
 - 저장소: AsyncStorage/암호화 저장소, 친구 목록은 기기 안 암호화 DB
 
 ## 다음 작업
 
-- **홈·연락 화면** (`feat/home` 브랜치, feat/onboarding 기준): 하단 탭(글자 탭 임시), 홈, 연락 목록·미뤄둔 답장까지 로컬 커밋됨. 남은 것: 연락 상세·답장 후보(09-A·B·C)·답장 수정(10)·나중에 답하기(11)·단톡·잘린 메시지
+- **05 친구** (다음 작업): 시안·이슈 확인부터. 이슈 초안을 쓰고 번호를 받은 뒤 브랜치 생성
+- 완료: 하단 탭바·홈(임시)·04 연락 전체(07·08·09-A·B·C·10·11·12·잘린 메시지) → `feat/#29-contacts` (PR 리뷰 대기)
+- 보류: 인증 API 연결 `feat/#27-auth-api` (백엔드 수정 대기, push 안 함, 마지막 커밋은 작업 중이라 tsc 실패). 재개할 때 main 위로 rebase하면서 CLAUDE.md 규칙 커밋 중복 정리
 - 시안: `docs/figma/home` (04 연락은 와이어프레임 → 구조·문구만 따르고 색·컴포넌트는 design-system)
