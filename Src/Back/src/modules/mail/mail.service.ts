@@ -35,26 +35,14 @@ export class MailService {
     });
   }
 
-  /** 가입 이메일 인증 코드 */
-  async sendVerificationCode(to: string, code: string): Promise<void> {
-    await this.send(
-      to,
-      '[말씨앗] 이메일 인증 코드',
-      `말씨앗 가입을 완료하려면 아래 인증 코드를 앱에 입력해 주세요.\n\n` +
-        `인증 코드: ${code}\n\n` +
-        `코드는 10분 동안만 유효합니다. 본인이 가입하지 않았다면 이 메일을 무시해 주세요.`,
-      '인증 메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.',
-    );
-  }
-
-  /** 아이디 찾기: 가입한 이메일로 아이디를 알려 준다. */
-  async sendUsername(to: string, username: string): Promise<void> {
+  /** 아이디 찾기: 가입할 때 적은 이메일로 아이디를 알려 준다. 같은 이메일로 여러 계정이 있으면 모두 알려 준다. */
+  async sendUsername(to: string, usernames: string[]): Promise<void> {
     await this.send(
       to,
       '[말씨앗] 아이디 안내',
-      `말씨앗에 가입한 아이디입니다.\n\n` +
-        `아이디: ${username}\n\n` +
-        `본인이 요청하지 않았다면 이 메일을 무시해 주세요.`,
+      `말씨앗에 이 이메일로 등록된 아이디입니다.\n\n` +
+        usernames.map((u) => `아이디: ${u}`).join('\n') +
+        `\n\n본인이 요청하지 않았다면 이 메일을 무시해 주세요.`,
       '메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.',
     );
   }

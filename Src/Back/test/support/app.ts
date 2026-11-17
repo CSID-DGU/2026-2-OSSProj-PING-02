@@ -5,49 +5,29 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { TermsType } from '../../src/common/enums';
-import { AppException } from '../../src/common/errors/app.exception';
-import { ErrorCode } from '../../src/common/errors/error-codes';
 import { AppVersion } from '../../src/database/entities/app-version.entity';
 import { Terms } from '../../src/database/entities/terms.entity';
 import { MailService } from '../../src/modules/mail/mail.service';
 
 /**
- * 테스트용 메일 발송기. 실제 SMTP 대신 보낸 코드를 기억해 두었다가 테스트가 읽게 한다.
- * failNext 를 켜면 다음 발송이 실패한다(발송 실패 시 가입 롤백 검증용).
+ * 테스트용 메일 발송기. 실제 SMTP 대신 보낸 내용을 기억해 두었다가 테스트가 읽게 한다.
  */
 export class FakeMailService {
-  readonly sent: Array<{ to: string; code: string }> = [];
   readonly resets: Array<{ to: string; code: string }> = [];
-  readonly usernames: Array<{ to: string; username: string }> = [];
-  failNext = false;
-
-  async sendVerificationCode(to: string, code: string): Promise<void> {
-    if (this.failNext) {
-      this.failNext = false;
-      throw new AppException(ErrorCode.UPSTREAM_UNAVAILABLE, '인증 메일을 보내지 못했습니다.', 503);
-    }
-    this.sent.push({ to, code });
-  }
+  readonly usernames: Array<{ to: string; usernames: string[] }> = [];
 
   async sendPasswordResetCode(to: string, code: string): Promise<void> {
     this.resets.push({ to, code });
   }
 
-  async sendUsername(to: string, username: string): Promise<void> {
-    this.usernames.push({ to, username });
+  async sendUsername(to: string, usernames: string[]): Promise<void> {
+    this.usernames.push({ to, usernames });
   }
 
   /** 해당 주소로 마지막에 보낸 비밀번호 재설정 코드 */
   resetCodeFor(to: string): string {
     const found = [...this.resets].reverse().find((m) => m.to === to);
     if (!found) throw new Error(`no reset mail for ${to}`);
-    return found.code;
-  }
-
-  /** 해당 주소로 마지막에 보낸 인증 코드 */
-  codeFor(to: string): string {
-    const found = [...this.sent].reverse().find((m) => m.to === to);
-    if (!found) throw new Error(`no verification mail for ${to}`);
     return found.code;
   }
 }
@@ -79,7 +59,7 @@ export async function startApp(): Promise<TestContext> {
 
   const ds = app.get(DataSource);
   await ds.query(
-    'TRUNCATE TABLE users, auth_providers, refresh_tokens, email_verifications, terms_agreements, terms, model_releases, app_versions RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE users, auth_providers, refresh_tokens, password_resets, terms_agreements, terms, model_releases, app_versions RESTART IDENTITY CASCADE',
   );
 
   const termsRepo = ds.getRepository(Terms);
@@ -110,26 +90,16 @@ export async function startApp(): Promise<TestContext> {
   return { app, ds, mail, termsIds: { service: service.id, privacy: privacy.id } };
 }
 
-/**
- * 가입 → 메일로 온 코드 확인까지 끝내고 토큰을 받는다.
- * 이메일 인증이 필요한 테스트가 공통으로 쓴다.
- */
-export async function registerVerified(
+/** 가입하고 바로 받은 토큰을 돌려준다(이메일 인증은 없다). 로그인이 필요한 테스트가 공통으로 쓴다. */
+export async function register(
   ctx: TestContext,
   body: Record<string, unknown>,
 ): Promise<{ userId: string; accessToken: string; refreshToken: string }> {
-  const email = String(body.email);
   const signed = await request(ctx.app.getHttpServer()).post('/v1/auth/signup').send(body);
   if (signed.status !== 201) throw new Error(`signup failed: ${signed.status} ${JSON.stringify(signed.body)}`);
-
-  const verified = await request(ctx.app.getHttpServer())
-    .post('/v1/auth/email/verify')
-    .send({ email, code: ctx.mail.codeFor(email) });
-  if (verified.status !== 200) throw new Error(`verify failed: ${verified.status} ${JSON.stringify(verified.body)}`);
-
   return {
-    userId: verified.body.user.id,
-    accessToken: verified.body.tokens.accessToken,
-    refreshToken: verified.body.tokens.refreshToken,
+    userId: signed.body.user.id,
+    accessToken: signed.body.tokens.accessToken,
+    refreshToken: signed.body.tokens.refreshToken,
   };
 }

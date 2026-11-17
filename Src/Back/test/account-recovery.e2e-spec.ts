@@ -1,6 +1,5 @@
-import { createHmac } from 'crypto';
 import request from 'supertest';
-import { registerVerified, startApp, TestContext, usernameOf } from './support/app';
+import { register, startApp, TestContext, usernameOf } from './support/app';
 
 const EMAIL = 'recover@example.com';
 const USERNAME = usernameOf(EMAIL);
@@ -34,9 +33,9 @@ const signupBody = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-/** 가입 + 메일 코드 확인까지 끝낸 회원 */
+/** 가입하고 토큰을 받은 회원 (이메일 인증은 없다) */
 const verifiedUser = (overrides: Record<string, unknown> = {}) =>
-  registerVerified(ctx, signupBody(overrides));
+  register(ctx, signupBody(overrides));
 
 const login = (username: string, password: string) =>
   http().post('/v1/auth/login').send({ username, password });
@@ -103,17 +102,33 @@ describe('가입 시 아이디', () => {
     expect(res.body.error.code).toBe('USERNAME_ALREADY_EXISTS');
   });
 
-  it('같은 이메일이면 아이디가 달라도 409 EMAIL_ALREADY_EXISTS 다', async () => {
+  it('이메일은 인증하지 않으므로 같은 이메일로 다른 아이디를 가입할 수 있다 (남이 이메일을 선점해도 막히지 않음)', async () => {
     await verifiedUser();
     const res = await http()
       .post('/v1/auth/signup')
       .send(signupBody({ username: 'someone_else' }));
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe('EMAIL_ALREADY_EXISTS');
+    expect(res.status).toBe(201);
+    expect(await ctx.ds.query('SELECT COUNT(*)::int AS n FROM users')).toEqual([{ n: 2 }]);
+  });
+
+  it('가입에 이메일이 없거나 형식이 틀리면 400 이다', async () => {
+    const { email: _omit, ...withoutEmail } = signupBody();
+    const missing = await http().post('/v1/auth/signup').send(withoutEmail);
+    expect(missing.status).toBe(400);
+
+    const bad = await http().post('/v1/auth/signup').send(signupBody({ email: 'not-an-email' }));
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.code).toBe('INVALID_EMAIL_FORMAT');
+  });
+
+  it('이메일 인증과 이메일 중복 확인 경로는 없다', async () => {
+    for (const path of ['/v1/auth/email/check', '/v1/auth/email/verify', '/v1/auth/email/resend']) {
+      expect((await http().post(path).send({})).status).toBe(404);
+    }
   });
 
   it('대문자로 보내면 소문자로 저장되어 그 아이디로 로그인된다', async () => {
-    await registerVerified(ctx, signupBody({ username: 'MixedCase_01' }));
+    await register(ctx, signupBody({ username: 'MixedCase_01' }));
     const stored = await ctx.ds.query('SELECT username FROM users');
     expect(stored[0].username).toBe('mixedcase_01');
 
@@ -133,20 +148,21 @@ describe('아이디 찾기', () => {
     const res = await http().post('/v1/auth/username/find').send({ email: EMAIL });
     expect(res.status).toBe(204);
     expect(res.text).toBe('');
-    expect(ctx.mail.usernames).toEqual([{ to: EMAIL, username: USERNAME }]);
+    expect(ctx.mail.usernames).toEqual([{ to: EMAIL, usernames: [USERNAME] }]);
+  });
+
+  it('같은 이메일로 만든 계정이 여럿이면 한 통에 아이디를 모두 보낸다', async () => {
+    await verifiedUser();
+    await verifiedUser({ username: 'second_account' });
+    await http().post('/v1/auth/username/find').send({ email: EMAIL });
+    expect(ctx.mail.usernames).toHaveLength(1);
+    expect(ctx.mail.usernames[0].usernames.sort()).toEqual([USERNAME, 'second_account'].sort());
   });
 
   it('가입하지 않은 이메일에도 같은 204 를 주고 메일은 보내지 않는다', async () => {
     const res = await http().post('/v1/auth/username/find').send({ email: 'nobody@example.com' });
     expect(res.status).toBe(204);
     expect(res.text).toBe('');
-    expect(ctx.mail.usernames).toHaveLength(0);
-  });
-
-  it('이메일 인증을 마치지 않은 계정에는 보내지 않는다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http().post('/v1/auth/username/find').send({ email: EMAIL });
-    expect(res.status).toBe(204);
     expect(ctx.mail.usernames).toHaveLength(0);
   });
 
@@ -185,13 +201,6 @@ describe('비밀번호 찾기 1단계: 재설정 코드 요청', () => {
     expect(ctx.mail.resets).toHaveLength(0);
   });
 
-  it('이메일 인증을 마치지 않은 계정에는 보내지 않는다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http().post('/v1/auth/password/forgot').send({ username: USERNAME, email: EMAIL });
-    expect(res.status).toBe(204);
-    expect(ctx.mail.resets).toHaveLength(0);
-  });
-
   it('60초 안에 다시 요청하면 새 메일을 보내지 않고, 지나면 보낸다', async () => {
     await verifiedUser();
     const body = { username: USERNAME, email: EMAIL };
@@ -200,19 +209,18 @@ describe('비밀번호 찾기 1단계: 재설정 코드 요청', () => {
     expect(ctx.mail.resets).toHaveLength(1);
 
     await ctx.ds.query(
-      `UPDATE email_verifications SET created_at = now() - interval '2 minutes' WHERE purpose = 'PASSWORD_RESET'`,
+      `UPDATE password_resets SET created_at = now() - interval '2 minutes'`,
     );
     await http().post('/v1/auth/password/forgot').send(body);
     expect(ctx.mail.resets).toHaveLength(2);
   });
 
-  it('DB 에는 코드 원문이 아니라 64자 해시만, 용도와 함께 저장된다', async () => {
+  it('DB 에는 코드 원문이 아니라 64자 해시만 저장된다', async () => {
     await verifiedUser();
     await http().post('/v1/auth/password/forgot').send({ username: USERNAME, email: EMAIL });
     const code = ctx.mail.resetCodeFor(EMAIL);
-    const rows = await ctx.ds.query(`SELECT code_hash, purpose FROM email_verifications`);
+    const rows = await ctx.ds.query(`SELECT code_hash FROM password_resets`);
     expect(rows).toHaveLength(1);
-    expect(rows[0].purpose).toBe('PASSWORD_RESET');
     expect(rows[0].code_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(rows[0].code_hash).not.toBe(code);
   });
@@ -287,14 +295,14 @@ describe('비밀번호 찾기 2단계: 코드 확인과 새 비밀번호', () =>
     expect(res.body.error.code).toBe('VERIFICATION_CODE_INVALID');
     expect((await login(USERNAME, PASSWORD)).status).toBe(200);
 
-    const rows = await ctx.ds.query(`SELECT attempts FROM email_verifications WHERE purpose = 'PASSWORD_RESET'`);
+    const rows = await ctx.ds.query(`SELECT attempts FROM password_resets`);
     expect(rows[0].attempts).toBe(1);
   });
 
   it('틀린 입력이 5번 쌓이면 맞는 코드도 받지 못한다 (무차별 대입 차단)', async () => {
     await verifiedUser();
     const real = await requestCode();
-    await ctx.ds.query(`UPDATE email_verifications SET attempts = 5 WHERE purpose = 'PASSWORD_RESET'`);
+    await ctx.ds.query(`UPDATE password_resets SET attempts = 5`);
 
     const res = await http()
       .post('/v1/auth/password/reset')
@@ -307,7 +315,7 @@ describe('비밀번호 찾기 2단계: 코드 확인과 새 비밀번호', () =>
   it('만료된 코드는 400 이다', async () => {
     await verifiedUser();
     const code = await requestCode();
-    await ctx.ds.query(`UPDATE email_verifications SET expires_at = now() - interval '1 minute'`);
+    await ctx.ds.query(`UPDATE password_resets SET expires_at = now() - interval '1 minute'`);
 
     const res = await http()
       .post('/v1/auth/password/reset')
@@ -324,38 +332,14 @@ describe('비밀번호 찾기 2단계: 코드 확인과 새 비밀번호', () =>
     expect(res.body.error.code).toBe('VERIFICATION_CODE_INVALID');
   });
 
-  it('재설정을 요청한 적이 없으면 가입 인증 때 받은 코드를 흉내 내도 통하지 않는다', async () => {
-    // 가입 인증 코드는 가입 직후 인증하면서 지워졌다. 재가입 직전 단계의 코드로도 비밀번호는 못 바꾼다.
-    await http().post('/v1/auth/signup').send(signupBody());
-    const verifyCode = ctx.mail.codeFor(EMAIL);
-    await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: verifyCode });
-
+  it('재설정을 요청하지 않았다면 아무 코드도 통하지 않는다', async () => {
+    await verifiedUser();
     const res = await http()
       .post('/v1/auth/password/reset')
-      .send({ username: USERNAME, code: verifyCode, newPassword: NEW_PASSWORD });
+      .send({ username: USERNAME, code: '123456', newPassword: NEW_PASSWORD });
     expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VERIFICATION_CODE_INVALID');
     expect((await login(USERNAME, PASSWORD)).status).toBe(200);
-  });
-
-  it('같은 숫자라도 용도가 다르면 해시가 달라서 가입 인증 코드로는 비밀번호를 못 바꾼다', async () => {
-    await verifiedUser();
-    await requestCode();
-    const userId = (await ctx.ds.query('SELECT id FROM users'))[0].id;
-    const hashFor = (tag: string, code: string) =>
-      createHmac('sha256', process.env.JWT_SECRET!).update(`${tag}:${userId}:${code}`).digest('hex');
-    const body = { username: USERNAME, code: '123456', newPassword: NEW_PASSWORD };
-
-    // 가입 인증용(email-verify)으로 계산한 해시가 들어 있으면 같은 숫자를 내도 거부된다
-    await ctx.ds.query(`UPDATE email_verifications SET code_hash = $1 WHERE purpose = 'PASSWORD_RESET'`, [
-      hashFor('email-verify', '123456'),
-    ]);
-    expect((await http().post('/v1/auth/password/reset').send(body)).status).toBe(400);
-
-    // 비교 대조: 재설정용(password-reset)으로 계산한 해시면 같은 숫자로 통과한다 (시험 방식 자체가 맞는지 확인)
-    await ctx.ds.query(`UPDATE email_verifications SET attempts = 0, code_hash = $1 WHERE purpose = 'PASSWORD_RESET'`, [
-      hashFor('password-reset', '123456'),
-    ]);
-    expect((await http().post('/v1/auth/password/reset').send(body)).status).toBe(204);
   });
 
   it('새 비밀번호가 규칙(8자 이상, 영문+숫자)에 맞지 않으면 400 이고 코드는 그대로 쓸 수 있다', async () => {

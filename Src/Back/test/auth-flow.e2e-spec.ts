@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { registerVerified, startApp, TestContext, usernameOf } from './support/app';
+import { register, startApp, TestContext, usernameOf } from './support/app';
 
 const EMAIL = 'flow@example.com';
 const USERNAME = usernameOf(EMAIL);
@@ -31,49 +31,51 @@ const signupBody = (email = EMAIL, password = PASSWORD) => ({
   ],
 });
 
-/** 가입 + 메일 코드 확인까지 끝낸 회원을 만든다. */
-const signup = (email = EMAIL) => registerVerified(ctx, signupBody(email));
+/** 가입하고 토큰을 받은 회원을 만든다. */
+const signup = (email = EMAIL) => register(ctx, signupBody(email));
 
 async function countRows(table: string): Promise<number> {
   const rows = await ctx.ds.query(`SELECT COUNT(*)::int AS n FROM ${table}`);
   return rows[0].n;
 }
 
-describe('이메일 중복 확인', () => {
-  it('가입 전에는 사용 가능, 가입 후에는 불가능으로 응답한다', async () => {
-    let res = await http().post('/v1/auth/email/check').send({ email: EMAIL });
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ available: true });
-
-    await signup();
-
-    res = await http().post('/v1/auth/email/check').send({ email: EMAIL });
-    expect(res.body).toEqual({ available: false });
-  });
-
-  it('형식이 틀리면 INVALID_EMAIL_FORMAT 으로 응답한다', async () => {
-    const res = await http().post('/v1/auth/email/check').send({ email: 'not-an-email' });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('INVALID_EMAIL_FORMAT');
-  });
-});
-
-describe('회원가입', () => {
-  it('성공하면 201 과 인증 필요 표시를 주고, 토큰은 주지 않는다. 인증 메일은 해당 주소로 간다', async () => {
+describe('회원가입 (이메일 인증 없음)', () => {
+  it('성공하면 201 과 토큰을 바로 준다. 인증 코드 메일은 보내지 않는다', async () => {
     const res = await http().post('/v1/auth/signup').send(signupBody());
     expect(res.status).toBe(201);
-    expect(res.body.user).toMatchObject({ username: USERNAME, name: '홍길동', email: EMAIL });
-    expect(res.body.verificationRequired).toBe(true);
-    expect(res.body.tokens).toBeUndefined();
-
-    expect(ctx.mail.codeFor(EMAIL)).toMatch(/^\d{6}$/);
+    expect(res.body.user).toEqual({ id: expect.any(String), username: USERNAME, name: '홍길동', email: EMAIL });
+    expect(res.body.tokens.accessToken).toBeDefined();
+    expect(res.body.tokens.refreshToken).toBeDefined();
+    expect(res.body.verificationRequired).toBeUndefined();
+    expect(ctx.mail.resets).toHaveLength(0);
+    expect(ctx.mail.usernames).toHaveLength(0);
   });
 
-  it('같은 이메일이면 409 EMAIL_ALREADY_EXISTS', async () => {
+  it('가입하자마자 받은 토큰으로 내 정보를 볼 수 있고, 같은 비밀번호로 바로 로그인된다', async () => {
+    const { accessToken } = await signup();
+    const me = await http().get('/v1/users/me').set('Authorization', `Bearer ${accessToken}`);
+    expect(me.status).toBe(200);
+
+    const login = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
+    expect(login.status).toBe(200);
+  });
+
+  it('같은 아이디면 409 USERNAME_ALREADY_EXISTS', async () => {
     await signup();
     const res = await http().post('/v1/auth/signup').send(signupBody());
     expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe('EMAIL_ALREADY_EXISTS');
+    expect(res.body.error.code).toBe('USERNAME_ALREADY_EXISTS');
+    expect(await countRows('users')).toBe(1);
+  });
+
+  it('같은 아이디로 동시에 가입하면 한 명만 만들어지고 나머지는 409 이다', async () => {
+    const results = await Promise.all([
+      http().post('/v1/auth/signup').send(signupBody()),
+      http().post('/v1/auth/signup').send(signupBody()),
+      http().post('/v1/auth/signup').send(signupBody()),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+    expect(await countRows('users')).toBe(1);
   });
 
   it('필수 약관에 동의하지 않으면 422 REQUIRED_TERMS_NOT_AGREED', async () => {
@@ -81,6 +83,7 @@ describe('회원가입', () => {
     const res = await http().post('/v1/auth/signup').send(body);
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('REQUIRED_TERMS_NOT_AGREED');
+    expect(await countRows('users')).toBe(0);
   });
 
   it('비밀번호가 영문+숫자 8자 규칙을 어기면 400 VALIDATION_FAILED', async () => {
@@ -92,127 +95,10 @@ describe('회원가입', () => {
     );
   });
 
-  it('인증 메일 발송에 실패하면 503 이고 회원은 만들어지지 않는다 (롤백)', async () => {
-    ctx.mail.failNext = true;
-    const res = await http().post('/v1/auth/signup').send(signupBody());
-    expect(res.status).toBe(503);
-    expect(res.body.error.code).toBe('UPSTREAM_UNAVAILABLE');
-    expect(await countRows('users')).toBe(0);
-    expect(await countRows('terms_agreements')).toBe(0);
-
-    // 다시 가입하면 정상으로 된다
-    const retry = await http().post('/v1/auth/signup').send(signupBody());
-    expect(retry.status).toBe(201);
-  });
-});
-
-describe('이메일 인증', () => {
-  it('인증 전에는 비밀번호가 맞아도 로그인이 403 EMAIL_NOT_VERIFIED 로 막힌다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('EMAIL_NOT_VERIFIED');
-  });
-
-  it('인증 전 틀린 비밀번호는 401 이다 (인증 여부를 먼저 드러내지 않는다)', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: 'wrong1234' });
-    expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
-  });
-
-  it('맞는 코드를 입력하면 인증되고 토큰을 받으며, 이후 로그인이 된다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http()
-      .post('/v1/auth/email/verify')
-      .send({ email: EMAIL, code: ctx.mail.codeFor(EMAIL) });
-    expect(res.status).toBe(200);
-    expect(res.body.tokens.accessToken).toBeDefined();
-
-    const login = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
-    expect(login.status).toBe(200);
-  });
-
-  it('틀린 코드는 400 VERIFICATION_CODE_INVALID 이다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const real = ctx.mail.codeFor(EMAIL);
-    const wrong = real === '000000' ? '000001' : '000000';
-
-    const res = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: wrong });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VERIFICATION_CODE_INVALID');
-  });
-
-  it('틀린 입력이 5번 쌓이면 맞는 코드도 받지 못한다 (무차별 대입 차단)', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const real = ctx.mail.codeFor(EMAIL);
-    const wrong = real === '000000' ? '000001' : '000000';
-
-    for (let i = 0; i < 5; i++) {
-      await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: wrong });
+  it('이메일 인증·재발송·이메일 중복 확인 경로는 더 이상 없다', async () => {
+    for (const path of ['/v1/auth/email/check', '/v1/auth/email/verify', '/v1/auth/email/resend']) {
+      expect((await http().post(path).send({})).status).toBe(404);
     }
-    const res = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: real });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VERIFICATION_CODE_INVALID');
-  });
-
-  it('만료된 코드는 400 이다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    await ctx.ds.query(`UPDATE email_verifications SET expires_at = now() - interval '1 minute'`);
-
-    const res = await http()
-      .post('/v1/auth/email/verify')
-      .send({ email: EMAIL, code: ctx.mail.codeFor(EMAIL) });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VERIFICATION_CODE_INVALID');
-  });
-
-  it('인증이 끝난 코드는 다시 쓸 수 없다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const code = ctx.mail.codeFor(EMAIL);
-    await http().post('/v1/auth/email/verify').send({ email: EMAIL, code });
-
-    const again = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code });
-    expect(again.status).toBe(400);
-  });
-
-  it('재발송하면 새 코드가 가고, 이전 코드는 더 이상 통하지 않는다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const first = ctx.mail.codeFor(EMAIL);
-
-    const resend = await http().post('/v1/auth/email/resend').send({ email: EMAIL });
-    expect(resend.status).toBe(204);
-    const second = ctx.mail.codeFor(EMAIL);
-    expect(ctx.mail.sent.filter((m) => m.to === EMAIL)).toHaveLength(2);
-
-    if (first !== second) {
-      const old = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: first });
-      expect(old.status).toBe(400);
-    }
-    const ok = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: second });
-    expect(ok.status).toBe(200);
-  });
-
-  it('재발송은 없는 이메일에도 같은 204 를 준다 (가입 여부를 드러내지 않음)', async () => {
-    const res = await http().post('/v1/auth/email/resend').send({ email: 'nobody@example.com' });
-    expect(res.status).toBe(204);
-    expect(ctx.mail.sent).toHaveLength(0);
-  });
-
-  it('코드 형식이 6자리 숫자가 아니면 400 VALIDATION_FAILED', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const res = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: '12345' });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VALIDATION_FAILED');
-  });
-
-  it('DB 에는 코드 원문이 아니라 64자 해시만 저장된다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const code = ctx.mail.codeFor(EMAIL);
-    const rows = await ctx.ds.query('SELECT code_hash FROM email_verifications');
-    expect(rows).toHaveLength(1);
-    expect(rows[0].code_hash).toMatch(/^[a-f0-9]{64}$/);
-    expect(rows[0].code_hash).not.toBe(code);
   });
 });
 
@@ -222,6 +108,7 @@ describe('로그인과 내 정보', () => {
     const res = await http().post('/v1/auth/login').send({ username: USERNAME, password: PASSWORD });
     expect(res.status).toBe(200);
     expect(res.body.tokens.accessToken).toBeDefined();
+    expect(res.body.user.username).toBe(USERNAME);
   });
 
   it('비밀번호가 틀리면 401 INVALID_CREDENTIALS', async () => {
@@ -232,9 +119,11 @@ describe('로그인과 내 정보', () => {
   });
 
   it('없는 아이디도 같은 INVALID_CREDENTIALS 로 응답한다 (계정 존재 여부를 숨긴다)', async () => {
-    const res = await http().post('/v1/auth/login').send({ username: 'nobody', password: PASSWORD });
-    expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
+    await signup();
+    const wrongPw = await http().post('/v1/auth/login').send({ username: USERNAME, password: 'wrong1234' });
+    const noUser = await http().post('/v1/auth/login').send({ username: 'nobody', password: PASSWORD });
+    expect(noUser.status).toBe(401);
+    expect(noUser.body).toEqual(wrongPw.body);
   });
 
   it('토큰 없이 /users/me 를 부르면 401, 토큰이 있으면 내 정보를 준다', async () => {
@@ -250,7 +139,7 @@ describe('로그인과 내 정보', () => {
   });
 });
 
-describe('토큰 갱신과 로그아웃 (세션 기준)', () => {
+describe('토큰 갱신과 로그아웃 (세션 기준, 자동 로그인)', () => {
   it('refresh 하면 새 토큰을 주고, 이전 refreshToken 재사용은 401 이다', async () => {
     const { refreshToken } = await signup();
 
@@ -277,6 +166,28 @@ describe('토큰 갱신과 로그아웃 (세션 기준)', () => {
     expect(fresh.status).toBe(200);
   });
 
+  it('갱신할 때마다 만료일이 그 시점부터 다시 계산된다 (자주 쓰면 자동 로그인이 유지됨)', async () => {
+    const { refreshToken } = await signup();
+    await ctx.ds.query(`UPDATE refresh_tokens SET expires_at = now() + interval '1 day'`);
+
+    const refreshed = await http().post('/v1/auth/refresh').send({ refreshToken });
+    expect(refreshed.status).toBe(200);
+
+    const rows = await ctx.ds.query(
+      `SELECT (expires_at > now() + interval '29 days') AS long FROM refresh_tokens WHERE replaced_by IS NULL AND revoked_at IS NULL`,
+    );
+    expect(rows).toEqual([{ long: true }]);
+  });
+
+  it('만료된 refreshToken 은 401 이다 (다시 로그인해야 함)', async () => {
+    const { refreshToken } = await signup();
+    await ctx.ds.query(`UPDATE refresh_tokens SET expires_at = now() - interval '1 minute'`);
+
+    const res = await http().post('/v1/auth/refresh').send({ refreshToken });
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('REFRESH_TOKEN_INVALID');
+  });
+
   it('재사용이 감지되면 그 세션의 accessToken 도 즉시 무효가 된다', async () => {
     const { refreshToken } = await signup();
     const rotated = await http().post('/v1/auth/refresh').send({ refreshToken });
@@ -286,6 +197,15 @@ describe('토큰 갱신과 로그아웃 (세션 기준)', () => {
       .get('/v1/users/me')
       .set('Authorization', `Bearer ${rotated.body.accessToken}`);
     expect(res.status).toBe(401);
+  });
+
+  it('같은 refreshToken 으로 동시에 갱신하면 한쪽만 성공한다', async () => {
+    const { refreshToken } = await signup();
+    const results = await Promise.all([
+      http().post('/v1/auth/refresh').send({ refreshToken }),
+      http().post('/v1/auth/refresh').send({ refreshToken }),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 401]);
   });
 
   it('로그아웃하면 204, 그 refreshToken 은 쓸 수 없고, accessToken 도 즉시 401 이다', async () => {
@@ -361,6 +281,17 @@ describe('회원 탈퇴', () => {
     res = await http().get('/v1/users/me').set(auth);
     expect(res.status).toBe(401);
   });
+
+  it('탈퇴하면 같은 아이디로 다시 가입할 수 있다', async () => {
+    const { accessToken } = await signup();
+    await http()
+      .delete('/v1/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ password: PASSWORD });
+
+    const again = await http().post('/v1/auth/signup').send(signupBody());
+    expect(again.status).toBe(201);
+  });
 });
 
 describe('앱 버전과 모델', () => {
@@ -383,73 +314,6 @@ describe('앱 버전과 모델', () => {
       .set('Authorization', `Bearer ${accessToken}`);
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('MODEL_NOT_FOUND');
-  });
-});
-
-describe('인증을 끝내지 못한 가입의 재가입', () => {
-  const ageUsers = () => ctx.ds.query(`UPDATE users SET created_at = now() - interval '2 minutes'`);
-
-  it('가입 직후(60초 안)에는 같은 이메일로 다시 가입할 수 없다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const again = await http().post('/v1/auth/signup').send(signupBody());
-    expect(again.status).toBe(409);
-    expect(ctx.mail.sent).toHaveLength(1);
-  });
-
-  it('60초가 지나면 같은 이메일로 다시 가입하고, 이전 미인증 계정과 코드는 사라진다', async () => {
-    await http().post('/v1/auth/signup').send(signupBody());
-    const oldCode = ctx.mail.codeFor(EMAIL);
-    await ageUsers();
-
-    const again = await http().post('/v1/auth/signup').send(signupBody(EMAIL, 'newpass5678'));
-    expect(again.status).toBe(201);
-    expect(await countRows('users')).toBe(1);
-    expect(await countRows('email_verifications')).toBe(1);
-
-    const newCode = ctx.mail.codeFor(EMAIL);
-    if (oldCode !== newCode) {
-      const stale = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: oldCode });
-      expect(stale.status).toBe(400);
-    }
-    const ok = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: newCode });
-    expect(ok.status).toBe(200);
-    const loggedIn = await http().post('/v1/auth/login').send({ username: USERNAME, password: 'newpass5678' });
-    expect(loggedIn.status).toBe(200);
-  });
-
-  it('이메일을 고쳐서 같은 아이디로 다시 가입할 수 있다(오타 이메일이 아이디를 잡지 않음)', async () => {
-    await http().post('/v1/auth/signup').send(signupBody('typo@exampel.com'));
-    await ageUsers();
-
-    const fixed = { ...signupBody('typo@example.com'), username: usernameOf('typo@exampel.com') };
-    const res = await http().post('/v1/auth/signup').send(fixed);
-    expect(res.status).toBe(201);
-    expect(await countRows('users')).toBe(1);
-  });
-
-  it('인증을 마친 계정은 오래되어도 덮어쓰지 않는다', async () => {
-    await signup();
-    await ageUsers();
-
-    const same = await http().post('/v1/auth/signup').send(signupBody());
-    expect(same.status).toBe(409);
-    const sameUsername = await http()
-      .post('/v1/auth/signup')
-      .send({ ...signupBody('other@example.com'), username: USERNAME });
-    expect(sameUsername.status).toBe(409);
-    expect(sameUsername.body.error.code).toBe('USERNAME_ALREADY_EXISTS');
-    expect(await countRows('users')).toBe(1);
-  });
-
-  it('덮어쓴 가입이 중간에 실패해도(메일 발송 실패) 다른 계정은 그대로다', async () => {
-    await signup('keep@example.com');
-    await http().post('/v1/auth/signup').send(signupBody());
-    await ageUsers();
-
-    ctx.mail.failNext = true;
-    const res = await http().post('/v1/auth/signup').send(signupBody());
-    expect(res.status).toBe(503);
-    expect(await countRows('users')).toBe(1); // 검증된 keep 계정만 남는다
   });
 });
 

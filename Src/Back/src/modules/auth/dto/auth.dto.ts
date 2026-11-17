@@ -43,35 +43,9 @@ const IsUsername = () =>
     }),
   );
 
-export class EmailCheckDto {
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-}
-
 export class UsernameCheckDto {
   @IsUsername()
   username: string;
-}
-
-// 이메일 인증 코드 확인 (가입 직후 또는 재발송 후)
-export class VerifyEmailDto {
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-
-  @Matches(/^\d{6}$/, { message: '인증 코드는 숫자 6자리입니다.' })
-  code: string;
-}
-
-// 인증 코드 재발송. 계정 존재 여부와 관계없이 같은 응답을 준다.
-export class ResendVerificationDto {
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
 }
 
 // 아이디 찾기: 가입한 이메일로 아이디를 보낸다. 계정 존재 여부와 관계없이 같은 응답을 준다.
