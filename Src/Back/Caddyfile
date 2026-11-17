@@ -1,0 +1,7 @@
+# HTTPS 리버스 프록시. DOMAIN 환경변수는 docker-compose.yml 의 caddy 서비스가 넣는다.
+# Caddy 는 클라이언트가 보낸 X-Forwarded-For 를 믿지 않고 실제 접속 주소로 덮어쓴다.
+# 그래서 백엔드의 TRUST_PROXY=1 과 함께 쓰면 IP 기준 요청 제한이 실제 사용자 IP 로 동작한다.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy backend:5010
+}
