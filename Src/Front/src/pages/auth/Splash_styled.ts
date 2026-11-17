@@ -18,3 +18,10 @@ export const SplashLogoContainer = styled.View`
 export const SplashBtnContainer = styled.View`
   padding: 24px 20px;
 `;
+
+// 로그인 상태 확인 중: 버튼 자리(48px)를 그대로 차지해 화면이 흔들리지 않게 함
+export const SplashLoading = styled.View`
+  height: 48px;
+  justify-content: center;
+  align-items: center;
+`;

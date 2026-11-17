@@ -101,7 +101,8 @@ export const ChoiceGroup = <T extends string>({
             key={option.value}
             onPress={() => onChange(option.value)}
             disabled={disabled}
-            hitSlop={shape === "chip" ? 6 : undefined}
+            // 보이는 크기는 Figma 그대로, 터치 영역만 48dp (chip 32→48, option 40→48)
+            hitSlop={shape === "chip" ? 8 : { top: 4, bottom: 4 }}
             accessibilityRole="radio"
             accessibilityState={{ selected, disabled }}
           >

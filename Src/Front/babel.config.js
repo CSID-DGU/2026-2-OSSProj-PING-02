@@ -15,6 +15,8 @@ module.exports = {
           "@apis": "./src/apis",
           "@constants": "./src/constants",
           "@assets": "./src/assets",
+          "@services": "./src/services",
+          "@stores": "./src/stores",
         },
       },
     ],

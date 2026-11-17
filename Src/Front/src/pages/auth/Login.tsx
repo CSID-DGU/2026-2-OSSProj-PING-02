@@ -5,26 +5,60 @@ import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import AuthPrompt from "@components/auth/AuthPrompt";
 import FindLinks from "@components/auth/FindLinks";
+import Notice from "@components/onboarding/Notice";
 import { AUTH_ERROR } from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
+import {
+  AUTH_ERROR_CODE,
+  getErrorCode,
+  ServiceError,
+  services,
+} from "@services";
+import { useSession } from "@stores/SessionProvider";
 import * as s from "./Login_styled";
 
 type LoginErrors = Partial<Record<"id" | "password", string>>;
 
 const Login = () => {
   const navigation = useAuthNavigation();
+  const { signIn } = useSession();
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<LoginErrors>({});
+  const [formError, setFormError] = useState<string>();
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (submitting) return;
+    const trimmed = id.trim();
     const next: LoginErrors = {};
-    if (!id.trim()) next.id = AUTH_ERROR.idRequired;
+    // 로그인에서는 형식 검사 없이 비어 있는지만 확인 (규칙이 바뀌어도 기존 아이디로 로그인 가능하게)
+    if (!trimmed) next.id = AUTH_ERROR.idRequired;
     if (!password) next.password = AUTH_ERROR.passwordRequired;
     setErrors(next);
+    setFormError(undefined);
     if (Object.keys(next).length > 0) return;
 
-    // TODO: 로그인 API 연결 후 홈 화면으로 이동
+    setSubmitting(true);
+    try {
+      const result = await services.auth.login(trimmed, password);
+      await signIn(result);
+      // 이동은 Splash가 온보딩 진행 상황을 보고 결정
+      navigation.popTo("Splash");
+    } catch (error) {
+      const code = getErrorCode(error);
+      if (code === AUTH_ERROR_CODE.invalidCredentials) {
+        setErrors({ password: AUTH_ERROR.loginFailed });
+      } else if (code === AUTH_ERROR_CODE.emailNotVerified) {
+        const email = error instanceof ServiceError ? error.data?.email : undefined;
+        if (email) navigation.navigate("EmailVerify", { email, resend: true });
+        else setFormError(AUTH_ERROR.network);
+      } else {
+        setFormError(AUTH_ERROR.network);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -65,9 +99,17 @@ const Login = () => {
         />
       </s.Fields>
 
+      {formError && <Notice tone="danger" title={formError} />}
+
       <s.Actions>
-        <Button variant="primary" fullWidth onPress={handleLogin}>
-          로그인
+        <Button
+          variant="primary"
+          fullWidth
+          onPress={handleLogin}
+          disabled={submitting}
+          accessibilityState={{ busy: submitting, disabled: submitting }}
+        >
+          {submitting ? "확인하는 중…" : "로그인"}
         </Button>
         <FindLinks />
       </s.Actions>

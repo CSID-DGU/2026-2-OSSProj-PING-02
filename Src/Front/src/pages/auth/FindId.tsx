@@ -30,7 +30,8 @@ const FindId = () => {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    // TODO: 아이디 찾기 API 연결. 지금은 결과 다이얼로그 확인용 예시 값
+    // TODO(팀 결정): 아이디 찾기 방식(이메일/전화번호) 미확정이라 아직 연결하지 않음
+    // 확정되면 services.auth.findLoginId({ method, name, ... })로 교체. 지금은 결과 다이얼로그 확인용 예시 값
     setFoundId("malssiat");
   };
 

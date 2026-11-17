@@ -48,6 +48,8 @@ export const Select = <T extends string | number>({
         onPress={() => setOpen(true)}
         disabled={disabled}
         activeOpacity={0.7}
+        // 보이는 높이는 44px 그대로, 터치 영역만 48dp
+        hitSlop={{ top: 2, bottom: 2 }}
         accessibilityRole="button"
         accessibilityLabel={sheetTitle ?? placeholder}
         accessibilityValue={{ text: selected?.label }}
