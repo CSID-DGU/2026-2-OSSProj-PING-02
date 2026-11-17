@@ -158,7 +158,7 @@ const ModelDownload = () => {
   };
 
   return (
-    <AuthLayout centered gap={24} footer={renderFooter()}>
+    <AuthLayout backOnly centered gap={24} footer={renderFooter()}>
       <AuthIntro
         variant="onboarding"
         title={"민감한 내용을 먼저 가려 줄\n작은 AI를 받아요"}

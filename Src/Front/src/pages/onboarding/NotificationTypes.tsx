@@ -48,7 +48,7 @@ const NotificationTypes = () => {
   };
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={24}
       footer={
@@ -97,6 +97,7 @@ const NotificationTypes = () => {
 
       {askedAndOff || state.load === "error" ? (
         <PermissionGuide
+          align="left"
           state={state}
           label={LABEL}
           consequence="꺼 두면 선택한 알림을 받을 수 없고, 앱을 열었을 때만 확인할 수 있어요."

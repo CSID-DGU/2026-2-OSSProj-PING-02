@@ -124,7 +124,7 @@ const ContactsSelect = () => {
   const showSkip = load !== "ready" || contacts.length === 0 || count === 0;
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly footerDivider="always"
       scrollable={false}
       footer={
         <>

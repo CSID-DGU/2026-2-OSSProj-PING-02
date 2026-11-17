@@ -32,10 +32,15 @@ const AiMemoryEdit = () => {
   const changed = text.trim() !== saved.trim();
   const inputLabel = `${category.title} 메모`;
 
+  // 예시 칩: 없으면 줄로 추가, 이미 들어 있으면 그 줄을 뺌
+  // TODO(팀 확인): 다시 누르면 빠지는 동작이 맞는지 (직접 고친 문장은 그대로 둠)
   const handleExample = (example: string) => {
     setText(prev => {
+      const lines = prev.split("\n");
+      if (lines.some(line => line.trim() === example)) {
+        return lines.filter(line => line.trim() !== example).join("\n").trim();
+      }
       const base = prev.trim();
-      if (base.includes(example)) return prev;
       return (base ? `${base}\n${example}` : example).slice(0, MEMORY_MAX_LENGTH);
     });
     setError(undefined);
@@ -59,7 +64,7 @@ const AiMemoryEdit = () => {
   const state = error ? "error" : focused ? "focused" : "default";
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       gap={24}
       footer={
         <>
@@ -117,7 +122,7 @@ const AiMemoryEdit = () => {
         <s.ExamplesTitle>이렇게 써 볼 수 있어요 (누르면 추가돼요)</s.ExamplesTitle>
         <s.ExampleList>
           {category.examples.map(example => {
-            const added = text.includes(example);
+            const added = text.split("\n").some(line => line.trim() === example);
             return (
               // ChoiceGroup은 항목을 "라디오 버튼"으로 읽어서, 예시마다 감싸
               // 스크린리더에는 "버튼" 하나로 보이게 함 (두 번 탭 = activate → 추가)
@@ -126,8 +131,9 @@ const AiMemoryEdit = () => {
                 accessible
                 accessibilityRole="button"
                 accessibilityLabel={example}
+                accessibilityState={{ selected: added }}
                 accessibilityHint={
-                  added ? "이미 메모에 들어 있어요" : "누르면 메모에 추가돼요"
+                  added ? "다시 누르면 메모에서 빠져요" : "누르면 메모에 추가돼요"
                 }
                 accessibilityActions={[{ name: "activate" }]}
                 onAccessibilityAction={({ nativeEvent }) => {
@@ -140,9 +146,11 @@ const AiMemoryEdit = () => {
                   importantForAccessibility="no-hide-descendants"
                   accessibilityElementsHidden
                 >
+                  {/* 이미 들어간 예시는 ChoiceGroup의 선택 모양(채운 배경 + 흰 글자) */}
                   <ChoiceGroup
                     shape="chip"
                     options={[{ label: example, value: example }]}
+                    value={added ? example : undefined}
                     onChange={handleExample}
                   />
                 </View>

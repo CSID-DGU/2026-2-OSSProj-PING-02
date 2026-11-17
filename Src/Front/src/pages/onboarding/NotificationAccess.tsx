@@ -25,7 +25,7 @@ const NotificationAccess = () => {
   };
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={32}
       footer={

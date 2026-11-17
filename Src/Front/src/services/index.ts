@@ -6,7 +6,10 @@ import {
 import { createMockContactsService } from "./contacts/ContactsService";
 import { createMockModelService } from "./model/mockModelService";
 import { createMockNetworkService } from "./network/NetworkService";
-import { createMockPermissionService } from "./permission/mockPermissionService";
+import {
+  createMockPermissionService,
+  type MockPermissionScenario,
+} from "./permission/mockPermissionService";
 import { createMemoryStorage } from "./storage/memoryStorage";
 
 // 서비스 교체 지점
@@ -15,9 +18,12 @@ import { createMemoryStorage } from "./storage/memoryStorage";
 // 실패 화면을 확인하고 싶을 때:
 //   model: createMockModelService({ failFirstAttemptAt: 0.4 })
 //   network: createMockNetworkService("cellular")
+// 개발 옵션: 권한 거부 → 다시 묻지 않음 → 설정 열기 흐름을 보려면 "deny"
+const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
+
 export const services = {
   auth: createMockAuthService(),
-  permission: createMockPermissionService(),
+  permission: createMockPermissionService(DEV_PERMISSION_SCENARIO),
   model: createMockModelService(),
   network: createMockNetworkService(),
   contacts: createMockContactsService(),

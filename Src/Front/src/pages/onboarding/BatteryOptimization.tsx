@@ -24,7 +24,7 @@ const BatteryOptimization = () => {
   };
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={20}
       footer={
@@ -67,9 +67,22 @@ const BatteryOptimization = () => {
           />
         ) : (
           <>
-            <Notice tone="seed" align="center" title="배터리 사용 제한 해제">
-              말씨앗을 절전 예외 앱으로 설정해요
-            </Notice>
+            {/* 노란 상자가 버튼처럼 보여서 누르면 실제로 배터리 설정이 열리게 함 (주 버튼과 같은 동작) */}
+            <s.BoxPress
+              onPress={handlePrimary}
+              disabled={state.requesting || state.load === "loading"}
+              accessibilityRole="button"
+              accessibilityLabel="배터리 사용 제한 해제. 말씨앗을 절전 예외 앱으로 설정해요"
+              accessibilityHint="눌러서 배터리 설정을 열어요"
+            >
+              {({ pressed }) => (
+                <s.Pressed $pressed={pressed}>
+                  <Notice tone="seed" align="center" title="배터리 사용 제한 해제">
+                    말씨앗을 절전 예외 앱으로 설정해요
+                  </Notice>
+                </s.Pressed>
+              )}
+            </s.BoxPress>
             {state.guide || state.load !== "ready" ? (
               <PermissionGuide
                 state={state}

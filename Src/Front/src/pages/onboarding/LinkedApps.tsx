@@ -30,7 +30,7 @@ const LinkedApps = () => {
   };
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={32}
       // TODO(Figma 문구 확인): 시안은 "말씨앗 시작하기"지만 흐름 중간이라 "다음"으로 둠
@@ -65,8 +65,17 @@ const LinkedApps = () => {
             centered
             style={s.cellStyle}
           >
+            {/* 아이콘을 눌러도 토글 (실기기에서 아이콘 터치가 칸까지 전달되지 않는 경우 대비)
+                스크린리더는 칸 전체를 체크박스 하나로 읽고, 아이콘은 따로 읽지 않음 */}
             <s.IconWrap>
-              <s.AppIcon source={app.icon} />
+              <s.IconPress
+                onPress={() => toggle(app.value)}
+                accessible={false}
+                importantForAccessibility="no-hide-descendants"
+                accessibilityElementsHidden
+              >
+                <s.AppIcon source={app.icon} />
+              </s.IconPress>
             </s.IconWrap>
           </CheckRow>
         ))}

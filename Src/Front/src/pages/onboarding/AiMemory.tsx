@@ -17,32 +17,45 @@ const AiMemory = () => {
   const theme = useTheme();
   const { navigation, goNext } = useOnboardingStep("AiMemory");
   const { data } = useOnboarding();
-  const written = MEMORY_CATEGORIES.filter(c => data.memory[c.value].trim());
-  const anyWritten = written.length > 0;
+  const isWritten = (c: (typeof MEMORY_CATEGORIES)[number]) =>
+    !!data.memory[c.value].trim();
+  const anyWritten = MEMORY_CATEGORIES.some(isWritten);
+  // "내용 작성하기"는 아직 안 쓴 첫 항목을 엶
+  const firstUnwritten = MEMORY_CATEGORIES.find(c => !isWritten(c));
 
   const openEdit = (category: (typeof MEMORY_CATEGORIES)[number]["value"]) =>
     navigation.navigate("AiMemoryEdit", { category });
 
-  const handlePrimary = () => {
-    if (anyWritten) goNext();
-    else openEdit(MEMORY_CATEGORIES[0].value);
-  };
+  // - 하나도 안 씀: 건너뛰기 + "‘요즘 나의 상태’부터 쓰기"
+  // - 일부만 씀  : "‘…’도 쓰기"(텍스트) + 다음
+  // - 모두 씀    : 다음
+  // TODO(Figma 문구 확인): 시안은 "내용 작성하기"인데 어느 항목인지 모호해 항목 이름을 넣음
+  const footer = !anyWritten ? (
+    <>
+      <SkipButton onPress={goNext}>지금은 건너뛰기</SkipButton>
+      <Button
+        variant="primary"
+        fullWidth
+        onPress={() => openEdit(MEMORY_CATEGORIES[0].value)}
+      >
+        {`‘${MEMORY_CATEGORIES[0].title}’부터 쓰기`}
+      </Button>
+    </>
+  ) : (
+    <>
+      {firstUnwritten && (
+        <SkipButton onPress={() => openEdit(firstUnwritten.value)}>
+          {`‘${firstUnwritten.title}’도 쓰기`}
+        </SkipButton>
+      )}
+      <Button variant="primary" fullWidth onPress={goNext}>
+        다음
+      </Button>
+    </>
+  );
 
   return (
-    <AuthLayout
-      centered
-      gap={24}
-      footer={
-        <>
-          {!anyWritten && (
-            <SkipButton onPress={goNext}>지금은 건너뛰기</SkipButton>
-          )}
-          <Button variant="primary" fullWidth onPress={handlePrimary}>
-            {anyWritten ? "다음" : "내용 작성하기"}
-          </Button>
-        </>
-      }
-    >
+    <AuthLayout backOnly centered gap={24} footer={footer}>
       <AuthIntro
         variant="onboarding"
         title={"내 상황을 조금\n알려주실래요?"}
@@ -63,9 +76,18 @@ const AiMemory = () => {
             >
               <s.Row>
                 <s.Texts>
-                  <CardTitle>{category.title}</CardTitle>
-                  <CardDescription numberOfLines={text ? 2 : undefined}>
-                    {text || category.description}
+                  <s.TitleRow>
+                    <CardTitle>{category.title}</CardTitle>
+                    {/* 작성 여부: 색만이 아니라 글자로 표시 */}
+                    {text && (
+                      <s.WrittenBadge>
+                        <s.WrittenText>작성함</s.WrittenText>
+                      </s.WrittenBadge>
+                    )}
+                  </s.TitleRow>
+                  {/* 작성했으면 내용 첫 줄 미리보기, 아니면 항목 설명 */}
+                  <CardDescription numberOfLines={1}>
+                    {text ? text.split("\n")[0] : category.description}
                   </CardDescription>
                 </s.Texts>
                 {/* 오른쪽 화살표: 뒤로가기 아이콘을 뒤집어 씀 (UI 아이콘 세트에 오른쪽 화살표가 없음) */}

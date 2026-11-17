@@ -14,7 +14,7 @@ import * as s from "./PrivacyNotice_styled";
 const POINTS: { title: string; description: string; icon: OnboardingImage }[] =
   [
     {
-      title: "원문은 기기에 안전하게\n보관",
+      title: "원문은 기기에 안전하게 보관",
       description: "친구별로 언제든 삭제할 수 있어요",
       icon: ONBOARDING_ICONS.privacyDevice,
     },
@@ -34,7 +34,7 @@ const PrivacyNotice = () => {
   const { goNext } = useOnboardingStep("PrivacyNotice");
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={40}
       footer={
@@ -54,12 +54,11 @@ const PrivacyNotice = () => {
           <s.Point
             key={point.title}
             accessible
-            accessibilityLabel={`${point.title.replace("\n", " ")}. ${
+            accessibilityLabel={`${point.title}. ${
               point.description
             }`}
           >
-            <s.PointTitle>{point.title}</s.PointTitle>
-            <s.PointDescription>{point.description}</s.PointDescription>
+            {/* 실기기 확인 후 아이콘 → 제목 → 설명 순서로 (Figma 03은 아이콘이 아래, TODO(디자이너 공유)) */}
             <Image
               source={point.icon.source}
               style={[
@@ -67,6 +66,8 @@ const PrivacyNotice = () => {
                 { width: point.icon.width, height: point.icon.height },
               ]}
             />
+            <s.PointTitle>{point.title}</s.PointTitle>
+            <s.PointDescription>{point.description}</s.PointDescription>
           </s.Point>
         ))}
       </s.Points>

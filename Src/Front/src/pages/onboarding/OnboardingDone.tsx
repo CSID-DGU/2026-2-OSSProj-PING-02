@@ -32,7 +32,8 @@ interface PendingItem {
 const OnboardingDone = () => {
   const theme = useTheme();
   const { navigation } = useOnboardingStep("OnboardingDone");
-  const { data, update, model, loadModelInfo } = useOnboarding();
+  const { data, update, model, loadModelInfo, startModelDownload } =
+    useOnboarding();
   const [permissions, setPermissions] = useState<PermissionCheck>({
     status: "loading",
   });
@@ -89,17 +90,7 @@ const OnboardingDone = () => {
       description: "메신저 알림이 오면 하나씩 추가할 수도 있어요",
     });
   }
-  if (
-    model.status === "ready" ||
-    model.status === "failed" ||
-    model.status === "infoError"
-  ) {
-    pending.push({
-      step: "ModelDownload",
-      label: "가리기 모델 받기",
-      description: "받기 전에는 AI 답장 제안을 쓸 수 없어요",
-    });
-  }
+  // 가리기 모델은 아래 "다운로드 상태" 상자에서 따로 보여 줌 (AI 모델 화면에서 완료 화면에서 알려 준다고 안내함)
   if (!data.memory.status.trim() && !data.memory.avoid.trim()) {
     pending.push({
       step: "AiMemory",
@@ -107,6 +98,63 @@ const OnboardingDone = () => {
       description: "비워 둬도 앱은 그대로 쓸 수 있어요",
     });
   }
+
+  const renderModelStatus = () => {
+    switch (model.status) {
+      case "downloading": {
+        const ratio = model.received / model.info.sizeBytes;
+        return (
+          <Notice align="center" title="가리기 모델을 받고 있어요">
+            <s.Progress>
+              <ProgressBar value={ratio} accessibilityLabel="가리기 모델 받는 중" />
+            </s.Progress>
+            <s.ModelText>
+              {`${Math.floor(ratio * 100)}% · 홈으로 가도 계속 받아져요`}
+            </s.ModelText>
+          </Notice>
+        );
+      }
+      case "done":
+        return (
+          <Notice tone="success" align="center" title="가리기 모델이 준비됐어요">
+            민감한 내용은 이 기기 안에서 먼저 가려져요
+          </Notice>
+        );
+      case "failed":
+        return (
+          <Notice tone="danger" align="center" title="가리기 모델을 받다가 멈췄어요">
+            <s.ModelText>연결을 확인하고 다시 받아 볼 수 있어요.</s.ModelText>
+            <Button variant="text" onPress={startModelDownload}>
+              다시 받기
+            </Button>
+          </Notice>
+        );
+      case "ready":
+        return (
+          <Notice align="center" title="가리기 모델을 아직 받지 않았어요">
+            <s.ModelText>받기 전에는 요약과 답장 후보를 볼 수 없어요.</s.ModelText>
+            <Button variant="text" onPress={startModelDownload}>
+              지금 받기
+            </Button>
+          </Notice>
+        );
+      case "infoError":
+        return (
+          <Notice tone="danger" align="center" title="모델 정보를 확인하지 못했어요">
+            <Button variant="text" onPress={loadModelInfo}>
+              다시 확인하기
+            </Button>
+          </Notice>
+        );
+      default:
+        return (
+          <ActivityIndicator
+            color={theme.colors.iconSubtle}
+            accessibilityLabel="모델 상태를 확인하는 중"
+          />
+        );
+    }
+  };
 
   const handleFinish = async () => {
     if (finishing) return;
@@ -117,7 +165,7 @@ const OnboardingDone = () => {
   };
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={24}
       footer={
@@ -146,16 +194,8 @@ const OnboardingDone = () => {
           앞으로 도착하는 알림만, 선택한 앱 범위에서 수집해요
         </Notice>
 
-        {model.status === "downloading" && (
-          <Notice align="center" title="가리기 모델을 받고 있어요">
-            <s.Progress>
-              <ProgressBar
-                value={model.received / model.info.sizeBytes}
-                accessibilityLabel="가리기 모델 받는 중"
-              />
-            </s.Progress>
-          </Notice>
-        )}
+        {/* 가리기 모델 다운로드 상태: 받는 중(진행률) / 완료 / 실패 → 다시 받기 / 아직 안 받음 */}
+        {renderModelStatus()}
 
         {permissions.status === "loading" && (
           <ActivityIndicator

@@ -33,7 +33,7 @@ const ContactsImport = () => {
   const handleSkip = () => navigation.navigate("AiMemory");
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={24}
       footer={

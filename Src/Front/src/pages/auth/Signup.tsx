@@ -36,6 +36,8 @@ type TermsState =
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
+const TERMS_LINK_HIT_SLOP = { top: 10, bottom: 10, left: 8, right: 8 };
+
 type SignupField =
   | "name"
   | "birth"
@@ -102,6 +104,21 @@ const Signup = () => {
   const terms = termsState.status === "ready" ? termsState.terms : [];
   const agreeAll = terms.length > 0 && terms.every(t => agreed[t.id]);
   const agreeRequired = terms.filter(t => t.required).every(t => agreed[t.id]);
+  const emailDomainValue = customDomain ? domainInput.trim() : emailDomain;
+  // 필수 항목이 모두 채워졌는지 (버튼 활성화용, 자세한 검사는 validate)
+  const canSubmit =
+    !!name.trim() &&
+    !!year &&
+    !!month &&
+    !!day &&
+    !!gender &&
+    !!emailLocal.trim() &&
+    !!emailDomainValue &&
+    idCheck === "available" &&
+    password.length >= PASSWORD_MIN_LENGTH &&
+    passwordConfirm === password &&
+    termsState.status === "ready" &&
+    agreeRequired;
 
   const clearError = (field: SignupField) =>
     setErrors(prev => ({ ...prev, [field]: undefined }));
@@ -374,30 +391,37 @@ const Signup = () => {
         </Field>
 
         {/* 팀 결정으로 추가 (Figma 01-3에 없음): 계정 정보끼리 묶이도록 비밀번호 바로 위 */}
-        <s.IdField>
-          <TextField
-            label="아이디"
-            placeholder={LOGIN_ID_RULE.guide}
-            value={loginId}
-            onChangeText={text => {
-              setLoginId(text);
-              setIdCheck("idle");
-              clearError("loginId");
-            }}
-            error={errors.loginId}
-            helper={
-              idCheck === "available"
-                ? AUTH_ERROR.idAvailable
-                : `${LOGIN_ID_RULE.guide}로 만들어 주세요`
-            }
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="username-new"
-            maxLength={LOGIN_ID_RULE.maxLength}
-          />
-          <s.IdCheckAction>
+        {/* 입력란 바로 옆 "중복 확인"(48dp), 결과는 도움말 자리에 */}
+        <Field
+          label="아이디"
+          helper={
+            errors.loginId ??
+            (idCheck === "available"
+              ? AUTH_ERROR.idAvailable
+              : `${LOGIN_ID_RULE.guide}로 만들어 주세요`)
+          }
+          state={errors.loginId ? "error" : "default"}
+        >
+          <s.IdRow>
+            <s.IdInput>
+              <Input
+                placeholder="아이디를 입력해주세요"
+                value={loginId}
+                onChangeText={text => {
+                  setLoginId(text);
+                  setIdCheck("idle");
+                  clearError("loginId");
+                }}
+                state={errors.loginId ? "error" : "default"}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="username-new"
+                maxLength={LOGIN_ID_RULE.maxLength}
+                accessibilityLabel="아이디"
+              />
+            </s.IdInput>
             <Button
-              variant="text"
+              variant="secondary"
               onPress={handleCheckId}
               disabled={idCheck === "checking" || idCheck === "available"}
               accessibilityState={{
@@ -406,13 +430,13 @@ const Signup = () => {
               }}
             >
               {idCheck === "checking"
-                ? "확인하는 중…"
+                ? "확인 중…"
                 : idCheck === "available"
                 ? "확인 완료"
                 : "중복 확인"}
             </Button>
-          </s.IdCheckAction>
-        </s.IdField>
+          </s.IdRow>
+        </Field>
 
         <TextField
           label="비밀번호"
@@ -488,6 +512,8 @@ const Signup = () => {
                     variant="text"
                     onPress={() => Linking.openURL(t.url).catch(() => {})}
                     accessibilityLabel={`${t.title} 전문 보기`}
+                    // "보기"는 글자가 짧아 좌우도 넓혀 48×48dp 확보
+                    hitSlop={TERMS_LINK_HIT_SLOP}
                   >
                     보기
                   </Button>
@@ -504,15 +530,25 @@ const Signup = () => {
       {formError && <Notice tone="danger" title={formError} />}
 
       <s.Actions>
+        {/* 필수 항목이 다 채워지기 전에는 공통 Button의 비활성 모양(회색) */}
         <Button
-          variant="secondary"
+          variant="primary"
           fullWidth
           onPress={handleSignup}
-          disabled={submitting}
-          accessibilityState={{ busy: submitting, disabled: submitting }}
+          disabled={!canSubmit || submitting}
+          accessibilityState={{
+            busy: submitting,
+            disabled: !canSubmit || submitting,
+          }}
+          accessibilityHint={
+            canSubmit ? undefined : "필수 항목을 모두 채우면 누를 수 있어요"
+          }
         >
           {submitting ? "가입하는 중…" : "회원가입"}
         </Button>
+        {!canSubmit && (
+          <s.SubmitHint>필수 항목을 모두 채우면 가입할 수 있어요.</s.SubmitHint>
+        )}
         <AuthPrompt
           message="이미 계정이 있나요?"
           actionLabel="로그인"

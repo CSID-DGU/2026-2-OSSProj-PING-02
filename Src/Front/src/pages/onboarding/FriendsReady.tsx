@@ -12,7 +12,7 @@ const FriendsReady = () => {
   const { data } = useOnboarding();
 
   return (
-    <AuthLayout
+    <AuthLayout backOnly
       centered
       gap={24}
       footer={

@@ -40,3 +40,9 @@ export const PendingDescription = styled.Text`
   ${({ theme }) => theme.fonts.captionRegular};
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
+
+export const ModelText = styled.Text`
+  ${({ theme }) => theme.fonts.bodySmall};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  text-align: center;
+`;

@@ -89,9 +89,8 @@ const PageReply = () => (
     <Examples>
       {REPLY_EXAMPLES.map((example, i) => (
         <Example key={example.label}>
-          <ExampleLabel>
-            <Num>{i + 1}</Num> {example.label}
-          </ExampleLabel>
+          {/* Figma 02-2: 라벨은 화면 가운데, 말풍선은 오른쪽 끝(꼬리가 본문 여백에 닿게) */}
+          <ExampleLabel>{`${CIRCLED[i]} ${example.label}`}</ExampleLabel>
           <Bubble kind="sent">{example.reply}</Bubble>
         </Example>
       ))}
@@ -223,21 +222,18 @@ const Examples = styled.View`
 `;
 
 const Example = styled.View`
-  gap: 6px;
-  align-items: flex-end;
+  gap: 4px;
 `;
 
 const ExampleLabel = styled.Text`
-  align-self: center;
+  align-self: stretch;
+  text-align: center;
   ${({ theme }) => theme.fonts.bodyLarge};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
-// Figma ❶❷❸: 기기 폰트에 없을 수 있어 숫자를 그대로 강조
-const Num = styled.Text`
-  ${({ theme }) => theme.fonts.titleSection};
-  color: ${({ theme }) => theme.colors.textBrand};
-`;
+// Figma 02-2의 번호 표시 (❶❷❸)
+const CIRCLED = ["❶", "❷", "❸"];
 
 const BubbleRow = styled.View<{ $kind: BubbleKind }>`
   flex-direction: row;
@@ -248,14 +244,14 @@ const BubbleRow = styled.View<{ $kind: BubbleKind }>`
 
 const BubbleBox = styled.View<{ $kind: BubbleKind }>`
   flex-shrink: 1;
-  padding: 14px 18px;
+  padding: 12px 18px;
   border-radius: 12px;
   background-color: ${({ theme, $kind }) =>
     $kind === "sent" ? theme.colors.actionPrimaryBg : theme.colors.brandSeed};
 `;
 
 const BubbleText = styled.Text<{ $kind: BubbleKind }>`
-  ${({ theme }) => theme.fonts.bodyMedium};
+  ${({ theme }) => theme.fonts.bodyLarge};
   color: ${({ theme, $kind }) =>
     $kind === "sent" ? theme.colors.actionPrimaryText : theme.colors.textPrimary};
 `;

@@ -19,6 +19,11 @@ export const IconWrap = styled.View`
   margin-top: 4px;
 `;
 
+// 아이콘 터치 영역 (52 + 위아래 여백으로 48dp 이상)
+export const IconPress = styled.Pressable`
+  padding: 2px;
+`;
+
 export const AppIcon = styled.Image`
   width: ${ICON_SIZE}px;
   height: ${ICON_SIZE}px;
