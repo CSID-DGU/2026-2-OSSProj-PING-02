@@ -200,7 +200,7 @@ describe('비밀번호 찾기 1단계: 재설정 코드 요청', () => {
     expect(ctx.mail.resets).toHaveLength(1);
 
     await ctx.ds.query(
-      `UPDATE email_verifications SET created_at = now() - interval '2 minutes' WHERE purpose = 'PASSWORD_RESET'`,
+      `UPDATE mail_sends SET created_at = now() - interval '2 minutes' WHERE kind = 'PASSWORD_RESET'`,
     );
     await http().post('/v1/auth/password/forgot').send(body);
     expect(ctx.mail.resets).toHaveLength(2);

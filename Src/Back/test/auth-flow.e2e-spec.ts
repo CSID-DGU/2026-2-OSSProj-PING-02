@@ -179,6 +179,8 @@ describe('이메일 인증', () => {
   it('재발송하면 새 코드가 가고, 이전 코드는 더 이상 통하지 않는다', async () => {
     await http().post('/v1/auth/signup').send(signupBody());
     const first = ctx.mail.codeFor(EMAIL);
+    // 가입 직후 60초 안에는 다시 보내지 않으므로, 시간이 지난 것으로 만든다
+    await ctx.ds.query(`UPDATE mail_sends SET created_at = now() - interval '2 minutes'`);
 
     const resend = await http().post('/v1/auth/email/resend').send({ email: EMAIL });
     expect(resend.status).toBe(204);

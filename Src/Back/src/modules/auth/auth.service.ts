@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'crypto';
-import { DataSource, EntityManager, IsNull, QueryFailedError, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, LessThan, QueryFailedError, Repository } from 'typeorm';
 import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-codes';
 import { addDays, isValidBirthdate } from '../../common/utils/date.util';
@@ -14,6 +14,7 @@ import {
   EmailVerification,
   VerificationPurpose,
 } from '../../database/entities/email-verification.entity';
+import { MailKind, MailSend } from '../../database/entities/mail-send.entity';
 import { RefreshToken } from '../../database/entities/refresh-token.entity';
 import { User } from '../../database/entities/user.entity';
 import { MailService } from '../mail/mail.service';
@@ -29,10 +30,15 @@ import {
 const BCRYPT_ROUNDS = 12;
 const CODE_TTL_MINUTES = 10;
 const CODE_MAX_ATTEMPTS = 5;
-// 같은 계정에 비밀번호 재설정 메일을 이 시간 안에 다시 보내지 않는다(메일 폭탄 방지).
-const RESET_COOLDOWN_SECONDS = 60;
 // 인증 전 계정이 만들어진 지 이 시간이 지나야 같은 이메일·아이디로 다시 가입해 덮어쓸 수 있다.
 const UNVERIFIED_HOLD_SECONDS = 60;
+// 계정 기준 메일 제한(메일 폭탄 방지). IP 를 바꿔 가며 보내도 한 계정에 나가는 메일은 이 한도를 넘지 못한다.
+// 같은 종류의 메일은 이 시간 안에 다시 보내지 않고, 모든 종류를 합쳐 하루 한도를 둔다.
+const MAIL_COOLDOWN_SECONDS = 60;
+const MAIL_DAILY_LIMIT = 10;
+// 비밀번호를 연속으로 이만큼 틀리면 계정을 잠시 잠근다(IP 를 바꿔 가며 한 계정을 두드리는 공격 방지).
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_LOCK_MINUTES = 5;
 
 export interface TokenPair {
   accessToken: string;
@@ -111,6 +117,7 @@ export class AuthService {
         await this.terms.saveAgreements(manager, user.id, dto.termsAgreements);
         // 메일 발송에 실패하면 가입 전체를 취소한다 (트랜잭션 롤백)
         const code = await this.createCode(manager, user.id, 'EMAIL_VERIFY');
+        await manager.getRepository(MailSend).save({ userId: user.id, kind: 'EMAIL_VERIFY' });
         await this.mail.sendVerificationCode(dto.email, code);
         return { user: toUserSummary(user), verificationRequired: true as const };
       });
@@ -142,6 +149,7 @@ export class AuthService {
   async resendVerification(email: string): Promise<void> {
     const user = await this.users.findOne({ where: { email } });
     if (!user || !user.passwordHash || user.emailVerifiedAt) return;
+    if (!(await this.reserveMail(user.id, 'EMAIL_VERIFY'))) return;
 
     try {
       await this.dataSource.transaction(async (manager) => {
@@ -158,13 +166,19 @@ export class AuthService {
     const user = await this.users.findOne({ where: { username: dto.username } });
 
     const matched = await bcrypt.compare(dto.password, user?.passwordHash ?? this.dummyHash);
-    if (!user || !user.passwordHash || !matched) {
-      // 아이디 없음과 비밀번호 틀림을 구분하지 않는다 (명세 4-4)
+    const locked = !!user?.lockedUntil && user.lockedUntil.getTime() > Date.now();
+    if (!user || !user.passwordHash || !matched || locked) {
+      // 잠긴 계정은 비밀번호가 맞아도 같은 응답이다. 잠겨 있는 동안의 시도는 횟수에 더하지 않는다.
+      if (user?.passwordHash && !locked) await this.recordLoginFailure(user.id);
+      // 아이디 없음, 비밀번호 틀림, 잠김을 구분하지 않는다 (명세 4-4)
       throw new AppException(
         ErrorCode.INVALID_CREDENTIALS,
         '아이디 또는 비밀번호가 올바르지 않습니다.',
         401,
       );
+    }
+    if (user.failedLoginCount > 0 || user.lockedUntil) {
+      await this.users.update({ id: user.id }, { failedLoginCount: 0, lockedUntil: null });
     }
     // 비밀번호가 맞은 뒤에만 인증 여부를 알려 준다 (계정 존재 여부는 가리지 않음)
     if (!user.emailVerifiedAt) {
@@ -188,6 +202,7 @@ export class AuthService {
   async findUsername(email: string): Promise<void> {
     const user = await this.users.findOne({ where: { email } });
     if (!user || !user.passwordHash || !user.emailVerifiedAt) return;
+    if (!(await this.reserveMail(user.id, 'USERNAME_FIND'))) return;
     this.sendInBackground(() => this.mail.sendUsername(email, user.username));
   }
 
@@ -197,10 +212,7 @@ export class AuthService {
     const user = await this.users.findOne({ where: { username: dto.username } });
     if (!user || !user.passwordHash || !user.emailVerifiedAt || user.email !== dto.email) return;
 
-    const latest = await this.dataSource
-      .getRepository(EmailVerification)
-      .findOne({ where: { userId: user.id, purpose: 'PASSWORD_RESET' }, order: { createdAt: 'DESC' } });
-    if (latest && Date.now() - latest.createdAt.getTime() < RESET_COOLDOWN_SECONDS * 1000) return;
+    if (!(await this.reserveMail(user.id, 'PASSWORD_RESET'))) return;
 
     const code = await this.createCode(this.dataSource.manager, user.id, 'PASSWORD_RESET');
     this.sendInBackground(() => this.mail.sendPasswordResetCode(dto.email, code));
@@ -219,7 +231,9 @@ export class AuthService {
     await this.dataSource.transaction(async (manager) => {
       const used = await manager.getRepository(EmailVerification).delete({ id: code.id });
       if (!used.affected) throw codeInvalid();
-      await manager.getRepository(User).update({ id: user.id }, { passwordHash });
+      await manager
+        .getRepository(User)
+        .update({ id: user.id }, { passwordHash, failedLoginCount: 0, lockedUntil: null });
       await manager
         .getRepository(RefreshToken)
         .update({ userId: user.id, revokedAt: IsNull() }, { revokedAt: new Date() });
@@ -371,6 +385,50 @@ export class AuthService {
     const key = this.config.get<string>('jwt.secret') ?? '';
     const tag = purpose === 'EMAIL_VERIFY' ? 'email-verify' : 'password-reset';
     return createHmac('sha256', key).update(`${tag}:${userId}:${code}`).digest('hex');
+  }
+
+  /** 비밀번호 실패를 센다. 동시에 여러 요청이 와도 횟수가 어긋나지 않도록 DB 에서 더하고, 한도에 닿으면 잠근다. */
+  private async recordLoginFailure(userId: string): Promise<void> {
+    const result = await this.users
+      .createQueryBuilder()
+      .update(User)
+      .set({ failedLoginCount: () => '"failed_login_count" + 1' })
+      .where('id = :id', { id: userId })
+      .returning('failed_login_count')
+      .execute();
+    const count = Number(result.raw?.[0]?.failed_login_count ?? 0);
+    if (count >= LOGIN_MAX_FAILURES) {
+      await this.users.update(
+        { id: userId },
+        { failedLoginCount: 0, lockedUntil: new Date(Date.now() + LOGIN_LOCK_MINUTES * 60_000) },
+      );
+    }
+  }
+
+  /**
+   * 이 계정에 이 종류의 메일을 지금 보내도 되는지 확인하고, 되면 기록까지 남긴다.
+   * 같은 종류는 60초 간격, 모든 종류 합쳐 24시간에 10통까지다. 계정 행을 잠가서 동시 요청도 한 번만 통과한다.
+   */
+  private async reserveMail(userId: string, kind: MailKind): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      await manager
+        .getRepository(User)
+        .createQueryBuilder('u')
+        .setLock('pessimistic_write')
+        .where('u.id = :id', { id: userId })
+        .getOne();
+
+      const repo = manager.getRepository(MailSend);
+      await repo.delete({ userId, createdAt: LessThan(new Date(Date.now() - 24 * 3_600_000)) });
+
+      const recent = await repo.find({ where: { userId }, order: { createdAt: 'DESC' } });
+      if (recent.length >= MAIL_DAILY_LIMIT) return false;
+      const last = recent.find((r) => r.kind === kind);
+      if (last && Date.now() - last.createdAt.getTime() < MAIL_COOLDOWN_SECONDS * 1000) return false;
+
+      await repo.save(repo.create({ userId, kind }));
+      return true;
+    });
   }
 
   /** 응답을 기다리지 않고 메일을 보낸다. 실패해도 호출자 응답은 같다(내용은 로그에 남기지 않는다). */
