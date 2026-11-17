@@ -12,8 +12,13 @@ import Notice from "@components/onboarding/Notice";
 import { APP_LABEL, PRIORITY_TAG_LABEL } from "@constants/contact";
 import type { MainTabKey } from "@constants/tabs";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
+import { useOpenConversation } from "@hooks/useConversationDetail";
 import { useConversations } from "@hooks/useConversations";
-import { services, type AnalysisTag, type ConversationSummary } from "@services";
+import {
+  services,
+  type AnalysisTag,
+  type ConversationSummary,
+} from "@services";
 import * as s from "./HomeTab_styled";
 
 // 홈 (시안 없음 → design-system 토큰으로 임시 구성, TODO(디자인): 시안 오면 맞춤)
@@ -59,8 +64,8 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
     }, [])
   );
 
-  const open = (conversationId: string) =>
-    navigation.navigate("ConversationDetail", { conversationId });
+  // 단톡은 09-C로, 1:1은 08 연락 상세로
+  const open = useOpenConversation();
 
   if (state.status === "loading") {
     return (
@@ -143,8 +148,12 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
       case "mustCheck":
         return (
           <s.Section>
-            <s.SectionTitle accessibilityRole="header">꼭 챙길 연락</s.SectionTitle>
-            <s.SectionNote>급하지 않아도, 놓치면 아쉬울 수 있는 연락이에요.</s.SectionNote>
+            <s.SectionTitle accessibilityRole="header">
+              꼭 챙길 연락
+            </s.SectionTitle>
+            <s.SectionNote>
+              급하지 않아도, 놓치면 아쉬울 수 있는 연락이에요.
+            </s.SectionNote>
             {!modelReady ? (
               <s.Muted>가리기 모델을 받으면 여기서 골라 드려요.</s.Muted>
             ) : mustCheck.length === 0 ? (
@@ -156,15 +165,20 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
                   <Card
                     key={item.conversation.id}
                     variant="highlight"
-                    onPress={() => open(item.conversation.id)}
+                    onPress={() => open(item.conversation)}
                     accessibilityHint="눌러서 자세히 봐요"
                   >
-                    <CardTitle numberOfLines={1}>{item.conversation.title}</CardTitle>
+                    <CardTitle numberOfLines={1}>
+                      {item.conversation.title}
+                    </CardTitle>
                     <CardDescription>
                       {item.analysis.highlight ?? item.analysis.summary}
                     </CardDescription>
                     <CardMeta>
-                      {[tag && PRIORITY_TAG_LABEL[tag], APP_LABEL[item.conversation.app]]
+                      {[
+                        tag && PRIORITY_TAG_LABEL[tag],
+                        APP_LABEL[item.conversation.app],
+                      ]
                         .filter(Boolean)
                         .join(" · ")}
                     </CardMeta>
@@ -179,7 +193,9 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
         return (
           <s.Section>
             <s.SectionHeader>
-              <s.SectionTitle accessibilityRole="header">1:1 연락</s.SectionTitle>
+              <s.SectionTitle accessibilityRole="header">
+                1:1 연락
+              </s.SectionTitle>
               {directAll.length > DIRECT_MAX && (
                 <Button variant="text" onPress={() => onOpenTab("contacts")}>
                   모두 보기
@@ -194,7 +210,7 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
                   key={item.conversation.id}
                   item={item}
                   modelReady={modelReady}
-                  onPress={() => open(item.conversation.id)}
+                  onPress={() => open(item.conversation)}
                 />
               ))
             )}
@@ -217,7 +233,9 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
                   accessibilityLabel={`단톡 ${groups.length}개${
                     groupMentions ? `, 나를 언급한 곳 ${groupMentions}개` : ""
                   }`}
-                  accessibilityHint={groupOpen ? "눌러서 접어요" : "눌러서 펼쳐요"}
+                  accessibilityHint={
+                    groupOpen ? "눌러서 접어요" : "눌러서 펼쳐요"
+                  }
                 >
                   <Card>
                     <s.FoldRow>
@@ -239,7 +257,7 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
                       key={item.conversation.id}
                       item={item}
                       modelReady={modelReady}
-                      onPress={() => open(item.conversation.id)}
+                      onPress={() => open(item.conversation)}
                     />
                   ))}
               </>
@@ -250,7 +268,9 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
       case "action":
         return (
           <s.Section>
-            <s.SectionTitle accessibilityRole="header">오늘의 작은 행동</s.SectionTitle>
+            <s.SectionTitle accessibilityRole="header">
+              오늘의 작은 행동
+            </s.SectionTitle>
             {action.status === "loading" ? (
               <ActivityIndicator
                 color={theme.colors.iconSubtle}
@@ -265,7 +285,11 @@ const HomeTab = ({ title, onOpenTab }: HomeTabProps) => {
                   <s.ActionRow>
                     <Button
                       variant="text"
-                      onPress={() => open(action.conversationId!)}
+                      onPress={() =>
+                        navigation.navigate("ConversationDetail", {
+                          conversationId: action.conversationId!,
+                        })
+                      }
                     >
                       한마디 건네 볼게요
                     </Button>

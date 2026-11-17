@@ -140,7 +140,8 @@ export const SEEDS: Seed[] = [
       ),
     ],
     analysis: done("clinic", {
-      summary: "내일 오전 10시 상담 예약 확인 문자예요. 변경은 오늘 오후 6시까지예요.",
+      summary:
+        "내일 오전 10시 상담 예약 확인 문자예요. 변경은 오늘 오후 6시까지예요.",
       needsReply: true,
       mentionsMe: false,
       tags: ["deadline", "question"],
@@ -212,7 +213,13 @@ export const SEEDS: Seed[] = [
       lastMessageAt: ago(10),
     },
     messages: [
-      msg("yerin", 1, "예린", "이번 달 스터디 회비 보냈어? 나 이번 주에 정리하려고!", 10),
+      msg(
+        "yerin",
+        1,
+        "예린",
+        "이번 달 스터디 회비 보냈어? 나 이번 주에 정리하려고!",
+        10
+      ),
     ],
     // 분석 중: 화면에서 analyze를 부르면 완료됨
     analysis: {
@@ -267,7 +274,8 @@ export const SEEDS: Seed[] = [
       ),
     ],
     analysis: done("team", {
-      summary: "회의가 목요일 저녁 8시로 정해졌고, 도윤이 발표 자료를 금요일까지 올려줄 수 있는지 물었어요.",
+      summary:
+        "회의가 목요일 저녁 8시로 정해졌고, 도윤이 발표 자료를 금요일까지 올려줄 수 있는지 물었어요.",
       needsReply: true,
       mentionsMe: true,
       tags: ["question"],
@@ -285,7 +293,13 @@ export const SEEDS: Seed[] = [
       lastMessageAt: ago(60 * 24 * 3),
     },
     messages: [
-      msg("univ", 1, "지훈", "모임 장소 오후 6시 강남역으로 정해졌어", 60 * 24 * 3 + 20),
+      msg(
+        "univ",
+        1,
+        "지훈",
+        "모임 장소 오후 6시 강남역으로 정해졌어",
+        60 * 24 * 3 + 20
+      ),
       msg("univ", 2, "유나", "좋아! 그날 보자~", 60 * 24 * 3),
     ],
     analysis: done("univ", {
@@ -417,6 +431,18 @@ export const REPLY_TEXTS: Record<
     },
   },
 };
+
+// 알림이 아직 남아 있어 바로 답장할 수 있는 대화
+// 하늘(5일 전 인스타그램)·대학교 친구들(3일 전)은 알림이 사라져 복사하고 메신저 열기만 가능
+export const DIRECT_REPLY_IDS = [
+  "minji",
+  "seoyeon",
+  "clinic",
+  "junho",
+  "yerin",
+  "siwoo",
+  "team",
+];
 
 // 대화별로 데이터가 없을 때 쓰는 기본 문장
 export const FALLBACK_TEXTS: Record<ReplyTone, string> = {

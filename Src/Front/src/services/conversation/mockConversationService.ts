@@ -5,6 +5,7 @@ import {
   type MessengerService,
 } from "./ConversationService";
 import {
+  DIRECT_REPLY_IDS,
   FALLBACK_TEXTS,
   PENDING_RESULTS,
   REPLY_TEXTS,
@@ -72,7 +73,9 @@ export const createMockConversationService = ({
       return seeds
         .map(s => summarize(s.conversation.id))
         .sort((a, b) =>
-          b.conversation.lastMessageAt.localeCompare(a.conversation.lastMessageAt)
+          b.conversation.lastMessageAt.localeCompare(
+            a.conversation.lastMessageAt
+          )
         );
     },
 
@@ -106,7 +109,8 @@ export const createMockConversationService = ({
       await delay(latency);
       const texts = REPLY_TEXTS[id];
       // 입장을 고른 경우: 그 입장의 말투별 후보 / 아니면 안부·축하 말투별 후보
-      const byTone = (stance ? texts?.[stance] : texts?.greeting) ?? FALLBACK_TEXTS;
+      const byTone =
+        (stance ? texts?.[stance] : texts?.greeting) ?? FALLBACK_TEXTS;
       const ordered = [tone, ...TONES.filter(t => t !== tone)];
       return ordered.map<ReplyCandidate>(t => ({
         id: `${id}-${stance ?? "greeting"}-${t}`,
@@ -187,14 +191,42 @@ export const createMockConversationService = ({
   };
 };
 
-export const createMockMessengerService = (): MessengerService => ({
-  async copyText() {
-    await delay(100);
-  },
-  async openApp() {
-    await delay(200);
-  },
-  async sendReply() {
-    await delay(800);
-  },
-});
+interface MockMessengerOptions {
+  // 알림이 아직 남아 있어 바로 답장할 수 있는 대화 (나머지는 복사하고 메신저 열기만)
+  directReplyIds?: string[];
+  // true면 보내기가 실패 (오류 안내 확인용)
+  failSend?: boolean;
+}
+
+export const createMockMessengerService = ({
+  directReplyIds = DIRECT_REPLY_IDS,
+  failSend = false,
+}: MockMessengerOptions = {}): MessengerService => {
+  const available = new Set(directReplyIds);
+  return {
+    async copyText() {
+      await delay(100);
+    },
+    async openApp() {
+      await delay(200);
+    },
+    async canReplyDirectly(id) {
+      await delay(200);
+      return available.has(id);
+    },
+    async sendReply(id) {
+      await delay(800);
+      if (failSend) {
+        throw new ServiceError("NETWORK_ERROR", "보내지 못했습니다.");
+      }
+      if (!available.has(id)) {
+        throw new ServiceError(
+          CONVERSATION_ERROR_CODE.replyUnavailable,
+          "알림이 사라져 바로 답장할 수 없습니다."
+        );
+      }
+      // 한 번 보내면 그 알림은 사라짐
+      available.delete(id);
+    },
+  };
+};

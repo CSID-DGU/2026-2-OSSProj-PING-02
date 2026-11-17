@@ -41,6 +41,9 @@ export interface MessengerService {
   copyText(text: string): Promise<void>;
   // TODO(네이티브): 연동 앱 패키지명(LINKED_APP_OPTIONS)으로 실행 인텐트
   openApp(app: MessengerApp): Promise<void>;
+  // 알림의 바로 답장(RemoteInput)을 쓸 수 있는지 (알림이 남아 있을 때만 가능)
+  // TODO(네이티브): NotificationListenerService가 가진 알림의 RemoteInput 여부로 교체
+  canReplyDirectly(conversationId: string): Promise<boolean>;
   // 알림의 바로 답장으로 보냄. 화면에서 확인 팝업을 거친 뒤에만 호출
   sendReply(conversationId: string, text: string): Promise<void>;
 }

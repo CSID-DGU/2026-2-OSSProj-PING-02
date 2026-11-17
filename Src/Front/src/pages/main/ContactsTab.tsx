@@ -10,7 +10,7 @@ import ModelNotice from "@components/contact/ModelNotice";
 import TabScreen from "@components/main/TabScreen";
 import Notice from "@components/onboarding/Notice";
 import { formatRemind } from "@constants/contact";
-import { useAuthNavigation } from "@hooks/useAuthNavigation";
+import { useOpenConversation } from "@hooks/useConversationDetail";
 import { useConversations } from "@hooks/useConversations";
 import type { ConversationSummary } from "@services";
 import * as s from "./ContactsTab_styled";
@@ -49,12 +49,11 @@ const isImportant = (item: ConversationSummary) =>
 
 const ContactsTab = ({ title }: { title: string }) => {
   const theme = useTheme();
-  const navigation = useAuthNavigation();
   const { state, modelReady, retry } = useConversations();
   const [filter, setFilter] = useState<Filter>("all");
 
-  const open = (conversationId: string) =>
-    navigation.navigate("ConversationDetail", { conversationId });
+  // 단톡은 09-C로, 1:1은 08 연락 상세로
+  const open = useOpenConversation();
 
   if (state.status === "loading") {
     return (
@@ -144,7 +143,7 @@ const ContactsTab = ({ title }: { title: string }) => {
           filter === "later" && item.deferred ? (
             // 12 미뤄둔 답장 카드: "이름 · N일 뒤 다시 보기" + 무엇에 대한 답장인지
             <Card
-              onPress={() => open(item.conversation.id)}
+              onPress={() => open(item.conversation)}
               accessibilityLabel={`${item.conversation.title}, ${formatRemind(
                 item.deferred.remindAt
               )}. ${item.deferred.topic}`}
@@ -162,7 +161,7 @@ const ContactsTab = ({ title }: { title: string }) => {
             <ConversationCard
               item={item}
               modelReady={modelReady}
-              onPress={() => open(item.conversation.id)}
+              onPress={() => open(item.conversation)}
             />
           )
         }
