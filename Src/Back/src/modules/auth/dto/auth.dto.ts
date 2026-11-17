@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
-  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -24,7 +23,7 @@ const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 // 아이디: 소문자 영문으로 시작, 영문 소문자·숫자·밑줄, 4~20자 (확정 전)
 export const USERNAME_RULE = /^[a-z][a-z0-9_]{3,19}$/;
 
-/** 비밀번호 규칙. 가입과 비밀번호 재설정에서 같은 규칙을 쓴다. */
+/** 비밀번호 규칙 */
 const IsPassword = () =>
   applyDecorators(
     IsString(),
@@ -43,66 +42,9 @@ const IsUsername = () =>
     }),
   );
 
-export class EmailCheckDto {
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-}
-
 export class UsernameCheckDto {
   @IsUsername()
   username: string;
-}
-
-// 이메일 인증 코드 확인 (가입 직후 또는 재발송 후)
-export class VerifyEmailDto {
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-
-  @Matches(/^\d{6}$/, { message: '인증 코드는 숫자 6자리입니다.' })
-  code: string;
-}
-
-// 인증 코드 재발송. 계정 존재 여부와 관계없이 같은 응답을 준다.
-export class ResendVerificationDto {
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-}
-
-// 아이디 찾기: 가입한 이메일로 아이디를 보낸다. 계정 존재 여부와 관계없이 같은 응답을 준다.
-export class FindUsernameDto {
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-}
-
-// 비밀번호 찾기 1단계: 아이디와 가입 이메일이 맞으면 재설정 코드를 보낸다.
-export class ForgotPasswordDto {
-  @IsUsername()
-  username: string;
-
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-}
-
-// 비밀번호 찾기 2단계: 메일로 받은 코드와 새 비밀번호
-export class ResetPasswordDto {
-  @IsUsername()
-  username: string;
-
-  @Matches(/^\d{6}$/, { message: '인증 코드는 숫자 6자리입니다.' })
-  code: string;
-
-  @IsPassword()
-  newPassword: string;
 }
 
 export class SignupDto {
@@ -119,11 +61,6 @@ export class SignupDto {
   @IsEnum(Gender)
   gender: Gender;
 
-  @LowerTrim()
-  @IsEmail()
-  @MaxLength(255)
-  email: string;
-
   @IsPassword()
   password: string;
 
@@ -134,7 +71,7 @@ export class SignupDto {
 }
 
 export class LoginDto {
-  // 로그인은 아이디로 한다. 이메일은 인증과 아이디·비밀번호 찾기에만 쓴다.
+  // 로그인은 아이디로 한다. (이메일은 사용하지 않는다)
   @LowerTrim()
   @IsString()
   @IsNotEmpty()
