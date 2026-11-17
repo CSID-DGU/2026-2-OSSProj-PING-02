@@ -31,6 +31,8 @@ const CODE_TTL_MINUTES = 10;
 const CODE_MAX_ATTEMPTS = 5;
 // 같은 계정에 비밀번호 재설정 메일을 이 시간 안에 다시 보내지 않는다(메일 폭탄 방지).
 const RESET_COOLDOWN_SECONDS = 60;
+// 인증 전 계정이 만들어진 지 이 시간이 지나야 같은 이메일·아이디로 다시 가입해 덮어쓸 수 있다.
+const UNVERIFIED_HOLD_SECONDS = 60;
 
 export interface TokenPair {
   accessToken: string;
@@ -87,6 +89,7 @@ export class AuthService {
   async signup(dto: SignupDto): Promise<SignupResult> {
     this.assertBirthdate(dto.birthdate);
     await this.terms.assertRequiredAgreed(dto.termsAgreements);
+    await this.releaseUnverified(dto.email, dto.username);
     await this.assertEmailFree(dto.email);
     await this.assertUsernameFree(dto.username);
 
@@ -381,6 +384,24 @@ export class AuthService {
         { field: 'birthdate', reason: 'invalid' },
       ]);
     }
+  }
+
+  /**
+   * 이메일 인증을 끝내지 못한 가입(오타 등)이 이메일과 아이디를 계속 붙잡지 않도록, 같은 이메일이나 아이디로
+   * 다시 가입하면 그 미인증 계정을 지우고 새로 만든다. 인증을 마친 계정은 건드리지 않는다.
+   * 방금 만든 계정은 보호한다(UNVERIFIED_HOLD_SECONDS). 그러지 않으면 한 이메일로 가입을 반복해서 인증 메일을 쏟아부을 수 있다.
+   */
+  private async releaseUnverified(email: string, username: string): Promise<void> {
+    const cutoff = new Date(Date.now() - UNVERIFIED_HOLD_SECONDS * 1000);
+    await this.users
+      .createQueryBuilder()
+      .delete()
+      .from(User)
+      .where('(email = :email OR username = :username)', { email, username })
+      .andWhere('email_verified_at IS NULL')
+      .andWhere('password_hash IS NOT NULL')
+      .andWhere('created_at < :cutoff', { cutoff })
+      .execute();
   }
 
   private async assertEmailFree(email: string): Promise<void> {

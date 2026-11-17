@@ -386,6 +386,73 @@ describe('앱 버전과 모델', () => {
   });
 });
 
+describe('인증을 끝내지 못한 가입의 재가입', () => {
+  const ageUsers = () => ctx.ds.query(`UPDATE users SET created_at = now() - interval '2 minutes'`);
+
+  it('가입 직후(60초 안)에는 같은 이메일로 다시 가입할 수 없다', async () => {
+    await http().post('/v1/auth/signup').send(signupBody());
+    const again = await http().post('/v1/auth/signup').send(signupBody());
+    expect(again.status).toBe(409);
+    expect(ctx.mail.sent).toHaveLength(1);
+  });
+
+  it('60초가 지나면 같은 이메일로 다시 가입하고, 이전 미인증 계정과 코드는 사라진다', async () => {
+    await http().post('/v1/auth/signup').send(signupBody());
+    const oldCode = ctx.mail.codeFor(EMAIL);
+    await ageUsers();
+
+    const again = await http().post('/v1/auth/signup').send(signupBody(EMAIL, 'newpass5678'));
+    expect(again.status).toBe(201);
+    expect(await countRows('users')).toBe(1);
+    expect(await countRows('email_verifications')).toBe(1);
+
+    const newCode = ctx.mail.codeFor(EMAIL);
+    if (oldCode !== newCode) {
+      const stale = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: oldCode });
+      expect(stale.status).toBe(400);
+    }
+    const ok = await http().post('/v1/auth/email/verify').send({ email: EMAIL, code: newCode });
+    expect(ok.status).toBe(200);
+    const loggedIn = await http().post('/v1/auth/login').send({ username: USERNAME, password: 'newpass5678' });
+    expect(loggedIn.status).toBe(200);
+  });
+
+  it('이메일을 고쳐서 같은 아이디로 다시 가입할 수 있다(오타 이메일이 아이디를 잡지 않음)', async () => {
+    await http().post('/v1/auth/signup').send(signupBody('typo@exampel.com'));
+    await ageUsers();
+
+    const fixed = { ...signupBody('typo@example.com'), username: usernameOf('typo@exampel.com') };
+    const res = await http().post('/v1/auth/signup').send(fixed);
+    expect(res.status).toBe(201);
+    expect(await countRows('users')).toBe(1);
+  });
+
+  it('인증을 마친 계정은 오래되어도 덮어쓰지 않는다', async () => {
+    await signup();
+    await ageUsers();
+
+    const same = await http().post('/v1/auth/signup').send(signupBody());
+    expect(same.status).toBe(409);
+    const sameUsername = await http()
+      .post('/v1/auth/signup')
+      .send({ ...signupBody('other@example.com'), username: USERNAME });
+    expect(sameUsername.status).toBe(409);
+    expect(sameUsername.body.error.code).toBe('USERNAME_ALREADY_EXISTS');
+    expect(await countRows('users')).toBe(1);
+  });
+
+  it('덮어쓴 가입이 중간에 실패해도(메일 발송 실패) 다른 계정은 그대로다', async () => {
+    await signup('keep@example.com');
+    await http().post('/v1/auth/signup').send(signupBody());
+    await ageUsers();
+
+    ctx.mail.failNext = true;
+    const res = await http().post('/v1/auth/signup').send(signupBody());
+    expect(res.status).toBe(503);
+    expect(await countRows('users')).toBe(1); // 검증된 keep 계정만 남는다
+  });
+});
+
 describe('공통 에러 형식', () => {
   it('없는 경로는 명세 형식의 404 로 응답한다', async () => {
     const res = await http().get('/v1/no-such-route');
