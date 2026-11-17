@@ -11,6 +11,14 @@ export function configureApp(app: INestApplication): void {
   // 보안 헤더(nosniff, frame 차단 등). helmet 이 X-Powered-By 도 함께 제거한다.
   app.use(helmet());
 
+  // 리버스 프록시(Caddy 등) 뒤에서는 모든 요청이 프록시 주소로 보여서 IP 기준 요청 제한이 전체 사용자에게 한꺼번에 걸린다.
+  // TRUST_PROXY 에 앞단 프록시 개수를 넣으면 X-Forwarded-For 의 실제 클라이언트 IP 를 쓴다.
+  // 기본값 0 은 이 헤더를 믿지 않는다(프록시 없이 직접 노출될 때 헤더를 위조해 제한을 피하는 것을 막는다).
+  const proxyHops = Number(process.env.TRUST_PROXY ?? 0);
+  if (Number.isInteger(proxyHops) && proxyHops > 0) {
+    app.getHttpAdapter().getInstance().set('trust proxy', proxyHops);
+  }
+
   // 명세: 모든 경로는 /v1 아래에 있다.
   app.setGlobalPrefix('v1');
 
