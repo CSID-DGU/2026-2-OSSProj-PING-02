@@ -167,7 +167,7 @@ export const createMockAuthService = (): AuthService => {
         throw new ServiceError(
           AUTH_ERROR_CODE.emailNotVerified,
           "이메일 인증이 필요합니다.",
-          { email: user.email }
+          { data: { email: user.email } }
         );
       }
       return issue(user);
