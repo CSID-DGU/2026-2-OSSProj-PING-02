@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Gender } from '../../common/enums';
 import { AuthProvider } from './auth-provider.entity';
 import { RefreshToken } from './refresh-token.entity';
@@ -13,6 +13,12 @@ export class User {
   // 로그인용 아이디. 소문자 영문으로 시작하는 4~20자(영문 소문자·숫자·밑줄)
   @Column({ type: 'varchar', length: 20, unique: true })
   username: string;
+
+  // 아이디·비밀번호 찾기에 쓰는 연락 이메일. 가입할 때 인증하지 않으므로 중복을 막지 않는다
+  // (남의 이메일을 먼저 적어 그 이메일로 가입하지 못하게 하는 일을 막기 위해). 카카오 가입자가 제공하지 않으면 null
+  @Index()
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  email: string | null;
 
   // 카카오 전용 계정은 null
   @Column({ type: 'varchar', length: 255, nullable: true })

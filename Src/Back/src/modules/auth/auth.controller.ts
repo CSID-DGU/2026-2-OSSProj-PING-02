@@ -4,7 +4,15 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, AuthUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshTokenDto, SignupDto, UsernameCheckDto } from './dto/auth.dto';
+import {
+  FindUsernameDto,
+  ForgotPasswordDto,
+  LoginDto,
+  RefreshTokenDto,
+  ResetPasswordDto,
+  SignupDto,
+  UsernameCheckDto,
+} from './dto/auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -20,7 +28,33 @@ export class AuthController {
     return this.auth.checkUsername(dto.username);
   }
 
-  // 가입하면 바로 로그인 세션(토큰)을 받는다.
+  // 아이디 찾기: 가입한 이메일로 아이디를 보낸다. 가입 여부와 관계없이 204 로 응답한다.
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('username/find')
+  @HttpCode(204)
+  async findUsername(@Body() dto: FindUsernameDto): Promise<void> {
+    await this.auth.findUsername(dto.email);
+  }
+
+  // 비밀번호 찾기 1단계: 아이디와 이메일이 맞으면 재설정 코드를 보낸다. 항상 204.
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('password/forgot')
+  @HttpCode(204)
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
+    await this.auth.forgotPassword(dto);
+  }
+
+  // 비밀번호 찾기 2단계: 코드를 확인하고 새 비밀번호를 설정한다. 모든 세션이 끊긴다.
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('password/reset')
+  @HttpCode(204)
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    await this.auth.resetPassword(dto);
+  }
+
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('signup')
