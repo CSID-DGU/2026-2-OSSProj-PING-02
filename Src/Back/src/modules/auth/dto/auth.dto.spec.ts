@@ -7,7 +7,6 @@ const base = {
   name: '홍길동',
   birthdate: '1999-01-01',
   gender: 'MALE',
-  email: 'user@example.com',
   termsAgreements: [],
 };
 

@@ -1,9 +1,9 @@
 import { createHmac } from 'crypto';
 import request from 'supertest';
-import { registerVerified, startApp, TestContext, usernameOf } from './support/app';
+import { register, startApp, TestContext, usernameOf } from './support/app';
 
 const PASSWORD = 'abcd1234';
-const USERNAME = usernameOf('sec@example.com');
+const USERNAME = usernameOf('sec');
 let ctx: TestContext;
 
 beforeEach(async () => {
@@ -18,13 +18,11 @@ const http = () => request(ctx.app.getHttpServer());
 const JSON_TYPE = 'application/json';
 
 function signupBody(overrides: Record<string, unknown> = {}) {
-  const email = String(overrides.email ?? 'sec@example.com');
   return {
-    username: usernameOf(email),
+    username: USERNAME,
     name: '홍길동',
     birthdate: '1999-01-01',
     gender: 'MALE',
-    email,
     password: PASSWORD,
     termsAgreements: [
       { termsId: ctx.termsIds.service, agreed: true },
@@ -34,9 +32,9 @@ function signupBody(overrides: Record<string, unknown> = {}) {
   };
 }
 
-/** 가입 후 메일 코드까지 확인한 회원을 만든다. 토큰이 필요한 테스트용. */
+/** 가입하고 토큰을 받은 회원을 만든다. 토큰이 필요한 테스트용. */
 async function signup(overrides: Record<string, unknown> = {}) {
-  const v = await registerVerified(ctx, signupBody(overrides));
+  const v = await register(ctx, signupBody(overrides));
   return { user: { id: v.userId }, tokens: { accessToken: v.accessToken, refreshToken: v.refreshToken } };
 }
 
@@ -76,10 +74,10 @@ describe('1. 인젝션: 입력값이 SQL·NoSQL·스크립트로 해석되지 �
     expect(await countRows('users')).toBe(before);
   });
 
-  it('이메일 중복 확인에 SQL 구문을 넣어도 500 이 나오지 않는다', async () => {
-    const res = await http().post('/v1/auth/email/check').send({ email: "x'); DROP TABLE users;--" });
+  it('아이디 중복 확인에 SQL 구문을 넣어도 500 이 나오지 않는다', async () => {
+    const res = await http().post('/v1/auth/username/check').send({ username: "x'); DROP TABLE users;--" });
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('INVALID_EMAIL_FORMAT');
+    expect(res.body.error.code).toBe('VALIDATION_FAILED');
   });
 
   it('이름에 SQL 구문이 들어가면 문자 그대로 저장되고 테이블은 살아 있다', async () => {
@@ -125,11 +123,11 @@ describe('1. 인젝션: 입력값이 SQL·NoSQL·스크립트로 해석되지 �
     expect(res.body.user.name).toBe(xss);
   });
 
-  it('제한 길이를 넘긴 이름, 널 문자가 든 이메일은 400 이다', async () => {
+  it('제한 길이를 넘긴 이름, 널 문자가 든 아이디는 400 이다', async () => {
     let res = await http().post('/v1/auth/signup').send(signupBody({ name: 'a'.repeat(10_000) }));
     expect(res.status).toBe(400);
 
-    res = await http().post('/v1/auth/email/check').send({ email: 'a\u0000b@example.com' });
+    res = await http().post('/v1/auth/username/check').send({ username: 'ab\u0000cd_ef' });
     expect(res.status).toBe(400);
   });
 });
@@ -210,8 +208,8 @@ describe('3. 인증 우회: JWT 위조와 잘못된 인증 헤더', () => {
 
 describe('4. 권한 범위: 다른 회원의 토큰으로 남의 세션을 건드릴 수 없다', () => {
   it('A가 B의 refreshToken 으로 로그아웃해도 B의 세션은 살아 있다', async () => {
-    const a = await signup({ email: 'a@example.com' });
-    const b = await signup({ email: 'b@example.com' });
+    const a = await signup({ username: 'user_aaaa' });
+    const b = await signup({ username: 'user_bbbb' });
 
     const res = await http()
       .post('/v1/auth/logout')
@@ -242,7 +240,7 @@ describe('5. 인증 필요 경로 전수 확인', () => {
   it('공개 경로는 토큰 없이도 응답한다', async () => {
     expect((await http().get('/v1/terms')).status).toBe(200);
     expect((await http().get('/v1/app/version').query({ platform: 'android', appVersion: '1.0.0' })).status).toBe(200);
-    expect((await http().post('/v1/auth/email/check').send({ email: 'free@example.com' })).status).toBe(200);
+    expect((await http().post('/v1/auth/username/check').send({ username: 'free_name' })).status).toBe(200);
   });
 });
 
@@ -281,17 +279,17 @@ describe('7. 메시지 관련 필드는 어떤 응답에도 없다 (기능명세
     const { tokens } = await signup();
     const res = await http().get('/v1/users/me').set('Authorization', `Bearer ${tokens.accessToken}`);
     expect(res.body).toEqual(
-      expect.objectContaining({ id: expect.any(String), name: expect.any(String), email: expect.any(String) }),
+      expect.objectContaining({ id: expect.any(String), name: expect.any(String), username: expect.any(String) }),
     );
     expect(Object.keys(res.body).sort()).toEqual(
-      ['birthdate', 'createdAt', 'email', 'gender', 'id', 'name', 'provider', 'termsAgreements', 'username'].sort(),
+      ['birthdate', 'createdAt', 'gender', 'id', 'name', 'provider', 'termsAgreements', 'username'].sort(),
     );
     expect(collectKeys(res.body).filter((k) => forbiddenKeys.test(k))).toEqual([]);
   });
 
   it('가입·약관·모델·버전 응답에도 메시지 관련 키가 없다', async () => {
-    const signed = await http().post('/v1/auth/signup').send(signupBody({ email: 'keys@example.com' }));
-    const verified = await registerVerified(ctx, signupBody({ email: 'keys2@example.com' }));
+    const signed = await http().post('/v1/auth/signup').send(signupBody({ username: 'user_keys1' }));
+    const verified = await register(ctx, signupBody({ username: 'user_keys2' }));
     const terms = await http().get('/v1/terms');
     const version = await http().get('/v1/app/version').query({ platform: 'android', appVersion: '1.0.0' });
     const model = await http()
@@ -334,7 +332,7 @@ describe('8. 요청 제한과 과대 입력', () => {
   });
 
   it('JSON 문법이 깨진 본문은 500 이 아니라 400 으로 명세 형식으로 응답한다', async () => {
-    const res = await http().post('/v1/auth/login').set('Content-Type', JSON_TYPE).send('{"email": "a@b.c",');
+    const res = await http().post('/v1/auth/login').set('Content-Type', JSON_TYPE).send('{"username": "abcd",');
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_FAILED');
     // 파서의 내부 문구(위치 정보 등)를 노출하지 않는다
@@ -343,7 +341,7 @@ describe('8. 요청 제한과 과대 입력', () => {
   });
 
   it('JSON이 아닌 본문 형식은 명세 형식의 에러로 응답한다 (500 이 아님)', async () => {
-    const res = await http().post('/v1/auth/login').set('Content-Type', 'text/plain').send('email=a');
+    const res = await http().post('/v1/auth/login').set('Content-Type', 'text/plain').send('username=a');
     expect(res.status).toBeLessThan(500);
     expect(res.body.error).toBeDefined();
   });

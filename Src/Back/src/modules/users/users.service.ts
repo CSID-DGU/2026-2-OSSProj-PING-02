@@ -39,7 +39,6 @@ export class UsersService {
       id: user.id,
       username: user.username,
       name: user.name,
-      email: user.email,
       birthdate: toDateOnly(user.birthdate),
       gender: user.gender,
       provider: isKakao ? 'KAKAO' : 'EMAIL',

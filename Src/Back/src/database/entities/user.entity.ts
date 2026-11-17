@@ -14,10 +14,6 @@ export class User {
   @Column({ type: 'varchar', length: 20, unique: true })
   username: string;
 
-  // 카카오 가입자가 이메일 제공에 동의하지 않으면 null
-  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
-  email: string | null;
-
   // 카카오 전용 계정은 null
   @Column({ type: 'varchar', length: 255, nullable: true })
   passwordHash: string | null;
@@ -31,11 +27,7 @@ export class User {
   @Column({ type: 'varchar', length: 10 })
   gender: Gender;
 
-  // 이메일 가입자는 인증 코드를 맞히기 전까지 로그인할 수 없다. 카카오 계정은 항상 인증된 것으로 본다.
-  @Column({ type: 'timestamptz', nullable: true })
-  emailVerifiedAt: Date | null;
-
-  // 비밀번호를 연속으로 틀린 횟수. 로그인에 성공하거나 비밀번호를 재설정하면 0으로 돌아간다.
+  // 비밀번호를 연속으로 틀린 횟수. 로그인에 성공하면 0으로 돌아간다.
   @Column({ type: 'smallint', default: 0 })
   failedLoginCount: number;
 

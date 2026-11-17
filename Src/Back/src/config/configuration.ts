@@ -26,14 +26,6 @@ export default () => {
       accessTtlSeconds: toInt(process.env.ACCESS_TOKEN_TTL_SECONDS, 1800),
       refreshTtlDays: toInt(process.env.REFRESH_TOKEN_TTL_DAYS, 30),
     },
-    mail: {
-      host: process.env.MAIL_HOST ?? '',
-      port: toInt(process.env.MAIL_PORT, 587),
-      secure: process.env.MAIL_SECURE === 'true',
-      user: process.env.MAIL_USER ?? '',
-      pass: process.env.MAIL_PASS ?? '',
-      from: process.env.MAIL_FROM ?? 'no-reply@example.com',
-    },
     model: {
       cdnBaseUrl: process.env.MODEL_CDN_BASE_URL ?? 'https://cdn.example.com/models',
       urlTtlMinutes: toInt(process.env.MODEL_URL_TTL_MINUTES, 15),
