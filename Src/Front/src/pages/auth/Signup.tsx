@@ -16,17 +16,24 @@ import {
   EMAIL_DOMAINS,
   GENDER_OPTIONS,
   LOGIN_ID_RULE,
-  PASSWORD_MIN_LENGTH,
+  PASSWORD_RULE,
+  getAuthErrorMessage,
+  getInvalidFields,
   isValidLoginId,
+  isValidPassword,
+  normalizeLoginId,
   type Gender,
 } from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import {
   AUTH_ERROR_CODE,
+  AUTH_FEATURES,
+  COMMON_ERROR_CODE,
   getErrorCode,
   services,
   type Terms,
 } from "@services";
+import { useSession } from "@stores/SessionProvider";
 import * as s from "./Signup_styled";
 
 type TermsState =
@@ -65,6 +72,17 @@ const DOMAIN_OPTIONS = EMAIL_DOMAINS.map(domain => ({
   value: domain,
 }));
 
+// 400 VALIDATION_FAILED의 서버 필드 → 화면 입력란과 문구
+const SERVER_FIELD_ERRORS: Record<string, [SignupField, string]> = {
+  username: ["loginId", AUTH_ERROR.idInvalid],
+  password: ["password", AUTH_ERROR.passwordInvalid],
+  name: ["name", AUTH_ERROR.checkInput],
+  birthdate: ["birth", AUTH_ERROR.checkInput],
+  gender: ["gender", AUTH_ERROR.checkInput],
+  email: ["email", AUTH_ERROR.emailInvalid],
+  termsAgreements: ["terms", AUTH_ERROR.checkInput],
+};
+
 // 월마다 마지막 날이 달라서 연·월에 맞춰 일 선택지를 만듦
 const getDayOptions = (year?: number, month?: number) => {
   const lastDay = month ? new Date(year ?? 2000, month, 0).getDate() : 31;
@@ -77,6 +95,9 @@ const getDayOptions = (year?: number, month?: number) => {
 const Signup = () => {
   const navigation = useAuthNavigation();
   const theme = useTheme();
+  const { signIn } = useSession();
+  // 이메일 기능(services/config.ts). 꺼져 있으면 이메일 칸 없이 가입하고 바로 로그인
+  const emailEnabled = AUTH_FEATURES.emailEnabled;
 
   const [name, setName] = useState("");
   const [year, setYear] = useState<number>();
@@ -112,10 +133,9 @@ const Signup = () => {
     !!month &&
     !!day &&
     !!gender &&
-    !!emailLocal.trim() &&
-    !!emailDomainValue &&
+    (!emailEnabled || (!!emailLocal.trim() && !!emailDomainValue)) &&
     idCheck === "available" &&
-    password.length >= PASSWORD_MIN_LENGTH &&
+    isValidPassword(password) &&
     passwordConfirm === password &&
     termsState.status === "ready" &&
     agreeRequired;
@@ -146,7 +166,7 @@ const Signup = () => {
 
   // 아이디 중복 확인 (Figma에 없어 입력란 아래 텍스트 버튼으로)
   const handleCheckId = async () => {
-    const id = loginId.trim();
+    const id = normalizeLoginId(loginId);
     if (!id) {
       setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idRequired }));
       return;
@@ -163,9 +183,14 @@ const Signup = () => {
       if (!available) {
         setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idTaken }));
       }
-    } catch {
+    } catch (error) {
       setIdCheck("idle");
-      setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.network }));
+      setErrors(prev => ({
+        ...prev,
+        loginId: getInvalidFields(error).includes("username")
+          ? AUTH_ERROR.idInvalid
+          : getAuthErrorMessage(error),
+      }));
     }
   };
 
@@ -186,15 +211,16 @@ const Signup = () => {
     if (!name.trim()) next.name = AUTH_ERROR.nameRequired;
     if (!year || !month || !day) next.birth = AUTH_ERROR.birthRequired;
     if (!gender) next.gender = AUTH_ERROR.genderRequired;
-    if (!emailLocal.trim() || !domain) next.email = AUTH_ERROR.emailRequired;
-    else if (/[\s@]/.test(emailLocal) || !DOMAIN_REGEX.test(domain))
-      next.email = AUTH_ERROR.emailInvalid;
+    if (emailEnabled) {
+      if (!emailLocal.trim() || !domain) next.email = AUTH_ERROR.emailRequired;
+      else if (/[\s@]/.test(emailLocal) || !DOMAIN_REGEX.test(domain))
+        next.email = AUTH_ERROR.emailInvalid;
+    }
     if (!loginId.trim()) next.loginId = AUTH_ERROR.idRequired;
-    else if (!isValidLoginId(loginId.trim())) next.loginId = AUTH_ERROR.idInvalid;
+    else if (!isValidLoginId(loginId)) next.loginId = AUTH_ERROR.idInvalid;
     else if (idCheck === "taken") next.loginId = AUTH_ERROR.idTaken;
     else if (idCheck !== "available") next.loginId = AUTH_ERROR.idCheckRequired;
-    if (password.length < PASSWORD_MIN_LENGTH)
-      next.password = AUTH_ERROR.passwordTooShort;
+    if (!isValidPassword(password)) next.password = AUTH_ERROR.passwordInvalid;
     if (!passwordConfirm || passwordConfirm !== password)
       next.passwordConfirm = AUTH_ERROR.passwordMismatch;
     if (termsState.status !== "ready") next.terms = AUTH_ERROR.termsLoadFailed;
@@ -210,12 +236,12 @@ const Signup = () => {
       return;
     }
     const domain = customDomain ? domainInput.trim() : emailDomain;
-    const email = `${emailLocal.trim()}@${domain}`;
+    const email = emailEnabled ? `${emailLocal.trim()}@${domain}` : undefined;
 
     setSubmitting(true);
     try {
-      await services.auth.signup({
-        loginId: loginId.trim(),
+      const signup = await services.auth.signup({
+        loginId: normalizeLoginId(loginId),
         name: name.trim(),
         birthdate: `${year}-${pad2(month)}-${pad2(day)}`,
         gender,
@@ -226,10 +252,20 @@ const Signup = () => {
           agreed: !!agreed[t.id],
         })),
       });
-      navigation.navigate("EmailVerify", { email });
+      if (signup.status === "signedIn") {
+        // 가입하면 바로 로그인 (백엔드 #25). 이동은 Splash가 온보딩 진행 상황을 보고 결정
+        await signIn(signup.result);
+        navigation.popTo("Splash");
+      } else {
+        // 이메일 기능: 인증 화면에서 뒤로 나와 다시 가입하면 서버가 인증 전 계정을 덮어씀
+        navigation.navigate("EmailVerify", { email: signup.email });
+      }
     } catch (error) {
       const code = getErrorCode(error);
-      if (code === AUTH_ERROR_CODE.loginIdAlreadyExists) {
+      const fields = getInvalidFields(error)
+        .map(field => SERVER_FIELD_ERRORS[field])
+        .filter(Boolean);
+      if (code === AUTH_ERROR_CODE.usernameAlreadyExists) {
         // 확인 뒤 그사이 다른 사람이 가입한 경우
         setIdCheck("taken");
         setErrors({ loginId: AUTH_ERROR.idTaken });
@@ -237,8 +273,15 @@ const Signup = () => {
         setErrors({ email: AUTH_ERROR.emailTaken });
       } else if (code === AUTH_ERROR_CODE.requiredTermsNotAgreed) {
         setErrors({ terms: AUTH_ERROR.termsRequired });
+      } else if (
+        code === COMMON_ERROR_CODE.validationFailed &&
+        fields.length > 0
+      ) {
+        // 400: 서버가 알려 준 입력란에 안내
+        setErrors(Object.fromEntries(fields));
+        if (fields.some(([field]) => field === "loginId")) setIdCheck("idle");
       } else {
-        setFormError(AUTH_ERROR.network);
+        setFormError(getAuthErrorMessage(error));
       }
     } finally {
       setSubmitting(false);
@@ -326,6 +369,7 @@ const Signup = () => {
           />
         </Field>
 
+        {emailEnabled && (
         <Field
           label="이메일"
           helper={errors.email}
@@ -389,6 +433,7 @@ const Signup = () => {
             }}
           />
         </Field>
+        )}
 
         {/* 팀 결정으로 추가 (Figma 01-3에 없음): 계정 정보끼리 묶이도록 비밀번호 바로 위 */}
         {/* 입력란 바로 옆 "중복 확인"(48dp), 결과는 도움말 자리에 */}
@@ -440,7 +485,7 @@ const Signup = () => {
 
         <TextField
           label="비밀번호"
-          placeholder={`${PASSWORD_MIN_LENGTH}자 이상 입력해주세요`}
+          placeholder={PASSWORD_RULE.guide}
           value={password}
           onChangeText={text => {
             setPassword(text);

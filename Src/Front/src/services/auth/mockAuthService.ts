@@ -1,4 +1,6 @@
-import { delay, ServiceError } from "../common";
+import { isValidLoginId, isValidPassword } from "@constants/authRules";
+import { COMMON_ERROR_CODE, delay, ServiceError } from "../common";
+import { AUTH_FEATURES } from "../config";
 import {
   AUTH_ERROR_CODE,
   type AuthResult,
@@ -7,8 +9,11 @@ import {
   type Terms,
 } from "./AuthService";
 
-// mock 인증: 서버 대신 메모리에 회원을 저장 (아이디 기준)
-// - 인증 코드는 항상 MOCK_VERIFICATION_CODE
+// mock 인증: 서버 대신 메모리에 회원을 저장 (백엔드 #25 동작을 따름)
+// - 이메일 꺼짐(기본): 가입하면 바로 로그인
+// - 이메일 켜짐: 가입 → 인증 코드 확인 → 로그인. 인증 코드는 항상 MOCK_VERIFICATION_CODE
+//   인증 전 계정은 같은 아이디·이메일로 다시 가입하면 덮어씀
+//   (백엔드는 만든 지 60초가 지난 미인증 계정만 덮어씀. mock은 시간 조건 없이 바로)
 // - 바로 로그인해 볼 수 있는 테스트 계정: MOCK_DEMO_ACCOUNT
 export const MOCK_VERIFICATION_CODE = "123456";
 export const MOCK_DEMO_ACCOUNT = {
@@ -52,8 +57,18 @@ interface MockUser extends AuthUser {
 
 const LATENCY = 600;
 
-const mask = (loginId: string) =>
-  loginId.slice(0, 4) + "*".repeat(Math.max(loginId.length - 4, 4));
+const validationError = (field: string) =>
+  new ServiceError(COMMON_ERROR_CODE.validationFailed, "입력값이 올바르지 않습니다.", {
+    status: 400,
+    details: [{ field, reason: "matches" }],
+  });
+
+const codeInvalid = () =>
+  new ServiceError(
+    AUTH_ERROR_CODE.verificationCodeInvalid,
+    "인증 코드가 올바르지 않습니다.",
+    { status: 400 }
+  );
 
 export const createMockAuthService = (): AuthService => {
   // key: 아이디
@@ -70,9 +85,14 @@ export const createMockAuthService = (): AuthService => {
       },
     ],
   ]);
+  let nextId = 1;
 
   const findByEmail = (email: string) =>
     [...users.values()].find(u => u.email === email.toLowerCase());
+
+  // 이메일 기능이 켜져 있을 때 인증 전 계정은 다시 가입하면 덮어쓸 수 있음
+  const isReplaceable = (user?: MockUser) =>
+    !!user && AUTH_FEATURES.emailEnabled && !user.verified;
 
   const toUser = ({ id, loginId, name, email }: MockUser): AuthUser => ({
     id,
@@ -98,22 +118,33 @@ export const createMockAuthService = (): AuthService => {
 
     async checkLoginId(loginId) {
       await delay(400);
-      return { available: !users.has(loginId) };
+      if (!isValidLoginId(loginId)) throw validationError("username");
+      const user = users.get(loginId);
+      return { available: !user || isReplaceable(user) };
     },
 
     async signup(input) {
       await delay(LATENCY);
-      const email = input.email.toLowerCase();
-      if (users.has(input.loginId)) {
+      const emailEnabled = AUTH_FEATURES.emailEnabled;
+      if (!isValidLoginId(input.loginId)) throw validationError("username");
+      if (!isValidPassword(input.password)) throw validationError("password");
+
+      const sameId = users.get(input.loginId);
+      if (sameId && !isReplaceable(sameId)) {
         throw new ServiceError(
-          AUTH_ERROR_CODE.loginIdAlreadyExists,
-          "이미 사용 중인 아이디입니다."
+          AUTH_ERROR_CODE.usernameAlreadyExists,
+          "이미 사용 중인 아이디입니다.",
+          { status: 409 }
         );
       }
-      if (findByEmail(email)) {
+      const email = emailEnabled ? input.email?.toLowerCase() : undefined;
+      if (emailEnabled && !email) throw validationError("email");
+      const sameEmail = email ? findByEmail(email) : undefined;
+      if (sameEmail && !isReplaceable(sameEmail)) {
         throw new ServiceError(
           AUTH_ERROR_CODE.emailAlreadyExists,
-          "이미 가입된 이메일입니다."
+          "이미 가입된 이메일입니다.",
+          { status: 409 }
         );
       }
       const agreed = new Set(
@@ -122,36 +153,27 @@ export const createMockAuthService = (): AuthService => {
       if (MOCK_TERMS.some(t => t.required && !agreed.has(t.id))) {
         throw new ServiceError(
           AUTH_ERROR_CODE.requiredTermsNotAgreed,
-          "필수 약관에 동의해야 합니다."
+          "필수 약관에 동의해야 합니다.",
+          { status: 422 }
         );
       }
+
+      // 인증 전 계정을 덮어씀 (같은 아이디·같은 이메일 모두)
+      if (sameId) users.delete(sameId.loginId);
+      if (sameEmail) users.delete(sameEmail.loginId);
+
       const user: MockUser = {
-        id: `mock-user-${users.size + 1}`,
+        id: `mock-user-${nextId++}`,
         loginId: input.loginId,
         name: input.name,
         email,
         password: input.password,
-        verified: false,
+        verified: !emailEnabled,
       };
       users.set(user.loginId, user);
-      return { user: toUser(user), verificationRequired: true };
-    },
-
-    async verifyEmail(email, code) {
-      await delay(LATENCY);
-      const user = findByEmail(email);
-      if (!user || user.verified || code !== MOCK_VERIFICATION_CODE) {
-        throw new ServiceError(
-          AUTH_ERROR_CODE.verificationCodeInvalid,
-          "인증 코드가 올바르지 않습니다."
-        );
-      }
-      user.verified = true;
-      return issue(user);
-    },
-
-    async resendVerification() {
-      await delay(LATENCY);
+      return emailEnabled && email
+        ? { status: "verificationRequired", email }
+        : { status: "signedIn", result: issue(user) };
     },
 
     async login(loginId, password) {
@@ -160,14 +182,15 @@ export const createMockAuthService = (): AuthService => {
       if (!user || user.password !== password) {
         throw new ServiceError(
           AUTH_ERROR_CODE.invalidCredentials,
-          "아이디 또는 비밀번호가 올바르지 않습니다."
+          "아이디 또는 비밀번호가 올바르지 않습니다.",
+          { status: 401 }
         );
       }
-      if (!user.verified) {
+      if (!user.verified && AUTH_FEATURES.emailEnabled && user.email) {
         throw new ServiceError(
           AUTH_ERROR_CODE.emailNotVerified,
           "이메일 인증이 필요합니다.",
-          { data: { email: user.email } }
+          { status: 403, data: { email: user.email } }
         );
       }
       return issue(user);
@@ -177,29 +200,35 @@ export const createMockAuthService = (): AuthService => {
       await delay(200);
     },
 
-    async findLoginId(input) {
+    async verifyEmail(email, code) {
       await delay(LATENCY);
-      // TODO(팀 결정): 전화번호 방식은 회원 정보에 전화번호가 없어 mock에서 항상 못 찾음
-      const user =
-        input.method === "email" ? findByEmail(input.email) : undefined;
-      if (!user || user.name !== input.name) {
-        throw new ServiceError(
-          AUTH_ERROR_CODE.accountNotFound,
-          "일치하는 계정이 없습니다."
-        );
+      const user = findByEmail(email);
+      if (!user || user.verified || code !== MOCK_VERIFICATION_CODE) {
+        throw codeInvalid();
       }
-      return { maskedLoginId: mask(user.loginId) };
+      user.verified = true;
+      return issue(user);
     },
 
-    async requestPasswordReset(loginId, email) {
+    async resendVerification() {
       await delay(LATENCY);
+    },
+
+    // 계정이 있는지 알려 주지 않으려고 항상 성공 (있으면 메일로 보냄)
+    async findLoginId() {
+      await delay(LATENCY);
+    },
+
+    async requestPasswordReset() {
+      await delay(LATENCY);
+    },
+
+    async resetPassword(loginId, code, newPassword) {
+      await delay(LATENCY);
+      if (!isValidPassword(newPassword)) throw validationError("newPassword");
       const user = users.get(loginId);
-      if (!user || user.email !== email.toLowerCase()) {
-        throw new ServiceError(
-          AUTH_ERROR_CODE.accountNotFound,
-          "일치하는 계정이 없습니다."
-        );
-      }
+      if (!user || code !== MOCK_VERIFICATION_CODE) throw codeInvalid();
+      user.password = newPassword;
     },
   };
 };
