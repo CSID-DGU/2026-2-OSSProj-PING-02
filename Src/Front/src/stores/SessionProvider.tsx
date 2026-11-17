@@ -7,19 +7,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  services,
-  STORAGE_KEYS,
-  type AuthResult,
-  type AuthTokens,
-  type AuthUser,
-} from "@services";
+import { services, type AuthResult, type AuthUser } from "@services";
 
-// 로그인 상태. 앱을 켜면 저장소에서 복원하고(loading), 결과에 따라 signedIn / signedOut
+// 로그인 상태
+// - 토큰은 services.tokens(메모리)에만 둠. 앱을 끄면 로그아웃 상태로 시작
+//   TODO(팀 결정): 자동 로그인 여부 미확정. 정하면 앱 시작 시 저장된 refreshToken으로 갱신하고 "loading"을 씀
+// - 앱 사용 중 토큰 갱신이 실패해 토큰이 지워지면(세션 만료) signedOut으로 바뀜
 export type SessionState =
   | { status: "loading" }
   | { status: "signedOut" }
-  | { status: "signedIn"; user: AuthUser; tokens: AuthTokens };
+  | { status: "signedIn"; user: AuthUser };
 
 interface SessionContextValue {
   session: SessionState;
@@ -29,59 +26,37 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-const { storage, auth } = services;
-
-const isAuthResult = (value: unknown): value is AuthResult => {
-  const v = value as AuthResult | null;
-  return !!v?.user?.id && !!v?.tokens?.accessToken;
-};
+const { auth, tokens } = services;
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<SessionState>({ status: "loading" });
+  const [session, setSession] = useState<SessionState>({ status: "signedOut" });
 
-  useEffect(() => {
-    let alive = true;
-    const restore = async () => {
-      try {
-        const raw = await storage.getItem(STORAGE_KEYS.session);
-        const saved: unknown = raw ? JSON.parse(raw) : null;
-        if (!alive) return;
-        setSession(
-          isAuthResult(saved)
-            ? { status: "signedIn", user: saved.user, tokens: saved.tokens }
-            : { status: "signedOut" }
-        );
-      } catch {
-        // 저장된 값이 깨졌으면 다시 로그인하도록 함
-        if (alive) setSession({ status: "signedOut" });
-      }
-    };
-    restore();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // 토큰이 지워지면 로그인 화면으로 (로그아웃·갱신 실패 모두)
+  useEffect(
+    () =>
+      tokens.subscribe(next => {
+        if (!next) setSession({ status: "signedOut" });
+      }),
+    []
+  );
 
   const signIn = useCallback(async (result: AuthResult) => {
-    setSession({ status: "signedIn", user: result.user, tokens: result.tokens });
-    try {
-      await storage.setItem(STORAGE_KEYS.session, JSON.stringify(result));
-    } catch {
-      // 저장에 실패해도 이번 실행 동안은 로그인 상태를 유지
-    }
+    tokens.set(result.tokens);
+    setSession({ status: "signedIn", user: result.user });
   }, []);
 
   const signOut = useCallback(async () => {
-    const current = session;
+    const current = tokens.get();
+    // 화면은 바로 로그아웃 상태로. 로그아웃 요청에는 액세스 토큰이 필요해서 토큰은 요청 뒤에 지움
     setSession({ status: "signedOut" });
     try {
-      if (current.status === "signedIn") {
-        await auth.logout(current.tokens.refreshToken);
-      }
+      if (current) await auth.logout(current.refreshToken);
+    } catch {
+      // 서버에 닿지 못해도 이 기기에서는 로그아웃 (서버 세션은 30일 뒤 만료)
     } finally {
-      await storage.removeItem(STORAGE_KEYS.session).catch(() => {});
+      tokens.set(null);
     }
-  }, [session]);
+  }, []);
 
   const value = useMemo(
     () => ({ session, signIn, signOut }),
