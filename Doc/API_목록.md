@@ -35,7 +35,7 @@
 {
   "error": {
     "code": "INVALID_CREDENTIALS",
-    "message": "이메일 또는 비밀번호가 올바르지 않습니다.",
+    "message": "아이디 또는 비밀번호가 올바르지 않습니다.",
     "details": []
   }
 }
@@ -51,10 +51,14 @@
 | 1 | GET | `/app/version` | 불필요 | 200 | 앱 버전 확인, 강제 업데이트 여부 | 4-12 |
 | 2 | GET | `/terms` | 불필요 | 200 | 약관 목록 | 4-2 |
 | 3 | POST | `/auth/email/check` | 불필요 | 200 | 이메일 사용 가능 여부 | 1.1.4 |
-| 4 | POST | `/auth/signup` | 불필요 | 201 | 회원가입 (약관 동의 포함, 토큰 없음) | 1.1.1~1.1.3 |
+| 3-1 | POST | `/auth/username/check` | 불필요 | 200 | 아이디 사용 가능 여부 | 확인 필요 (명세 외 추가) |
+| 3-2 | POST | `/auth/username/find` | 불필요 | 204 | 아이디 찾기 (가입 이메일로 발송) | 확인 필요 (명세 외 추가) |
+| 3-3 | POST | `/auth/password/forgot` | 불필요 | 204 | 비밀번호 찾기 1단계: 재설정 코드 발송 | 확인 필요 (명세 외 추가) |
+| 3-4 | POST | `/auth/password/reset` | 불필요 | 204 | 비밀번호 찾기 2단계: 코드 확인 후 새 비밀번호 설정 | 확인 필요 (명세 외 추가) |
+| 4 | POST | `/auth/signup` | 불필요 | 201 | 회원가입 (아이디·약관 동의 포함, 토큰 없음) | 1.1.1~1.1.3 |
 | 4-1 | POST | `/auth/email/verify` | 불필요 | 200 | 인증 코드 확인 후 토큰 발급 | 확인 필요 (명세 외 추가) |
 | 4-2 | POST | `/auth/email/resend` | 불필요 | 204 | 인증 코드 재발송 | 확인 필요 (명세 외 추가) |
-| 5 | POST | `/auth/login` | 불필요 | 200 | 이메일 로그인 (인증 완료 필요) | 1.2.1, 1.2.2 |
+| 5 | POST | `/auth/login` | 불필요 | 200 | 아이디 로그인 (이메일 인증 완료 필요) | 1.2.1, 1.2.2 |
 | 6 | POST | `/auth/refresh` | 불필요 | 200 | 토큰 갱신 | 1.2.4 |
 | 7 | POST | `/auth/logout` | 필요 | 204 | 로그아웃 (리프레시 토큰 폐기) | 5.6.1 |
 | 8 | GET | `/users/me` | 필요 | 200 | 내 정보 조회 | 확인 필요 |
@@ -130,6 +134,75 @@
 
 ---
 
+### 4.3-1 아이디 규칙과 중복 확인
+
+로그인에 쓰는 아이디(`username`)는 이메일과 별개입니다. 이메일은 인증과 아이디·비밀번호 찾기에만 씁니다.
+
+- 규칙: **영문 소문자로 시작**, 영문 소문자·숫자·밑줄(`_`), **4~20자**. 대문자와 앞뒤 공백은 서버가 소문자·공백 제거로 맞춥니다.
+
+`POST /v1/auth/username/check`
+
+요청
+```json
+{ "username": "hong_gildong" }
+```
+응답 200
+```json
+{ "available": true }
+```
+- 형식에 맞지 않으면 400 `VALIDATION_FAILED`.
+- 요청 제한: 1분에 10회 (IP 기준).
+
+---
+
+### 4.3-2 아이디 찾기
+
+`POST /v1/auth/username/find`
+
+요청
+```json
+{ "email": "user@example.com" }
+```
+응답 204 (본문 없음). **가입 여부와 관계없이 항상 같은 응답**입니다.
+- 가입했고 이메일 인증을 마친 계정이면, 그 이메일로 아이디를 보냅니다. 아이디는 응답에 담기지 않습니다.
+- 메일 발송은 기다리지 않습니다. 앱에는 "가입된 이메일이라면 아이디를 보냈습니다" 정도로 안내해 주세요.
+- 요청 제한: 1분에 3회 (IP 기준).
+
+---
+
+### 4.3-3 비밀번호 찾기 (1단계: 코드 받기)
+
+`POST /v1/auth/password/forgot`
+
+요청
+```json
+{ "username": "hong_gildong", "email": "user@example.com" }
+```
+응답 204 (본문 없음). **아이디와 이메일이 맞는지와 관계없이 항상 같은 응답**입니다.
+- 아이디와 가입 이메일이 일치하고 인증을 마친 계정이면, 이메일로 **6자리 재설정 코드**를 보냅니다. 코드는 10분 동안 유효하고, 5번 틀리면 무효가 됩니다.
+- 같은 계정에는 60초 안에 새 메일을 보내지 않습니다(응답은 같음).
+- 요청 제한: 1분에 3회 (IP 기준).
+
+### 4.3-4 비밀번호 찾기 (2단계: 새 비밀번호 설정)
+
+`POST /v1/auth/password/reset`
+
+요청
+```json
+{ "username": "hong_gildong", "code": "123456", "newPassword": "newpass5678" }
+```
+응답 204 (본문 없음)
+- 성공하면 **이 계정의 모든 기기 세션이 끊깁니다.** 앱은 로그인 화면으로 보내 새 비밀번호로 다시 로그인하게 해 주세요.
+- `newPassword`는 가입 비밀번호와 같은 규칙입니다(8~72자, 영문과 숫자 포함).
+- 코드는 한 번만 쓸 수 있고, **가입 인증 코드와는 서로 바꿔 쓸 수 없습니다.**
+
+에러
+- 400 `VERIFICATION_CODE_INVALID`: 코드가 틀렸거나, 만료되었거나, 시도 횟수(5회)를 넘었거나, 없는 아이디 (구분하지 않음)
+- 400 `VALIDATION_FAILED`: 코드가 6자리 숫자가 아니거나 새 비밀번호가 규칙에 맞지 않음
+- 요청 제한: 1분에 5회 (IP 기준)
+
+---
+
 ### 4.4 회원가입
 
 `POST /v1/auth/signup`
@@ -137,6 +210,7 @@
 요청
 ```json
 {
+  "username": "hong_gildong",
   "name": "홍길동",
   "birthdate": "1999-01-01",
   "gender": "MALE",
@@ -151,6 +225,7 @@
 
 | 필드 | 규칙 |
 |---|---|
+| `username` | 로그인 아이디. 영문 소문자로 시작, 소문자·숫자·밑줄, 4~20자 (4.3-1 참고) |
 | `name` | 1~50자 |
 | `birthdate` | `YYYY-MM-DD` |
 | `gender` | `MALE` / `FEMALE` / `OTHER` |
@@ -161,16 +236,18 @@
 응답 201 (토큰은 주지 않습니다. 인증 코드를 확인해야 로그인됩니다)
 ```json
 {
-  "user": { "id": "uuid", "name": "홍길동", "email": "user@example.com" },
+  "user": { "id": "uuid", "username": "hong_gildong", "name": "홍길동", "email": "user@example.com" },
   "verificationRequired": true
 }
 ```
 - 가입하면 입력한 이메일로 **6자리 인증 코드**가 발송됩니다. 코드는 10분 동안 유효하고, 5번 틀리면 무효가 됩니다.
 - 다음 단계: `POST /v1/auth/email/verify`로 코드를 확인하면 토큰을 받습니다.
 - 메일 발송에 실패하면 503 `UPSTREAM_UNAVAILABLE`이고, 가입도 되지 않습니다.
+- **인증을 끝내지 못한 가입(이메일 오타 등)은 다시 가입할 수 있습니다.** 같은 이메일이나 아이디로 가입하면, 만들어진 지 60초가 지난 미인증 계정은 지우고 새로 만듭니다. 60초 안이면 409입니다. 이메일 인증을 마친 계정은 덮어쓰지 않습니다.
 
 에러
 - 409 `EMAIL_ALREADY_EXISTS`: 이미 가입된 이메일
+- 409 `USERNAME_ALREADY_EXISTS`: 이미 사용 중인 아이디
 - 422 `REQUIRED_TERMS_NOT_AGREED`: 필수 약관 미동의
 - 400 `VALIDATION_FAILED` / `INVALID_EMAIL_FORMAT`: 입력값 오류
 
@@ -212,17 +289,20 @@
 요청
 ```json
 {
-  "email": "user@example.com",
+  "username": "hong_gildong",
   "password": "abcd1234",
   "deviceId": "optional-device-id"
 }
 ```
+- **이메일로는 로그인할 수 없습니다.** 이전 형식(`email`)으로 보내면 400 `VALIDATION_FAILED`입니다.
+- 기존 회원에게는 마이그레이션이 임시 아이디(`u` + 12자리 영문·숫자)를 줬습니다. 아이디를 잊었다면 "아이디 찾기"로 확인합니다.
 - `deviceId`는 선택입니다. 기기별로 세션을 나눌 때 씁니다.
 
 응답 200: 회원가입과 같은 `{ user, tokens }` 형태
 
 에러
-- 401 `INVALID_CREDENTIALS`: 이메일 또는 비밀번호 불일치
+- 401 `INVALID_CREDENTIALS`: 아이디 또는 비밀번호 불일치 (없는 아이디와 틀린 비밀번호를 구분하지 않음)
+- 403 `EMAIL_NOT_VERIFIED`: 비밀번호는 맞지만 이메일 인증 전
 - 요청 제한: 1분에 5회 (IP 기준).
 
 ---
@@ -270,6 +350,7 @@
 ```json
 {
   "id": "uuid",
+  "username": "hong_gildong",
   "name": "홍길동",
   "email": "user@example.com",
   "birthdate": "1999-01-01",
@@ -376,6 +457,7 @@
 | `NOT_FOUND` | 404 | 리소스 없음 |
 | `MODEL_NOT_FOUND` | 404 | 받을 수 있는 모델 없음 |
 | `EMAIL_ALREADY_EXISTS` | 409 | 이미 가입된 이메일 |
+| `USERNAME_ALREADY_EXISTS` | 409 | 이미 사용 중인 아이디 |
 | `REQUIRED_TERMS_NOT_AGREED` | 422 | 필수 약관 미동의 |
 | `EMAIL_NOT_VERIFIED` | 403 | 이메일 인증 전 로그인 시도 (비밀번호는 맞음) |
 | `VERIFICATION_CODE_INVALID` | 400 | 인증 코드가 틀렸거나 만료됨 |
@@ -390,7 +472,7 @@
 
 ## 6-1. 보안 설정 (프론트가 알아 둘 것)
 
-- **요청 제한 (429 `RATE_LIMITED`, `Retry-After: 60`):** 이메일 중복 확인 10회/분, 가입·로그인 5회/분, 토큰 갱신 20회/분 (IP 기준).
+- **요청 제한 (429 `RATE_LIMITED`, `Retry-After: 60`):** 이메일·아이디 중복 확인 10회/분, 가입·로그인·비밀번호 재설정 5회/분, 아이디 찾기·비밀번호 코드 요청 3회/분, 토큰 갱신 20회/분 (IP 기준).
 - **정의되지 않은 필드:** DTO에 없는 필드(예: `messageText`, `role`, `id`)가 오면 400으로 거부합니다. 메시지 원문은 어떤 요청에도 보낼 수 없습니다.
 - **잘못된 본문:** JSON 문법 오류는 400, 200KB 넘는 본문은 413 (`VALIDATION_FAILED`)으로 응답합니다. 파서의 내부 문구는 노출하지 않습니다.
 - **토큰:** 서명이 다르거나, 변조되었거나, 만료되었거나, `alg: none`인 토큰은 401입니다. 탈퇴한 회원의 토큰도 401입니다.
