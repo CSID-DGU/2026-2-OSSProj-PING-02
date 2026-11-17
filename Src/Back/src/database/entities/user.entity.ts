@@ -14,6 +14,10 @@ export class User {
   @Column({ type: 'varchar', length: 20, unique: true })
   username: string;
 
+  // 카카오 가입자가 이메일 제공에 동의하지 않으면 null
+  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+  email: string | null;
+
   // 카카오 전용 계정은 null
   @Column({ type: 'varchar', length: 255, nullable: true })
   passwordHash: string | null;
@@ -26,6 +30,10 @@ export class User {
 
   @Column({ type: 'varchar', length: 10 })
   gender: Gender;
+
+  // 이메일 가입자는 인증 코드를 맞히기 전까지 로그인할 수 없다. 카카오 계정은 항상 인증된 것으로 본다.
+  @Column({ type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

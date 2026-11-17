@@ -29,17 +29,17 @@ describe('AllExceptionsFilter', () => {
   it('AppException 을 명세 형식으로 응답한다', () => {
     const { res, host } = makeHost();
     filter.catch(
-      new AppException(ErrorCode.USERNAME_ALREADY_EXISTS, '이미 사용 중인 아이디입니다.', 409, [
-        { field: 'username', reason: 'duplicated' },
+      new AppException(ErrorCode.EMAIL_ALREADY_EXISTS, '이미 가입된 이메일입니다.', 409, [
+        { field: 'email', reason: 'duplicated' },
       ]),
       host,
     );
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
       error: {
-        code: 'USERNAME_ALREADY_EXISTS',
-        message: '이미 사용 중인 아이디입니다.',
-        details: [{ field: 'username', reason: 'duplicated' }],
+        code: 'EMAIL_ALREADY_EXISTS',
+        message: '이미 가입된 이메일입니다.',
+        details: [{ field: 'email', reason: 'duplicated' }],
       },
     });
   });
