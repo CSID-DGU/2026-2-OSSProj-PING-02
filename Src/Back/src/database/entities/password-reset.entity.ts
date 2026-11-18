@@ -1,10 +1,10 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user.entity';
 
-// 이메일 인증 코드. 코드 원문은 저장하지 않고 HMAC 해시만 저장한다.
-// 같은 회원의 이전 코드는 재발송할 때 지운다.
-@Entity('email_verifications')
-export class EmailVerification {
+// 비밀번호 재설정용으로 이메일에 보낸 6자리 코드. 코드 원문은 저장하지 않고 HMAC 해시만 저장한다.
+// 회원당 하나만 유지하고, 다시 발급할 때 이전 코드는 지운다.
+@Entity('password_resets')
+export class PasswordReset {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
