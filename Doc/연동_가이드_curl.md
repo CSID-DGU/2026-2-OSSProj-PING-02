@@ -25,6 +25,7 @@ export PW=abcd1234
 [로그인 화면]    아이디 + 비밀번호 → 토큰 발급
 [아이디 찾기]   이메일 입력 → 메일로 아이디 수신
 [비밀번호 찾기] 아이디+이메일 → 메일로 코드 → 코드+새 비밀번호 → 다시 로그인
+[AI 답장]       폰에서 마스킹 → POST /ai/reply → 요약·답장 3개 → 폰에서 이름 복원·로컬 저장
 ```
 
 | 단계 | 호출 | 프론트가 할 일 |
@@ -39,6 +40,7 @@ export PW=abcd1234
 | 8 | `DELETE /users/me` | 204 후 기기 내 데이터 삭제 |
 | 9 | `POST /auth/username/find` | 이메일로 아이디 찾기. 204는 가입 여부와 무관 |
 | 10 | `POST /auth/password/forgot`, `/auth/password/reset` | 코드 받기 → 코드와 새 비밀번호 입력. 성공하면 모든 기기 로그아웃 |
+| 11 | `POST /ai/reply` | 마스킹한 메시지를 보내 요약·답장 3개를 받음. 서버는 저장하지 않음 (2.14) |
 
 ## 2. 단계별 curl
 
@@ -225,11 +227,43 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/auth/password/reset" \
 
 같은 이메일 주소로는 60초에 한 통, 24시간에 10통까지만 메일이 나갑니다(막혀도 응답은 같은 204).
 
+### 2.14 AI 답장
+
+> 자세한 계약은 `Doc/AI_답장_API_명세.md`를 봅니다. 서버에 `OPENROUTER_API_KEY`와 `AI_MODEL`이 없으면 503입니다.
+
+**보내기 전에 앱에서 마스킹합니다.** 이름은 `[친구A]`처럼 바꾸고, 전화번호·계좌번호·주소·링크는 지웁니다.
+
+```bash
+curl -s -X POST "$BASE/ai/reply" \
+  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d '{"text":"[친구A]: 이번 주 금요일에 저녁 먹을래?","relation":"FRIEND","needsDecision":true}'
+```
+
+응답 200
+```json
+{
+  "summary": "상대가 금요일 저녁 식사를 제안했어요.",
+  "replies": [
+    { "label": "수락", "text": "좋아! 금요일에 보자" },
+    { "label": "보류", "text": "일정 확인하고 알려줄게" },
+    { "label": "거절", "text": "이번 주는 어려울 것 같아" }
+  ]
+}
+```
+
+| 응답 | 의미 |
+|---|---|
+| 200 | 결과의 `[친구A]`를 실제 이름으로 되돌려 로컬 DB에 저장 |
+| 400 `UNMASKED_CONTENT` | 마스킹 누락(`details.reason`: `phone`, `email`, `url`, `account`, `national_id`). 앱 버그로 기록 |
+| 400 `VALIDATION_FAILED` | 입력 오류, 1,000자 초과, `model`·`messages` 같은 필드를 보냄 |
+| 429 `RATE_LIMITED` | 사용자별 분당 10회, 하루 300회 초과 |
+| 502 / 503 / 504 | AI 서버 문제. 자동 재시도하지 말고 "다시 시도" 버튼 |
+
 ## 3. 공통 주의
 
 - **에러 분기는 `error.code`로** 합니다. `message`는 사용자에게 보여줄 한국어 문장입니다.
 - **429 `RATE_LIMITED`** 에는 `Retry-After: 60` 헤더가 옵니다. 그 시간 뒤에 다시 시도합니다.
-- 요청 본문에 DTO에 없는 필드가 있으면 400으로 거부됩니다. 메시지 원문은 어떤 요청에도 보내지 않습니다.
+- 요청 본문에 DTO에 없는 필드가 있으면 400으로 거부됩니다. 메시지 내용은 **AI 답장(`/ai/reply`)에 마스킹한 뒤에만** 보내고, 다른 요청에는 보내지 않습니다.
 - 이메일과 아이디는 서버에서 소문자로 바꾸고 앞뒤 공백을 지웁니다.
 - 기존 테스트 계정에는 마이그레이션이 임시 아이디(`u` + 12자리)를 줬습니다. 아이디를 모르면 "아이디 찾기"를 씁니다.
 - **자동 로그인:** 앱을 켤 때마다 저장된 refreshToken으로 `POST /auth/refresh`를 호출하면 됩니다. 갱신할 때마다 만료가 30일 연장되므로 자주 쓰면 계속 유지됩니다. 갱신 요청은 앱 안에서 **한 곳에서만** 보내세요(동시에 두 곳이 같은 토큰을 쓰면 세션이 끊깁니다).
@@ -237,5 +271,5 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/auth/password/reset" \
 
 ## 4. 검증 상태
 
-- 위 흐름(가입 즉시 토큰, 갱신 후 기존 액세스 토큰 유효, 만료 연장, 로그아웃 후 401, 다른 기기 세션 유지, 아이디·비밀번호 찾기)은 `test/auth-flow.e2e-spec.ts`, `test/account-recovery.e2e-spec.ts`로 자동 검증합니다.
+- 위 흐름(가입 즉시 토큰, 갱신 후 기존 액세스 토큰 유효, 만료 연장, 로그아웃 후 401, 다른 기기 세션 유지, 아이디·비밀번호 찾기)은 `test/auth-flow.e2e-spec.ts`, `test/account-recovery.e2e-spec.ts`로 자동 검증합니다. AI 답장은 `test/ai-reply.e2e-spec.ts`가 가짜 OpenRouter 서버로 검증합니다(실제 OpenRouter 호출은 아직 미검증).
 - 이 문서의 curl 명령은 코드와 e2e 테스트 기준으로 작성했습니다. **SMTP가 설정되지 않은 환경에서는 아이디·비밀번호 찾기 메일이 가지 않습니다**(응답은 204로 같음). 메일 설정 후 한 번 손으로 실행해 확인하는 것을 권합니다.
