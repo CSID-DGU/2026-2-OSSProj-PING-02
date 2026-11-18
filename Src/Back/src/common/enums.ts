@@ -13,6 +13,8 @@ export enum AuthProviderType {
 export enum TermsType {
   SERVICE = 'SERVICE',
   PRIVACY = 'PRIVACY',
+  // 마스킹된 메시지를 외부 AI 서버(해외)로 보내 요약·답장을 만드는 것에 대한 동의. 문구는 초안(법률 검토 필요)
+  AI_TRANSFER = 'AI_TRANSFER',
 }
 
 export enum ModelType {
