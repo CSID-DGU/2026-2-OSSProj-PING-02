@@ -33,6 +33,14 @@ export class User {
   @Column({ type: 'varchar', length: 10 })
   gender: Gender;
 
+  // 비밀번호를 연속으로 틀린 횟수. 로그인에 성공하면 0으로 돌아간다.
+  @Column({ type: 'smallint', default: 0 })
+  failedLoginCount: number;
+
+  // 이 시각까지 로그인을 막는다. 연속 실패가 한도를 넘으면 정해 둔 시간만큼 잠근다.
+  @Column({ type: 'timestamptz', nullable: true })
+  lockedUntil: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

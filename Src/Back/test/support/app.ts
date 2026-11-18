@@ -59,7 +59,7 @@ export async function startApp(): Promise<TestContext> {
 
   const ds = app.get(DataSource);
   await ds.query(
-    'TRUNCATE TABLE users, auth_providers, refresh_tokens, password_resets, terms_agreements, terms, model_releases, app_versions RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE users, auth_providers, refresh_tokens, password_resets, mail_sends, terms_agreements, terms, model_releases, app_versions RESTART IDENTITY CASCADE',
   );
 
   const termsRepo = ds.getRepository(Terms);

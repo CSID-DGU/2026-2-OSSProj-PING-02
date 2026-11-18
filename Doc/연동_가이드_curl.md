@@ -108,7 +108,7 @@ curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
 | 응답 | 의미 |
 |---|---|
 | 200 `{ user, tokens }` | 성공 |
-| 401 `INVALID_CREDENTIALS` | 아이디 또는 비밀번호 불일치 |
+| 401 `INVALID_CREDENTIALS` | 아이디 또는 비밀번호 불일치. 5번 연속 틀리면 5분 잠기는데, 잠긴 동안은 맞는 비밀번호도 같은 401이고 잠겼다는 안내는 오지 않음 |
 
 `deviceId`는 선택입니다. 기기별로 세션을 나눕니다.
 
@@ -223,7 +223,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/auth/password/reset" \
 | 400 `VERIFICATION_CODE_INVALID` | 코드 틀림, 만료(10분), 5회 초과, 없는 아이디 (구분하지 않음) |
 | 400 `VALIDATION_FAILED` | 코드가 6자리 숫자가 아니거나 새 비밀번호가 규칙(8~72자, 영문+숫자)에 안 맞음 |
 
-같은 계정에는 60초 안에 코드를 다시 보내지 않습니다.
+같은 이메일 주소로는 60초에 한 통, 24시간에 10통까지만 메일이 나갑니다(막혀도 응답은 같은 204).
 
 ## 3. 공통 주의
 
