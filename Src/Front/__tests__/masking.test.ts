@@ -96,6 +96,65 @@ describe("규칙 탐지기", () => {
   });
 });
 
+describe("링크", () => {
+  test("스킴이 있는 주소와 도메인+경로 주소를 가린다", () => {
+    expect(kinds("회비는 https://toss.me/minsu123/30000 여기로!")).toEqual([
+      ["url", "https://toss.me/minsu123/30000"],
+    ]);
+    expect(kinds("오픈채팅 open.kakao.com/o/gAbCdEf 들어와")).toEqual([
+      ["url", "open.kakao.com/o/gAbCdEf"],
+    ]);
+    expect(kinds("kakaotalk://join/abc 이걸로")).toEqual([
+      ["url", "kakaotalk://join/abc"],
+    ]);
+  });
+
+  test("뒤에 붙은 조사·문장부호·괄호는 링크에서 뺀다", () => {
+    expect(kinds("사진 https://photos.app.goo.gl/AbC123에서 봐")).toEqual([
+      ["url", "https://photos.app.goo.gl/AbC123"],
+    ]);
+    expect(kinds("링크: www.example.co.kr/e?id=88.")).toEqual([
+      ["url", "www.example.co.kr/e?id=88"],
+    ]);
+    expect(kinds("지도 naver.me/5xYz (위치)")).toEqual([
+      ["url", "naver.me/5xYz"],
+    ]);
+  });
+
+  test("링크 안의 번호는 링크 하나로 합쳐 가린다", () => {
+    const masked = maskPii("https://ex.com/u?phone=010-1234-5678 확인");
+    expect(masked.text).toBe("[링크1] 확인");
+  });
+
+  test("경로 없는 사이트 이름·이메일·숫자 표기는 링크가 아니다", () => {
+    expect(kinds("홈페이지는 example.com 이야")).toEqual([]);
+    expect(kinds("메일 minsu@example.com")).toEqual([
+      ["email", "minsu@example.com"],
+    ]);
+    expect(kinds("평점 3.5/10, 1.2배")).toEqual([]);
+  });
+});
+
+describe("계좌·운전면허 구분", () => {
+  test("신한 110으로 시작하는 12자리는 계좌로 정리된다", () => {
+    expect(kinds("신한 110123456789 로 보내줘")).toEqual([
+      ["account", "110123456789"],
+    ]);
+    expect(kinds("신한 110-123-456789")).toEqual([
+      ["account", "110-123-456789"],
+    ]);
+  });
+
+  test("면허 단서가 있으면 운전면허로 남는다", () => {
+    expect(kinds("면허번호 112345678901")).toEqual([
+      ["driver_license", "112345678901"],
+    ]);
+    expect(kinds("운전면허 11-23-456789-01")).toEqual([
+      ["driver_license", "11-23-456789-01"],
+    ]);
+  });
+});
+
 describe("이름 사전", () => {
   test("조사가 붙어도 찾고, 긴 이름을 먼저 맞춘다", () => {
     expect(kinds("김민수가 민수야 하고 불렀어", ["민수", "김민수"])).toEqual([

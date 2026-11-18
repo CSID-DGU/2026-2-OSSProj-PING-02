@@ -91,24 +91,45 @@ const DL_NAMED_RE = new RegExp(
     ")(?![가-힣])[ ]{0,2}\\d{2}-\\d{6}-\\d{2}(?!\\d)"
 );
 
+// [말씨앗 수정] 숫자 지역코드 표기는 신한은행 계좌(110-XXX-XXXXXX, 붙여 쓰면 12자리)와 모양이 같다.
+// 원본처럼 늘 0.85를 주면 계좌(0.6)와 겹칠 때 종류가 운전면허로 정리돼 "[운전면허1]"로 나갔다.
+// 그래서 앞쪽에 면허·운전 단서가 있을 때만 0.85를 주고, 없으면 계좌보다 낮은 0.55로 둔다.
+// 가리는 범위는 그대로라(겹치면 합집합) 덜 가리는 일은 없고, 라벨만 계좌 쪽으로 정리된다.
+const DL_CUE_RE = /면허|운전/;
+const DL_CUE_WINDOW = 15;
+const DL_WITH_CUE_CONFIDENCE = 0.85;
+const DL_NO_CUE_CONFIDENCE = 0.55;
+
 export class DriverLicenseDetector implements Detector {
   readonly kind = "driver_license" as const;
 
   detect(text: string): Detection[] {
-    const found = [
-      ...findIter(DL_RE, text),
-      ...findIter(DL_NAMED_RE, text),
-    ].map((m) =>
+    const coded = Array.from(findIter(DL_RE, text), (m) => {
+      const before = text.slice(Math.max(0, m.index - DL_CUE_WINDOW), m.index);
+      const confidence = DL_CUE_RE.test(before)
+        ? DL_WITH_CUE_CONFIDENCE
+        : DL_NO_CUE_CONFIDENCE;
+      return make(
+        this.kind,
+        m.index,
+        m.index + m[0].length,
+        m[0],
+        confidence,
+        "DriverLicenseDetector"
+      );
+    });
+    // 지역 이름 표기("경기 98-800924-64")는 계좌와 헷갈릴 모양이 아니라 그대로 0.85
+    const named = Array.from(findIter(DL_NAMED_RE, text), (m) =>
       make(
         this.kind,
         m.index,
         m.index + m[0].length,
         m[0],
-        0.85,
+        DL_WITH_CUE_CONFIDENCE,
         "DriverLicenseDetector"
       )
     );
-    return found.sort((a, b) => a.start - b.start);
+    return [...coded, ...named].sort((a, b) => a.start - b.start);
   }
 }
 

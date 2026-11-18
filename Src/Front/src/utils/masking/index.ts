@@ -24,6 +24,7 @@ import {
 } from "./detectors/identity";
 import { KnownNameDetector } from "./detectors/name";
 import { RRNDetector } from "./detectors/rrn";
+import { UrlDetector } from "./detectors/url";
 import { normalize, restoreDetection } from "./normalize";
 import { resolveOverlaps } from "./overlaps";
 import type { Detection, Detector, PiiKind } from "./types";
@@ -43,11 +44,16 @@ export const DEFAULT_LABELS: Record<PiiKind, string> = {
   passport: "여권번호",
   birth_date: "생년월일",
   driver_license: "운전면허",
+  url: "링크",
 };
 
-/** 이름을 뺀 규칙 탐지기 기본 세트. 순서는 maskingtape default_detectors()와 같다. */
+/**
+ * 이름을 뺀 규칙 탐지기 기본 세트. 순서는 maskingtape default_detectors()와 같고,
+ * 말씨앗에서 추가한 링크 탐지기를 맨 앞에 둔다(링크 안의 숫자가 전화·계좌로 따로 잡혀도 링크 하나로 합쳐짐).
+ */
 export function defaultDetectors(): Detector[] {
   return [
+    new UrlDetector(),
     new RRNDetector(),
     new PassportDetector(),
     new DriverLicenseDetector(),

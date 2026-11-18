@@ -14,7 +14,8 @@ export type PiiKind =
   | "biz_reg"
   | "passport"
   | "birth_date"
-  | "driver_license";
+  | "driver_license"
+  | "url";
 
 /**
  * 텍스트에서 찾은 개인정보 한 건.
