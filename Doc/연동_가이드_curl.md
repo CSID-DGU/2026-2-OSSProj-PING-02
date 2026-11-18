@@ -231,12 +231,12 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/auth/password/reset" \
 
 > 자세한 계약은 `Doc/AI_답장_API_명세.md`를 봅니다. 서버에 `OPENROUTER_API_KEY`와 `AI_MODEL`이 없으면 503입니다.
 
-**보내기 전에 앱에서 마스킹합니다.** 이름은 `[친구A]`처럼 바꾸고, 전화번호·계좌번호·주소·링크는 지웁니다.
+**보내기 전에 앱에서 마스킹합니다.** 앱 마스킹 모듈(`maskPii`)이 개인정보를 `[이름1]`, `[전화번호1]`, `[계좌번호1]` 같은 자리표시로 바꿉니다.
 
 ```bash
 curl -s -X POST "$BASE/ai/reply" \
   -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
-  -d '{"text":"[친구A]: 이번 주 금요일에 저녁 먹을래?","relation":"FRIEND","needsDecision":true}'
+  -d '{"text":"[이름1]: 이번 주 금요일에 저녁 먹을래?","relation":"FRIEND","needsDecision":true}'
 ```
 
 응답 200
@@ -253,7 +253,7 @@ curl -s -X POST "$BASE/ai/reply" \
 
 | 응답 | 의미 |
 |---|---|
-| 200 | 결과의 `[친구A]`를 실제 이름으로 되돌려 로컬 DB에 저장 |
+| 200 | 결과의 자리표시자를 `unmaskPii`로 되돌려 로컬 DB에 저장 |
 | 400 `UNMASKED_CONTENT` | 마스킹 누락(`details.reason`: `phone`, `email`, `url`, `account`, `national_id`). 앱 버그로 기록 |
 | 400 `VALIDATION_FAILED` | 입력 오류, 1,000자 초과, `model`·`messages` 같은 필드를 보냄 |
 | 429 `RATE_LIMITED` | 사용자별 분당 10회, 하루 300회 초과 |

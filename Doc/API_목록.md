@@ -404,12 +404,12 @@
 
 요청
 ```json
-{ "text": "[친구A]: 이번 주 금요일에 저녁 먹을래?", "relation": "FRIEND", "needsDecision": true }
+{ "text": "[이름1]: 이번 주 금요일에 저녁 먹을래?", "relation": "FRIEND", "needsDecision": true }
 ```
 
 | 필드 | 규칙 |
 |---|---|
-| `text` | **마스킹을 끝낸** 메시지, 최대 1,000자. 이름은 `[친구A]`처럼 바꾸고 번호·계좌·주소·링크는 지워서 보냅니다 |
+| `text` | **마스킹을 끝낸** 메시지, 최대 1,000자. 앱 마스킹 모듈이 개인정보를 `[이름1]`, `[전화번호1]` 같은 자리표시로 바꿔서 보냅니다 |
 | `relation` | `FRIEND` / `SUPERIOR` / `INSTITUTION` (답장 말투: 반말 / 존댓말 / 격식체) |
 | `needsDecision` | 수락·거절을 정해야 하는 메시지면 `true` |
 
@@ -431,7 +431,7 @@
 
 에러
 - 400 `VALIDATION_FAILED`: 입력 오류, 1,000자 초과
-- 400 `UNMASKED_CONTENT`: 가려지지 않은 전화번호·이메일·링크·계좌번호·주민번호가 있음(외부로 보내지 않음)
+- 400 `UNMASKED_CONTENT`: 앱 마스킹이 놓친 개인정보가 있음(외부로 보내지 않음). 실제 국번의 전화번호, 이메일, 링크, 은행·입금 단서가 있는 계좌번호, 주민번호만 막고 주문번호·운송장·날짜 같은 숫자는 막지 않음
 - 429 `RATE_LIMITED`: 사용자별 분당 10회, 하루 300회 초과
 - 502 `AI_RESPONSE_INVALID`, 503 `UPSTREAM_UNAVAILABLE`, 504 `UPSTREAM_TIMEOUT`: AI 서버 문제. "다시 시도" 버튼
 - 서버에 AI 키·모델이 설정되지 않았으면 503입니다.
