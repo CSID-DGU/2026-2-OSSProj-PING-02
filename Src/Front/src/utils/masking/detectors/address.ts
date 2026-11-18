@@ -147,11 +147,16 @@ const GU2 =
 const BUILDING_SUFFIX =
   "아파트|빌라|오피스텔|맨션|타워|빌딩|센터|스퀘어|프라자|플라자|타운|파크|캐슬|하이츠|빌리지" +
   "|팰리스|레지던스|상가|연립|주택";
+// [말씨앗 수정] 층·호 뒤에는 조사에 더해 대화체 어미("1503호야", "3층이에요", "1203호요")도 받는다.
+// 원본은 문서 기준이라 조사 목록만 받아서, 메신저 말투에서는 층·호가 원문으로 남았다.
+// "2호점"처럼 목록에 없는 글자가 붙은 낱말은 여전히 받지 않는다.
+const CHAT_ENDINGS = "이에요|이야|이고|이라|이랑|이니까|니까|랑|야|요|라|고";
+const UNIT_END = "(?=(?:" + JOSA + "|" + CHAT_ENDINGS + ")?(?![가-힣0-9]))";
 const FLOOR =
   "(?:(?:지하|지상)\\s?\\d{1,2}층|[Bb]\\d{1,2}층?|\\d{1,3}층|\\d{1,2}[Ff])(?![A-Za-z])" +
-  END;
-const HO = "[A-Za-z]?\\d{1,5}호" + END;
-const HYPHEN_UNIT = "\\d{2,4}-\\d{3,5}호?(?![\\d-])" + END;
+  UNIT_END;
+const HO = "[A-Za-z]?\\d{1,5}호" + UNIT_END;
+const HYPHEN_UNIT = "\\d{2,4}-\\d{3,5}호?(?![\\d-])" + UNIT_END;
 const UNIT_HO = "(?:" + HO + "|" + HYPHEN_UNIT + ")";
 const SEP = "[,\\s]\\s{0,3}";
 const BUILDING_DONG =

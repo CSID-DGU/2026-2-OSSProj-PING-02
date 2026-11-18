@@ -149,14 +149,71 @@ export function maskPii(text: string, options: MaskOptions = {}): MaskResult {
   return { text: out, detections, mapping };
 }
 
-/** LLM 응답 등에 남은 자리표시를 원래 값으로 되돌린다. 기기 안에서만 부른다. */
+// 받침에 따라 모양이 바뀌는 조사: [받침 있을 때, 받침 없을 때]
+const JOSA_PAIRS: Array<[string, string]> = [
+  ["이랑", "랑"],
+  ["으로", "로"],
+  ["은", "는"],
+  ["이", "가"],
+  ["을", "를"],
+  ["과", "와"],
+  ["아", "야"],
+];
+const JOSA_FORMS = new Map<string, [string, string]>(
+  JOSA_PAIRS.flatMap((pair) => [
+    [pair[0], pair],
+    [pair[1], pair],
+  ])
+);
+// 조사 뒤에 한글이 더 이어지면("[이름1]이는") 다른 말일 수 있어 건드리지 않는다.
+const JOSA_AFTER = new RegExp(
+  "^(" +
+    [...JOSA_FORMS.keys()].sort((a, b) => b.length - a.length).join("|") +
+    ")(?![가-힣])"
+);
+
+/** 마지막 글자의 받침. 한글 음절이 아니면 null, 받침이 없으면 0, ㄹ 받침이면 8. */
+function finalConsonant(word: string): number | null {
+  const code = word.charCodeAt(word.length - 1);
+  if (code < 0xac00 || code > 0xd7a3) {
+    return null;
+  }
+  return (code - 0xac00) % 28;
+}
+
+/** 원래 값의 받침에 맞게 조사를 고른다("민수" + 아 → 야, "지은" + 야 → 아). */
+function fitJosa(original: string, josa: string): string {
+  const pair = JOSA_FORMS.get(josa);
+  const jong = finalConsonant(original);
+  if (!pair || jong === null) {
+    return josa;
+  }
+  if (pair[0] === "으로") {
+    return jong === 0 || jong === 8 ? "로" : "으로";
+  }
+  return jong === 0 ? pair[1] : pair[0];
+}
+
+/**
+ * LLM 응답 등에 남은 자리표시를 원래 값으로 되돌린다. 기기 안에서만 부른다.
+ * 자리표시 바로 뒤의 조사는 원래 값의 받침에 맞게 고친다("[이름1]아" → "민수야").
+ */
 export function unmaskPii(
   text: string,
   mapping: Record<string, string>
 ): string {
   let out = text;
   for (const [placeholder, original] of Object.entries(mapping)) {
-    out = out.split(placeholder).join(original);
+    const pieces = out.split(placeholder);
+    out = pieces[0];
+    for (let i = 1; i < pieces.length; i++) {
+      const josa = JOSA_AFTER.exec(pieces[i]);
+      out += josa
+        ? original +
+          fitJosa(original, josa[1]) +
+          pieces[i].slice(josa[1].length)
+        : original + pieces[i];
+    }
   }
   return out;
 }
