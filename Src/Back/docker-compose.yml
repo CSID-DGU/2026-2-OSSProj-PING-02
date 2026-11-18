@@ -3,15 +3,18 @@ services:
     image: postgres:16-alpine
     container_name: malssiat-postgres
     environment:
-      POSTGRES_USER: malssiat
-      POSTGRES_PASSWORD: malssiat
-      POSTGRES_DB: malssiat
+      # .env 의 DB_* 값을 그대로 쓴다(없으면 개발용 기본값). 운영에서는 DB_PASSWORD 를 반드시 바꾼다.
+      POSTGRES_USER: ${DB_USERNAME:-malssiat}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-malssiat}
+      POSTGRES_DB: ${DB_NAME:-malssiat}
+    # 호스트의 로컬(127.0.0.1)에서만 접속된다. 외부 네트워크에는 열리지 않는다.
+    # 운영 서버에서 psql 로 확인할 때는 SSH 로 접속한 뒤 이 포트나 `docker exec` 를 쓴다.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - malssiat-pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U malssiat -d malssiat"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -28,8 +31,11 @@ services:
       DB_PORT: "5432"
       DB_SYNCHRONIZE: "false"
       DB_MIGRATIONS_RUN: "true"
-    ports:
-      - "5010:5010"
+      # 앞단에 caddy 한 개가 있다. 이 값이 있어야 IP 기준 요청 제한이 실제 사용자 IP 로 동작한다.
+      TRUST_PROXY: "1"
+    # 호스트에 포트를 열지 않는다. 외부에서는 caddy(80/443)를 통해서만 들어온다.
+    expose:
+      - "5010"
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,5 +46,27 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # HTTPS 종단. DOMAIN 에 서버의 도메인(예: malssiat.koreacentral.cloudapp.azure.com)을 넣으면
+  # 인증서(Let's Encrypt)를 자동으로 받고 갱신한다. 80/443 포트가 인터넷에 열려 있어야 한다.
+  caddy:
+    profiles: ["app"]
+    image: caddy:2-alpine
+    container_name: malssiat-caddy
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   malssiat-pg:
+  caddy-data:
+  caddy-config:
