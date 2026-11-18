@@ -6,7 +6,7 @@
 
 - **말씨앗**: 고립·은둔 청년의 연락 부담을 덜어 주는 안드로이드 앱. 알림으로 받은 메시지를 정리하고 답장 후보를 제안합니다.
 - **스택**: React Native 0.88 + TypeScript, styled-components, React Navigation(native-stack), 시스템 기능은 Kotlin 네이티브 모듈(예정)
-- **AI 구조**: 원문은 기기에만 저장 → **기기 안 소형 모델**이 이름·전화번호 같은 민감한 내용을 먼저 가림 → **가린 내용만 중간 서버를 거쳐 외부 AI**로. 서버는 원문을 저장하지 않음
+- **AI 구조**: 원문은 기기에만 저장 → 기기에서 **규칙 기반 마스킹**([src/utils/masking](src/utils/masking/README.md), 정규식 + 사용자·친구 이름 목록)으로 이름·전화번호 같은 민감한 내용을 먼저 가림 → **가린 내용만 중간 서버를 거쳐 외부 AI**(OpenRouter의 데이터 미보관(ZDR) 모델)로. 서버는 원문을 저장하지 않음. 기기 안 AI 모델은 쓰지 않음
 
 ## 디자인 규칙
 
@@ -37,6 +37,7 @@
 - mock 테스트 계정: **아이디 `malssiat` / 비밀번호 `abcd1234`** (이메일 `demo@malssiat.app`), 인증 코드 `123456`
 - 개발 옵션 (services/index.ts): 권한 `DEV_PERMISSION_SCENARIO = "deny"`로 거부 흐름, 모델 `failFirstAttemptAt`로 다운로드 실패, 네트워크 `"cellular"`
 - mock 저장소는 메모리라 앱을 완전히 끄면 로그인·진행 상황이 초기화됨
+- 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
 
 ## 작업 규칙
 
@@ -57,6 +58,7 @@
 - 아이디 규칙 (임시: 영문 소문자+숫자 4~20자, `constants/auth.ts`의 `LOGIN_ID_RULE`)
 - 아이디 찾기 방식 (이메일/전화번호, 인터페이스만 있음)
 - 11 예시 칩을 다시 누르면 빠지는 동작이 맞는지
+- AI 모델 다운로드 화면(`ModelDownload`)과 `ModelService`: 기기 안 모델을 쓰지 않기로 해서 받을 모델이 없음. 온보딩에서 뺄지
 
 기능 추가
 - 09 연락처 검색창

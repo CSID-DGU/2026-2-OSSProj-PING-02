@@ -10,7 +10,8 @@ import { useOnboardingStep } from "@hooks/useOnboardingStep";
 import * as s from "./PrivacyNotice_styled";
 
 // 03 / 개인정보 처리 안내 (Figma 문구 그대로)
-// 구조: 원문은 기기에 보관 → 기기 안 소형 모델이 이름·전화번호를 가림 → 가린 내용만 중간 서버를 거쳐 외부 AI로
+// 구조: 원문은 기기에 보관 → 기기에서 규칙 기반 마스킹(src/utils/masking)으로 이름·전화번호를 가림
+// → 가린 내용만 중간 서버를 거쳐 외부 AI로
 const POINTS: { title: string; description: string; icon: OnboardingImage }[] =
   [
     {

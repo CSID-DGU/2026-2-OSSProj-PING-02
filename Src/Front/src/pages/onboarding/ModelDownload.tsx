@@ -15,8 +15,8 @@ import { useOnboarding } from "@stores/OnboardingProvider";
 import * as s from "./ModelDownload_styled";
 
 // AI 모델 다운로드 (Figma에 없음, 05 연동 앱 다음)
-// 기기 안 소형 모델: 대화 원문에서 이름·전화번호 같은 민감한 내용을 먼저 가림
-// → 가린 내용만 중간 서버를 거쳐 외부 AI로 (03 개인정보 안내와 같은 구조)
+// TODO(팀 결정): 기기 안 AI 모델은 쓰지 않기로 함. 민감한 내용 가리기는 규칙 기반 마스킹
+// (src/utils/masking)이 맡아서 받을 모델이 없음 → 이 화면을 온보딩에서 뺄지 정해야 함
 // 다운로드는 OnboardingProvider가 들고 있어서 다음 단계로 넘어가도 계속됨
 const ModelDownload = () => {
   const theme = useTheme();
