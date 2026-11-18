@@ -42,7 +42,7 @@ export class AiService {
     if (kinds.length > 0) {
       throw new AppException(
         ErrorCode.UNMASKED_CONTENT,
-        '개인정보(전화번호, 계좌번호, 링크 등)가 가려지지 않아 보낼 수 없습니다.',
+        '개인정보(전화번호, 계좌번호 등)가 가려지지 않아 보낼 수 없습니다.',
         400,
         kinds.map((kind) => ({ field: 'text', reason: kind })),
       );

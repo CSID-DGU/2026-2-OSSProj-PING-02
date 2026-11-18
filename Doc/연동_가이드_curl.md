@@ -254,7 +254,7 @@ curl -s -X POST "$BASE/ai/reply" \
 | 응답 | 의미 |
 |---|---|
 | 200 | 결과의 자리표시자를 `unmaskPii`로 되돌려 로컬 DB에 저장 |
-| 400 `UNMASKED_CONTENT` | 마스킹 누락(`details.reason`: `phone`, `email`, `url`, `account`, `national_id`). 앱 버그로 기록 |
+| 400 `UNMASKED_CONTENT` | 마스킹 누락(`details.reason`: `phone`, `email`, `account`, `national_id`). 앱 버그로 기록 |
 | 400 `VALIDATION_FAILED` | 입력 오류, 1,000자 초과, `model`·`messages` 같은 필드를 보냄 |
 | 429 `RATE_LIMITED` | 사용자별 분당 10회, 하루 300회 초과 |
 | 502 / 503 / 504 | AI 서버 문제. 자동 재시도하지 말고 "다시 시도" 버튼 |

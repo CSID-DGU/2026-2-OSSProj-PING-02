@@ -7,8 +7,9 @@
  * - 전화번호: 실제로 쓰는 국번(휴대폰 01X, 지역번호 02·031~064, 070, 050X, 080)으로 시작할 때만
  * - 계좌번호: 숫자 모양에 더해 근처(앞뒤 15자)에 계좌·입금·은행 이름 같은 단서가 있을 때만
  * - 주민등록번호: 앞 6자리가 실제 날짜 모양일 때만
+ * 링크(URL)는 막지 않는다. 앱 마스킹도 링크를 가리지 않으므로, 서버만 막으면 링크가 든 메시지는 답장을 받을 수 없다(팀 결정).
  */
-export type UnmaskedKind = 'url' | 'email' | 'phone' | 'account' | 'national_id';
+export type UnmaskedKind = 'email' | 'phone' | 'account' | 'national_id';
 
 // 숫자 사이 구분자로 쓰는 하이픈·점·공백·가운뎃점
 const SEP = '[-.\\s·]?';
@@ -22,8 +23,6 @@ const PHONE = new RegExp(
 );
 
 const RULES: Array<[UnmaskedKind, RegExp]> = [
-  ['url', /(?:https?:\/\/|www\.)\S+/i],
-  ['url', /\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|kr|co\.kr|io|me|ly|gl|app)(?:\/\S*)?\b/i],
   ['email', /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/],
   ['phone', PHONE],
   // 주민등록번호·외국인등록번호: YYMMDD(실제 날짜 모양) + 뒷자리 첫 숫자 1~8 + 6자리

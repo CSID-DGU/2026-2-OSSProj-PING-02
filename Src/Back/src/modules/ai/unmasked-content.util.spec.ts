@@ -14,9 +14,6 @@ describe('findUnmaskedKinds (서버 쪽 마지막 안전장치)', () => {
     ['인터넷 전화', '070-1234-5678', 'phone'],
     ['안심번호', '0505-123-4567', 'phone'],
     ['이메일', 'a.b@example.com 으로 보내줘', 'email'],
-    ['http 링크', '여기 봐 https://example.com/x', 'url'],
-    ['www 링크', 'www.example.com 들어가봐', 'url'],
-    ['도메인만', 'naver.com 에서 찾아봐', 'url'],
     ['은행 이름 + 하이픈 계좌', '신한 110-123-456789 로 보내', 'account'],
     ['은행 이름 붙여 쓴 계좌', '신한110-123-456789로 보내', 'account'],
     ['숫자 사이 공백 계좌', '신한 110 123 456789로 보내줘', 'account'],
@@ -36,7 +33,7 @@ describe('findUnmaskedKinds (서버 쪽 마지막 안전장치)', () => {
 
   it('한 문장에 여러 종류가 있으면 모두 알려 준다', () => {
     expect(findUnmaskedKinds('010-1234-5678 이나 a@b.com, 신한 123-45-678901').sort()).toEqual(
-      ['account', 'email', 'phone', 'url'].sort(),
+      ['account', 'email', 'phone'].sort(),
     );
   });
 
@@ -62,6 +59,10 @@ describe('findUnmaskedKinds (서버 쪽 마지막 안전장치)', () => {
     '우리 집 2026-0925-1234 로 주문했어',
     // 날짜가 아닌 13자리 (주민번호 아님)
     '991399-1234567 은 뭐지',
+    // 링크는 막지 않는다 (앱 마스킹도 가리지 않음, 팀 결정)
+    '이거 봐 https://youtu.be/abc123 진짜 웃김',
+    'www.example.com 들어가봐',
+    'naver.com 에서 찾아봐',
   ])('막지 않는다: %s', (text) => {
     expect(findUnmaskedKinds(text)).toEqual([]);
   });

@@ -431,7 +431,7 @@
 
 에러
 - 400 `VALIDATION_FAILED`: 입력 오류, 1,000자 초과
-- 400 `UNMASKED_CONTENT`: 앱 마스킹이 놓친 개인정보가 있음(외부로 보내지 않음). 실제 국번의 전화번호, 이메일, 링크, 은행·입금 단서가 있는 계좌번호, 주민번호만 막고 주문번호·운송장·날짜 같은 숫자는 막지 않음
+- 400 `UNMASKED_CONTENT`: 앱 마스킹이 놓친 개인정보가 있음(외부로 보내지 않음). 실제 국번의 전화번호, 이메일, 은행·입금 단서가 있는 계좌번호, 주민번호만 막고(링크는 막지 않음) 주문번호·운송장·날짜 같은 숫자는 막지 않음
 - 429 `RATE_LIMITED`: 사용자별 분당 10회, 하루 300회 초과
 - 502 `AI_RESPONSE_INVALID`, 503 `UPSTREAM_UNAVAILABLE`, 504 `UPSTREAM_TIMEOUT`: AI 서버 문제. "다시 시도" 버튼
 - 서버에 AI 키·모델이 설정되지 않았으면 503입니다.
@@ -454,7 +454,7 @@
 | `VERIFICATION_CODE_INVALID` | 400 | 비밀번호 재설정 코드가 틀렸거나 만료됨 |
 | `APP_UPDATE_REQUIRED` | 426 | 앱 업데이트 필요 |
 | `RATE_LIMITED` | 429 | 요청 횟수 초과. `Retry-After: 60` 헤더가 함께 온다 |
-| `UNMASKED_CONTENT` | 400 | AI 요청 본문에 가려지지 않은 개인정보가 있음 (`details.reason`: `phone`, `email`, `url`, `account`, `national_id`) |
+| `UNMASKED_CONTENT` | 400 | AI 요청 본문에 가려지지 않은 개인정보가 있음 (`details.reason`: `phone`, `email`, `account`, `national_id`) |
 | `AI_RESPONSE_INVALID` | 502 | AI 응답 형식이 올바르지 않음 |
 | `UPSTREAM_UNAVAILABLE` | 503 | 외부 연결 실패 (메일, AI 서버), AI 미설정 |
 | `UPSTREAM_TIMEOUT` | 504 | AI 서버 응답 시간 초과 |
