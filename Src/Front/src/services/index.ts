@@ -4,6 +4,10 @@ import {
   MOCK_VERIFICATION_CODE,
 } from "./auth/mockAuthService";
 import { createMockContactsService } from "./contacts/ContactsService";
+import {
+  createMockConversationService,
+  createMockMessengerService,
+} from "./conversation/mockConversationService";
 import { createMockModelService } from "./model/mockModelService";
 import { createMockNetworkService } from "./network/NetworkService";
 import {
@@ -32,6 +36,9 @@ export const services = {
   model: createMockModelService(),
   network: createMockNetworkService(),
   contacts: createMockContactsService(),
+  // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
+  conversation: createMockConversationService(),
+  messenger: createMockMessengerService(),
   storage,
   // AI 답장 (백엔드 PR #36 POST /v1/ai/reply). 서버 연결 시 createHttpAiReplyService로 교체
   ai: createMockAiReplyService(),
@@ -55,6 +62,8 @@ export * from "./permission/PermissionService";
 export * from "./model/ModelService";
 export * from "./network/NetworkService";
 export * from "./contacts/ContactsService";
+export * from "./conversation/types";
+export * from "./conversation/ConversationService";
 export * from "./storage/KeyValueStorage";
 export * from "./ai/AiReplyService";
 export * from "./ai/AiReplyStore";

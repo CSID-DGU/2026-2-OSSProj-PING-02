@@ -13,6 +13,7 @@ import { UsersModule } from './modules/users/users.module';
 import { TermsModule } from './modules/terms/terms.module';
 import { ModelsModule } from './modules/models/models.module';
 import { AppVersionModule } from './modules/app-version/app-version.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { AppVersionModule } from './modules/app-version/app-version.module';
     TermsModule,
     ModelsModule,
     AppVersionModule,
+    AiModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

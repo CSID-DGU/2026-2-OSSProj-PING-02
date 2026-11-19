@@ -34,6 +34,17 @@ export default () => {
       pass: process.env.MAIL_PASS ?? '',
       from: process.env.MAIL_FROM ?? 'no-reply@example.com',
     },
+    // AI 답장 통로(OpenRouter). 키나 모델이 비어 있으면 서버는 뜨고 AI 요청만 503 으로 응답한다.
+    ai: {
+      apiKey: process.env.OPENROUTER_API_KEY ?? '',
+      baseUrl: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
+      model: process.env.AI_MODEL ?? '',
+      timeoutMs: toInt(process.env.AI_TIMEOUT_MS, 20_000),
+      maxOutputTokens: toInt(process.env.AI_MAX_OUTPUT_TOKENS, 400),
+      maxInputChars: toInt(process.env.AI_MAX_INPUT_CHARS, 1000),
+      perMinute: toInt(process.env.AI_RATE_PER_MINUTE, 10),
+      perDay: toInt(process.env.AI_RATE_PER_DAY, 300),
+    },
     model: {
       cdnBaseUrl: process.env.MODEL_CDN_BASE_URL ?? 'https://cdn.example.com/models',
       urlTtlMinutes: toInt(process.env.MODEL_URL_TTL_MINUTES, 15),
