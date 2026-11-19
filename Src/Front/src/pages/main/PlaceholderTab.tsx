@@ -6,9 +6,8 @@ import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useSession } from "@stores/SessionProvider";
 import type { MainTabConfig } from "@constants/tabs";
 
-// 친구·캘린더·설정: 아직 빈 화면 자리만
+// 캘린더·설정: 아직 빈 화면 자리만
 const DESCRIPTIONS: Record<string, string> = {
-  friends: "연락처와 메신저에서 모은 친구를 이곳에서 볼 수 있게 준비하고 있어요.",
   calendar: "메시지에서 찾은 경조사·약속을 이곳에 모아 보여 드릴게요.",
   settings: "연동 앱·알림·권한·AI 메모리를 이곳에서 바꿀 수 있게 준비하고 있어요.",
 };

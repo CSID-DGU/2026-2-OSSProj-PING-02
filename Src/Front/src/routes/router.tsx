@@ -30,6 +30,8 @@ import ReplyGroup from "@pages/contact/ReplyGroup";
 import ReplyEdit from "@pages/contact/ReplyEdit";
 import ReplyDefer from "@pages/contact/ReplyDefer";
 import TruncatedMessage from "@pages/contact/TruncatedMessage";
+import FriendDetail from "@pages/friend/FriendDetail";
+import FirstWords from "@pages/friend/FirstWords";
 import type { MainTabKey } from "@constants/tabs";
 import type { ReplyStance as Stance, ReplyTone as Tone } from "@services";
 import Playground from "@pages/dev/Playground";
@@ -67,16 +69,23 @@ export type RootStackParamList = {
   ReplyTone: { conversationId: string };
   ReplyGroup: { conversationId: string };
   // 10 답장 다듬기. tone이 없으면 직접 쓰기(말투 조절 없음)
-  ReplyEdit: {
-    conversationId: string;
-    text: string;
-    tone?: Tone;
-    stance?: Stance;
-  };
+  // personId: 05 / 15 첫마디에서 온 경우 (대화 없이 친구에게 먼저 보냄, 바로 보내기·나중에 답하기 없음)
+  ReplyEdit:
+    | {
+        conversationId: string;
+        text: string;
+        tone?: Tone;
+        stance?: Stance;
+      }
+    | { personId: string; text: string };
   // 11 나중에 답하기
   ReplyDefer: { conversationId: string };
   // 08 "메시지가 잘린 상태 보기" (시안 없음)
   TruncatedMessage: { conversationId: string };
+  // 05 친구
+  // 14 친구 상세 / 15 첫마디 제안
+  FriendDetail: { personId: string };
+  FirstWords: { personId: string };
   Playground: undefined;
 };
 
@@ -133,6 +142,10 @@ const Router = () => {
       <Stack.Screen name="ReplyEdit" component={ReplyEdit} />
       <Stack.Screen name="ReplyDefer" component={ReplyDefer} />
       <Stack.Screen name="TruncatedMessage" component={TruncatedMessage} />
+
+      {/* Friend (05 친구) */}
+      <Stack.Screen name="FriendDetail" component={FriendDetail} />
+      <Stack.Screen name="FirstWords" component={FirstWords} />
 
       {/* Dev (개발용 테스트 화면) */}
       <Stack.Screen name="Playground" component={Playground} />

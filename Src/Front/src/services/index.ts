@@ -8,6 +8,7 @@ import {
   createMockConversationService,
   createMockMessengerService,
 } from "./conversation/mockConversationService";
+import { createMockFriendService } from "./friend/mockFriendService";
 import { createMockModelService } from "./model/mockModelService";
 import { createMockNetworkService } from "./network/NetworkService";
 import {
@@ -34,6 +35,8 @@ export const services = {
   // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
   conversation: createMockConversationService(),
   messenger: createMockMessengerService(),
+  // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
+  friends: createMockFriendService(),
   storage: createMemoryStorage(),
 };
 
@@ -56,4 +59,5 @@ export * from "./network/NetworkService";
 export * from "./contacts/ContactsService";
 export * from "./conversation/types";
 export * from "./conversation/ConversationService";
+export * from "./friend/FriendService";
 export * from "./storage/KeyValueStorage";
