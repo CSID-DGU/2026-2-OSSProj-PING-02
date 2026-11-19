@@ -3,16 +3,24 @@
 
 export type ApiMode = "mock" | "http";
 
+// ▼ 개발 빌드에서 실서버로 확인할 때 이 줄만 "http"로 바꾸고 앱을 다시 불러옴 (Metro에서 r)
+//   커밋할 때는 "mock"으로 되돌림 (테스트는 mock 기준)
+const DEV_API_MODE: ApiMode = "mock";
+
+// 실서버 (Azure, https)
+export const SERVER_BASE_URL =
+  "https://malssiat-api.koreacentral.cloudapp.azure.com/v1";
+
 export const API_CONFIG: { mode: ApiMode; baseUrl: string; timeoutMs: number } =
   {
-    // "mock": 서버 없이 메모리 mock으로 동작 (테스트도 mock 기준)
+    // "mock": 서버 없이 메모리 mock으로 동작 (기본, 테스트도 mock 기준)
     // "http": baseUrl의 백엔드로 실제 요청
-    mode: "mock",
-    // TODO(서버 주소): 개발 서버 주소가 정해지면 여기만 바꿈 (Doc/API_목록.md 1. 접속 정보)
+    mode: DEV_API_MODE,
+    // 백엔드 PC에 띄운 개발 서버로 붙을 때만 바꿈 (Doc/API_목록.md 1. 접속 정보)
     // - 실기기: 같은 Wi-Fi의 백엔드 PC IP (예: http://192.168.0.10:5010/v1)
-    // - 에뮬레이터: 10.0.2.2가 PC의 localhost
-    // - 디버그 빌드만 http 허용. 릴리스는 https(Caddy 도메인) 주소여야 함
-    baseUrl: "http://10.0.2.2:5010/v1",
+    // - 에뮬레이터: http://10.0.2.2:5010/v1 (10.0.2.2가 PC의 localhost)
+    // - http 주소는 디버그 빌드만 허용 (릴리스는 https만)
+    baseUrl: SERVER_BASE_URL,
     timeoutMs: 10_000,
   };
 
