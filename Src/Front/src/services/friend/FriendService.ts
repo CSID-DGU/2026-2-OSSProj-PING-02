@@ -26,6 +26,8 @@ export interface MergeCandidate {
   account: Account;
   // 지금 연결된 다른 친구 이름 (null = 아직 친구와 연결 안 된 발신자)
   ownerName: string | null;
+  // true면 그 친구의 마지막 계정이라, 합치면 그 친구가 이 친구에 합쳐짐 (메모는 합쳐서 남김)
+  mergesOwner: boolean;
 }
 
 export interface FriendService {
@@ -36,6 +38,7 @@ export interface FriendService {
   setFrozen(personId: string, frozen: boolean): Promise<void>;
   getMergeCandidates(personId: string): Promise<MergeCandidate[]>;
   // 다른 계정을 이 친구의 계정으로 합침. 원래 친구에게 계정이 남지 않으면 그 친구는 합쳐져 사라짐
+  // 이때 원래 친구의 메모는 이 친구 메모 뒤에 이어 붙이고(mergeMemos), 생일은 이 친구에 없을 때만 가져옴
   mergeAccount(personId: string, accountId: string): Promise<void>;
   // 계정을 다른 사람으로 분리 (새 친구가 됨). 친구에게 계정이 하나뿐이면 분리할 수 없음
   splitAccount(personId: string, accountId: string): Promise<{ personId: string }>;
@@ -47,6 +50,13 @@ export const FRIEND_ERROR_CODE = {
   notFound: "FRIEND_NOT_FOUND",
   lastAccount: "FRIEND_LAST_ACCOUNT", // 하나 남은 계정은 분리할 수 없음
 } as const;
+
+// 친구를 합칠 때 두 사람의 메모를 모두 남김: 둘 다 있으면 줄바꿈으로 이어 붙임 (같은 메모는 한 번만)
+export const mergeMemos = (keep?: string, merged?: string) => {
+  const parts = [keep?.trim(), merged?.trim()].filter((m): m is string => !!m);
+  const unique = parts.filter((m, i) => parts.indexOf(m) === i);
+  return unique.length > 0 ? unique.join("\n") : undefined;
+};
 
 // 친구의 앱 목록 (중복 없이, 계정 순서대로)
 export const appsOf = (accounts: Account[]): MessengerApp[] =>
