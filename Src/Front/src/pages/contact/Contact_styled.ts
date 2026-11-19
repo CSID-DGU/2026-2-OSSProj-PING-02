@@ -41,6 +41,21 @@ export const Hint = styled.Text`
   text-align: center;
 `;
 
+// 14 연결된 계정 한 줄: 앱 · 이름(말줄임) + 오른쪽 텍스트 버튼
+export const AccountRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+`;
+
+export const AccountName = styled.Text`
+  flex-shrink: 1;
+  ${({ theme }) => theme.fonts.bodyMedium};
+  color: ${({ theme }) => theme.colors.textSecondary};
+`;
+
 // 단톡 메시지 한 줄 (09-C)
 export const MessageRow = styled.View`
   gap: 2px;

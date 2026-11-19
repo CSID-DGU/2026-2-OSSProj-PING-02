@@ -8,6 +8,7 @@ import { useAndroidBack } from "@hooks/useAndroidBack";
 import type { RootStackParamList } from "@routes/router";
 import HomeTab from "./HomeTab";
 import ContactsTab from "./ContactsTab";
+import FriendsTab from "./FriendsTab";
 import PlaceholderTab from "./PlaceholderTab";
 
 // 메인 화면: 하단 탭 5개 (라이브러리 없이 스택 화면 하나 + 탭바)
@@ -39,6 +40,8 @@ const MainTabs = () => {
           <HomeTab title={config.title} onOpenTab={setTab} />
         ) : tab === "contacts" ? (
           <ContactsTab title={config.title} />
+        ) : tab === "friends" ? (
+          <FriendsTab title={config.title} />
         ) : (
           <PlaceholderTab tab={config} />
         )}
