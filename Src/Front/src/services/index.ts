@@ -4,6 +4,10 @@ import {
   MOCK_VERIFICATION_CODE,
 } from "./auth/mockAuthService";
 import { createMockContactsService } from "./contacts/ContactsService";
+import {
+  createMockConversationService,
+  createMockMessengerService,
+} from "./conversation/mockConversationService";
 import { createMockModelService } from "./model/mockModelService";
 import { createMockNetworkService } from "./network/NetworkService";
 import {
@@ -27,6 +31,9 @@ export const services = {
   model: createMockModelService(),
   network: createMockNetworkService(),
   contacts: createMockContactsService(),
+  // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
+  conversation: createMockConversationService(),
+  messenger: createMockMessengerService(),
   storage: createMemoryStorage(),
 };
 
@@ -47,4 +54,6 @@ export * from "./permission/PermissionService";
 export * from "./model/ModelService";
 export * from "./network/NetworkService";
 export * from "./contacts/ContactsService";
+export * from "./conversation/types";
+export * from "./conversation/ConversationService";
 export * from "./storage/KeyValueStorage";

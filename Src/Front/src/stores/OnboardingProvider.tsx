@@ -70,7 +70,8 @@ const DEFAULT_DATA: OnboardingData = {
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
-const { storage, model: modelService } = services;
+// 호출할 때마다 services에서 꺼냄 (테스트·실제 구현으로 바꿔 끼워도 반영되게)
+const { storage } = services;
 
 export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const { session } = useSession();
@@ -147,8 +148,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const loadModelInfo = useCallback(async () => {
     setModel({ status: "loadingInfo" });
     try {
-      const info = await modelService.getLatest();
-      const installed = await modelService.isInstalled(info.version);
+      const info = await services.model.getLatest();
+      const installed = await services.model.isInstalled(info.version);
       setModel(installed ? { status: "done", info } : { status: "ready", info });
     } catch {
       setModel({ status: "infoError" });
@@ -163,7 +164,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     // 연속으로 눌러도 한 번만 시작되도록 ref를 먼저 바꿈
     modelRef.current = { status: "downloading", info, received: 0 };
     setModel(modelRef.current);
-    const task = modelService.startDownload(info, ({ receivedBytes }) => {
+    const task = services.model.startDownload(info, ({ receivedBytes }) => {
       setModel(cur =>
         cur.status === "downloading" ? { ...cur, received: receivedBytes } : cur
       );
