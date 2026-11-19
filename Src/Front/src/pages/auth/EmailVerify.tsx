@@ -9,6 +9,7 @@ import {
   AUTH_ERROR,
   RESEND_COOLDOWN_SEC,
   VERIFICATION_CODE_LENGTH,
+  getAuthErrorMessage,
 } from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import {
@@ -24,6 +25,7 @@ import * as s from "./EmailVerify_styled";
 type ResendState = "idle" | "sending" | "sent" | "error";
 
 // 01-3-1 이메일 인증: 가입 후(또는 인증 전 로그인 시) 메일로 받은 6자리 코드 확인
+// 지금 백엔드에는 가입 이메일 인증이 없어 숨김 (AUTH_FEATURES.emailVerification = false). 코드는 유지
 const EmailVerify = () => {
   const navigation = useAuthNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, "EmailVerify">>();
@@ -73,7 +75,7 @@ const EmailVerify = () => {
       setError(
         getErrorCode(e) === AUTH_ERROR_CODE.verificationCodeInvalid
           ? AUTH_ERROR.codeInvalid
-          : AUTH_ERROR.network
+          : getAuthErrorMessage(e)
       );
     } finally {
       setSubmitting(false);
