@@ -73,10 +73,12 @@ export const services = {
 export type Services = typeof services;
 
 // 개발 빌드 + mock일 때만 화면에 보여 주는 안내 (실제 API에서는 보이지 않음)
+// verificationCode: 비밀번호 재설정 코드(그리고 숨겨 둔 가입 이메일 인증 코드)
 const showMockHints = __DEV__ && API_CONFIG.mode === "mock";
 export const DEV_HINTS = {
   get verificationCode() {
-    return showMockHints && AUTH_FEATURES.emailEnabled
+    return showMockHints &&
+      (AUTH_FEATURES.accountRecovery || AUTH_FEATURES.emailVerification)
       ? MOCK_VERIFICATION_CODE
       : undefined;
   },

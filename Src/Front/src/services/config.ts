@@ -16,12 +16,15 @@ export const API_CONFIG: { mode: ApiMode; baseUrl: string; timeoutMs: number } =
     timeoutMs: 10_000,
   };
 
-// 인증 기능 켜고 끄기
-// emailEnabled: 백엔드 #25에서 이메일을 받지 않기로 해서 기본 false
-//   false → 회원가입 이메일 칸·인증 코드 화면·아이디/비밀번호 찾기를 숨기고, 가입하면 바로 로그인
-//   true  → 이메일 인증 흐름 (백엔드에 /auth/email/*, /auth/username/find, /auth/password/* 가 다시 생기면)
-// TODO(팀 결정): 아이디·비밀번호 복구 방식이 정해지면 다시 연결
+// 인증 기능 켜고 끄기 (기준: 백엔드 main의 Doc/API_목록.md)
+// - 회원가입 이메일은 백엔드가 필수로 받음 (인증하지 않고 아이디·비밀번호 찾기에만 씀) → 설정 없이 항상 받음
+// - emailVerification: 가입할 때 메일 코드 확인 (EmailVerify 화면)
+//   백엔드에 없음(가입하면 바로 토큰) → false. 화면·코드는 지우지 않고 숨김
+//   다시 생기면 경로 확인 후 true (httpAuthService의 verifyEmail·resendVerification)
+// - accountRecovery: 아이디 찾기(메일로 아이디) · 비밀번호 찾기(메일 코드 → 새 비밀번호)
+//   백엔드 main에 다시 생겨서 true. false면 로그인 화면에 "준비 중" 안내만
 // 테스트에서 두 경우를 모두 확인하려고 객체로 둠 (읽는 쪽은 호출 시점에 값을 봄)
 export const AUTH_FEATURES = {
-  emailEnabled: false,
+  emailVerification: false,
+  accountRecovery: true,
 };

@@ -1,42 +1,52 @@
 import { useState } from "react";
 import { Button } from "@core/ui/button";
 import { TextField } from "@core/ui/field";
-import { Dialog, DialogDescription, DialogHighlight } from "@core/ui/dialog";
+import { Dialog, DialogDescription } from "@core/ui/dialog";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
-import { AUTH_ERROR, EMAIL_REGEX } from "@constants/auth";
+import Notice from "@components/onboarding/Notice";
+import { AUTH_ERROR, EMAIL_REGEX, getAuthErrorMessage } from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
+import { services } from "@services";
 import * as s from "./FindId_styled";
 
-type FindIdErrors = Partial<Record<"name" | "email", string>>;
-
-// 앞 4글자만 보여 주고 나머지는 *로 가림 (예: malssiat → mals****)
-const maskId = (id: string) =>
-  id.slice(0, 4) + "*".repeat(Math.max(id.length - 4, 0));
-
+// 01-4 아이디 찾기 (백엔드 POST /auth/username/find)
+// 백엔드는 이메일만 받고, 아이디는 응답에 담지 않고 가입한 이메일로 보냄 (가입 여부와 관계없이 같은 응답)
+// TODO(디자이너 공유): Figma 01-4는 이름+이메일 입력 → 다이얼로그에 아이디 일부(mals****) 표시.
+//   백엔드 기준으로 이메일만 받고, 다이얼로그는 "메일을 확인해 주세요"로 바꿈
 const FindId = () => {
   const navigation = useAuthNavigation();
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<FindIdErrors>({});
-  const [foundId, setFoundId] = useState<string>();
+  const [error, setError] = useState<string>();
+  const [formError, setFormError] = useState<string>();
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const handleFind = () => {
-    const next: FindIdErrors = {};
-    if (!name.trim()) next.name = AUTH_ERROR.nameRequired;
-    if (!email.trim()) next.email = AUTH_ERROR.emailRequired;
-    else if (!EMAIL_REGEX.test(email.trim()))
-      next.email = AUTH_ERROR.emailInvalid;
-    setErrors(next);
-    if (Object.keys(next).length > 0) return;
+  const handleFind = async () => {
+    if (sending) return;
+    const value = email.trim();
+    const next = !value
+      ? AUTH_ERROR.emailRequired
+      : !EMAIL_REGEX.test(value)
+      ? AUTH_ERROR.emailInvalid
+      : undefined;
+    setError(next);
+    setFormError(undefined);
+    if (next) return;
 
-    // TODO(팀 결정): 아이디 찾기 방식(이메일/전화번호) 미확정이라 아직 연결하지 않음
-    // 확정되면 services.auth.findLoginId({ method, name, ... })로 교체. 지금은 결과 다이얼로그 확인용 예시 값
-    setFoundId("malssiat");
+    setSending(true);
+    try {
+      await services.auth.findLoginId(value.toLowerCase());
+      setSent(true);
+    } catch (e) {
+      setFormError(getAuthErrorMessage(e));
+    } finally {
+      setSending(false);
+    }
   };
 
   const goLogin = () => {
-    setFoundId(undefined);
+    setSent(false);
     navigation.popTo("Login");
   };
 
@@ -44,30 +54,19 @@ const FindId = () => {
     <AuthLayout title="아이디 찾기">
       <AuthIntro
         title="아이디를 잊으셨나요?"
-        description="가입할 때 등록한 이름과 이메일을 확인해요."
+        description="가입할 때 등록한 이메일로 아이디를 보내드려요."
       />
 
       <s.Fields>
-        <TextField
-          label="이름"
-          placeholder="이름을 입력해주세요"
-          value={name}
-          onChangeText={text => {
-            setName(text);
-            setErrors(prev => ({ ...prev, name: undefined }));
-          }}
-          error={errors.name}
-          autoComplete="name"
-        />
         <TextField
           label="이메일"
           placeholder="이메일을 입력해주세요"
           value={email}
           onChangeText={text => {
             setEmail(text);
-            setErrors(prev => ({ ...prev, email: undefined }));
+            setError(undefined);
           }}
-          error={errors.email}
+          error={error}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
@@ -77,26 +76,35 @@ const FindId = () => {
         />
       </s.Fields>
 
+      {formError && <Notice tone="danger" title={formError} />}
+
       <s.Actions>
-        <Button variant="primary" fullWidth onPress={handleFind}>
-          아이디 찾기
+        <Button
+          variant="primary"
+          fullWidth
+          onPress={handleFind}
+          disabled={sending}
+          accessibilityState={{ busy: sending, disabled: sending }}
+        >
+          {sending ? "보내는 중…" : "아이디 받기"}
         </Button>
-        <s.Hint>입력한 정보가 확인되면 아이디를 바로 알려드려요.</s.Hint>
+        <s.Hint>메일이 오지 않으면 스팸함도 함께 확인해주세요.</s.Hint>
         <Button variant="text" onPress={() => navigation.popTo("Login")}>
           로그인으로 돌아가기
         </Button>
       </s.Actions>
 
       <Dialog
-        visible={!!foundId}
-        title="아이디를 찾았어요"
-        description="회원님의 아이디는 아래와 같아요."
+        visible={sent}
+        title="메일을 확인해 주세요"
+        description="가입된 이메일이라면 아이디를 보냈어요."
         confirmLabel="로그인"
         onConfirm={goLogin}
-        onClose={() => setFoundId(undefined)}
+        onClose={() => setSent(false)}
       >
-        <DialogHighlight>{maskId(foundId ?? "")}</DialogHighlight>
-        <DialogDescription>개인정보 보호를 위해 일부만 표시했어요.</DialogDescription>
+        <DialogDescription>
+          {"메일이 오지 않으면 가입할 때 적은 이메일이\n맞는지 한 번 더 확인해 주세요."}
+        </DialogDescription>
       </Dialog>
     </AuthLayout>
   );

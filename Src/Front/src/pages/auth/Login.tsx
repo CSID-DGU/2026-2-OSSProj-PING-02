@@ -59,7 +59,7 @@ const Login = () => {
         setErrors({ password: AUTH_ERROR.loginFailed });
       } else if (
         code === AUTH_ERROR_CODE.emailNotVerified &&
-        AUTH_FEATURES.emailEnabled &&
+        AUTH_FEATURES.emailVerification &&
         email
       ) {
         // 인증 전 계정: 인증 화면을 열면서 코드를 새로 보냄

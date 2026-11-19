@@ -96,8 +96,6 @@ const Signup = () => {
   const navigation = useAuthNavigation();
   const theme = useTheme();
   const { signIn } = useSession();
-  // 이메일 기능(services/config.ts). 꺼져 있으면 이메일 칸 없이 가입하고 바로 로그인
-  const emailEnabled = AUTH_FEATURES.emailEnabled;
 
   const [name, setName] = useState("");
   const [year, setYear] = useState<number>();
@@ -133,7 +131,8 @@ const Signup = () => {
     !!month &&
     !!day &&
     !!gender &&
-    (!emailEnabled || (!!emailLocal.trim() && !!emailDomainValue)) &&
+    !!emailLocal.trim() &&
+    !!emailDomainValue &&
     idCheck === "available" &&
     isValidPassword(password) &&
     passwordConfirm === password &&
@@ -211,11 +210,9 @@ const Signup = () => {
     if (!name.trim()) next.name = AUTH_ERROR.nameRequired;
     if (!year || !month || !day) next.birth = AUTH_ERROR.birthRequired;
     if (!gender) next.gender = AUTH_ERROR.genderRequired;
-    if (emailEnabled) {
-      if (!emailLocal.trim() || !domain) next.email = AUTH_ERROR.emailRequired;
-      else if (/[\s@]/.test(emailLocal) || !DOMAIN_REGEX.test(domain))
-        next.email = AUTH_ERROR.emailInvalid;
-    }
+    if (!emailLocal.trim() || !domain) next.email = AUTH_ERROR.emailRequired;
+    else if (/[\s@]/.test(emailLocal.trim()) || !DOMAIN_REGEX.test(domain))
+      next.email = AUTH_ERROR.emailInvalid;
     if (!loginId.trim()) next.loginId = AUTH_ERROR.idRequired;
     else if (!isValidLoginId(loginId)) next.loginId = AUTH_ERROR.idInvalid;
     else if (idCheck === "taken") next.loginId = AUTH_ERROR.idTaken;
@@ -236,7 +233,7 @@ const Signup = () => {
       return;
     }
     const domain = customDomain ? domainInput.trim() : emailDomain;
-    const email = emailEnabled ? `${emailLocal.trim()}@${domain}` : undefined;
+    const email = `${emailLocal.trim()}@${domain}`.toLowerCase();
 
     setSubmitting(true);
     try {
@@ -253,11 +250,11 @@ const Signup = () => {
         })),
       });
       if (signup.status === "signedIn") {
-        // 가입하면 바로 로그인 (백엔드 #25). 이동은 Splash가 온보딩 진행 상황을 보고 결정
+        // 가입하면 바로 로그인 (백엔드 main). 이동은 Splash가 온보딩 진행 상황을 보고 결정
         await signIn(signup.result);
         navigation.popTo("Splash");
-      } else {
-        // 이메일 기능: 인증 화면에서 뒤로 나와 다시 가입하면 서버가 인증 전 계정을 덮어씀
+      } else if (AUTH_FEATURES.emailVerification) {
+        // 숨겨 둔 가입 이메일 인증 흐름 (백엔드에 생기면 켬)
         navigation.navigate("EmailVerify", { email: signup.email });
       }
     } catch (error) {
@@ -269,8 +266,8 @@ const Signup = () => {
         // 확인 뒤 그사이 다른 사람이 가입한 경우
         setIdCheck("taken");
         setErrors({ loginId: AUTH_ERROR.idTaken });
-      } else if (code === AUTH_ERROR_CODE.emailAlreadyExists) {
-        setErrors({ email: AUTH_ERROR.emailTaken });
+      } else if (code === AUTH_ERROR_CODE.invalidEmailFormat) {
+        setErrors({ email: AUTH_ERROR.emailInvalid });
       } else if (code === AUTH_ERROR_CODE.requiredTermsNotAgreed) {
         setErrors({ terms: AUTH_ERROR.termsRequired });
       } else if (
@@ -369,10 +366,10 @@ const Signup = () => {
           />
         </Field>
 
-        {emailEnabled && (
+        {/* 이메일은 인증하지 않음 → 오타가 나면 찾기가 안 된다는 안내를 도움말 자리에 */}
         <Field
           label="이메일"
-          helper={errors.email}
+          helper={errors.email ?? AUTH_ERROR.emailHelper}
           state={errors.email ? "error" : "default"}
         >
           <s.Row>
@@ -433,7 +430,6 @@ const Signup = () => {
             }}
           />
         </Field>
-        )}
 
         {/* 팀 결정으로 추가 (Figma 01-3에 없음): 계정 정보끼리 묶이도록 비밀번호 바로 위 */}
         {/* 입력란 바로 옆 "중복 확인"(48dp), 결과는 도움말 자리에 */}

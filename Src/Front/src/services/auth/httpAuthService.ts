@@ -1,3 +1,4 @@
+import { COMMON_ERROR_CODE, ServiceError } from "../common";
 import { AUTH_FEATURES } from "../config";
 import type { HttpClient } from "../http/httpClient";
 import type {
@@ -8,7 +9,7 @@ import type {
   Terms,
 } from "./AuthService";
 
-// 실제 인증 API (Doc/API_목록.md 4.2 ~ 4.7)
+// 실제 인증 API (백엔드 main의 Doc/API_목록.md 4.2 ~ 4.7)
 // 서버의 username ↔ 화면의 loginId만 바꾸고 나머지는 그대로 전달
 
 interface ServerUser {
@@ -47,24 +48,21 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
     });
   },
 
-  async signup({ loginId, email, ...rest }) {
-    const emailEnabled = AUTH_FEATURES.emailEnabled;
-    // 백엔드는 정의되지 않은 필드(email)가 오면 400으로 거부 → 이메일 기능이 꺼져 있으면 보내지 않음
-    const body = {
-      username: loginId,
-      ...rest,
-      ...(emailEnabled && email ? { email } : {}),
-    };
+  async signup({ loginId, ...rest }) {
+    // 백엔드는 정의되지 않은 필드가 오면 400으로 거부 → SignupDto 필드만 보냄
     const res = await http.request<ServerAuthResult | { user: ServerUser }>(
       "POST",
       "/auth/signup",
-      { body }
+      { body: { username: loginId, ...rest } }
     );
     if ("tokens" in res && res.tokens) {
       return { status: "signedIn", result: toResult(res) };
     }
-    // 이메일 인증 방식: 가입 응답에 토큰이 없고, 메일로 받은 코드를 확인해야 함
-    return { status: "verificationRequired", email: email ?? "" };
+    // 가입 이메일 인증 방식(지금 백엔드에는 없음): 응답에 토큰이 없고, 메일 코드를 확인해야 함
+    if (!AUTH_FEATURES.emailVerification) {
+      throw new ServiceError(COMMON_ERROR_CODE.internal, "가입 응답에 토큰이 없습니다.");
+    }
+    return { status: "verificationRequired", email: rest.email };
   },
 
   async login(loginId, password) {
@@ -82,18 +80,7 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
     });
   },
 
-  // 아래는 이메일 기능 (백엔드 #25에서 제거됨. 제거 전 경로 기준)
-  async verifyEmail(email, code) {
-    const res = await http.request<ServerAuthResult>("POST", "/auth/email/verify", {
-      body: { email, code },
-    });
-    return toResult(res);
-  },
-
-  async resendVerification(email) {
-    await http.request<void>("POST", "/auth/email/resend", { body: { email } });
-  },
-
+  // 아이디·비밀번호 찾기 (Doc/API_목록.md 4.5-1 ~ 4.5-3). 모두 204
   async findLoginId(email) {
     await http.request<void>("POST", "/auth/username/find", { body: { email } });
   },
@@ -108,5 +95,17 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
     await http.request<void>("POST", "/auth/password/reset", {
       body: { username: loginId, code, newPassword },
     });
+  },
+
+  // 가입 이메일 인증: 백엔드에 없음 (#25 이전 경로 기준, AUTH_FEATURES.emailVerification이 false면 쓰지 않음)
+  async verifyEmail(email, code) {
+    const res = await http.request<ServerAuthResult>("POST", "/auth/email/verify", {
+      body: { email, code },
+    });
+    return toResult(res);
+  },
+
+  async resendVerification(email) {
+    await http.request<void>("POST", "/auth/email/resend", { body: { email } });
   },
 });

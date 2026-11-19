@@ -1,5 +1,6 @@
 // 인증 화면(01-2 ~ 01-5)에서 쓰는 선택지·검증 기준·안내 문구
 import {
+  AUTH_ERROR_CODE,
   COMMON_ERROR_CODE,
   NETWORK_ERROR,
   ServiceError,
@@ -43,13 +44,14 @@ export const AUTH_ERROR = {
   genderRequired: "성별을 선택해주세요.",
   emailRequired: "이메일을 입력해주세요.",
   emailInvalid: "이메일 형식을 확인해주세요.",
+  // 가입 이메일은 인증하지 않아 오타가 나면 찾기가 안 됨 (백엔드 문서 권장 → 안내 문구)
+  emailHelper: "아이디·비밀번호를 찾을 때 이 이메일로 보내드려요. 한 번 더 확인해 주세요.",
   passwordMismatch: "비밀번호가 일치하지 않아요.",
   termsRequired: "필수 약관에 모두 동의해주세요.",
   // 서버 응답에 따른 안내 (탓하지 않고 다음 행동을 알려 주는 문장)
   // 401: 5번 연속 틀리면 5분 잠기지만 서버가 구분해 주지 않아 같은 문장으로 (Doc/API_목록.md 4.5)
   loginFailed:
     "아이디나 비밀번호를 다시 확인해 주세요. 계속 안 되면 잠시 쉬었다가 다시 해 봐도 괜찮아요.",
-  emailTaken: "이미 가입된 이메일이에요. 로그인해 보시겠어요?",
   codeRequired: "메일로 받은 숫자 6자리를 입력해주세요.",
   codeInvalid: "코드가 맞지 않거나 시간이 지났어요. 새 코드를 받아 볼 수 있어요.",
   checkInput: "입력한 내용을 한 번 더 확인해 주세요.",
@@ -77,6 +79,8 @@ export const getAuthErrorMessage = (error: unknown): string => {
       return rateLimitedMessage(error.retryAfterSec);
     case COMMON_ERROR_CODE.validationFailed:
       return AUTH_ERROR.checkInput;
+    case AUTH_ERROR_CODE.invalidEmailFormat:
+      return AUTH_ERROR.emailInvalid;
     default:
       return AUTH_ERROR.server;
   }
@@ -89,11 +93,11 @@ export const getInvalidFields = (error: unknown): string[] =>
     ? (error.details ?? []).map(d => d.field)
     : [];
 
-// 이메일 인증 코드 (이메일 기능이 켜져 있을 때)
+// 메일 코드 (비밀번호 재설정, 숨겨 둔 가입 이메일 인증)
+// 백엔드: 6자리, 10분 유효, 같은 주소로 60초에 한 통
 export const VERIFICATION_CODE_LENGTH = 6;
 export const RESEND_COOLDOWN_SEC = 60;
 
-// 이메일 기능이 꺼져 있을 때 "아이디 찾기 | 비밀번호 찾기" 자리에 보이는 안내
-// TODO(팀 결정): 아이디·비밀번호 복구 방식이 정해지면 문구와 연결을 바꿈
+// 아이디·비밀번호 찾기가 꺼져 있을 때(AUTH_FEATURES.accountRecovery) "아이디 찾기 | 비밀번호 찾기" 자리 안내
 export const FIND_ACCOUNT_UNAVAILABLE =
   "아이디·비밀번호 찾기는 아직 준비 중이에요.\n천천히 떠올려 보고, 생각나면 언제든 돌아와 주세요.";
