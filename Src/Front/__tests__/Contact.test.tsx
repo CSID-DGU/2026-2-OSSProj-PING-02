@@ -221,20 +221,27 @@ describe("가리기 모델이 준비된 경우", () => {
     expect(isDisabled(root, "확인하고 보내기")).toBe(false);
   });
 
-  test("잘린 메시지: 붙여 넣은 전체 내용을 기기 안에서 정리한다", async () => {
+  test("잘린 메시지(16): 붙여 넣은 내용을 정리하고 답장 후보로, 돌아오면 정리한 내용", async () => {
     const root = await openContacts();
     await openCard(root, "민지");
     await waitForText(root, "메시지가 잘린 상태 보기");
     await press(root, "메시지가 잘린 상태 보기");
 
-    await waitForText(root, "메시지가 길어서 앞부분만 왔어요");
-    expect(isDisabled(root, "기기 안에서 정리하기")).toBe(true);
+    await waitForText(root, "긴 메시지를 붙여넣어 주세요");
+    expect(
+      findText(root, "분석할 내용만 사용하고 원문은 저장하지 않아요.").length
+    ).toBe(1);
+    expect(isDisabled(root, "요약하고 답장 찾기")).toBe(true);
     await type(
       root,
-      "전체 메시지",
+      "붙여넣을 메시지",
       "이번 주말에 성수에서 밥 먹자. 토요일 1시 어때?"
     );
-    await press(root, "기기 안에서 정리하기");
+    await press(root, "요약하고 답장 찾기");
+
+    // 민지는 묻는 말 → 09-A
+    await waitForText(root, "어떻게 답하고 싶으세요?");
+    await pressBack();
     await waitForText(root, "정리한 내용");
   });
 });
