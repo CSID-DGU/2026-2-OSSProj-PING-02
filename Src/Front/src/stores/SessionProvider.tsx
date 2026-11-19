@@ -7,11 +7,22 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { services, type AuthResult, type AuthUser } from "@services";
+import {
+  getErrorCode,
+  NETWORK_ERROR,
+  services,
+  TIMEOUT_ERROR,
+  type AuthResult,
+  type AuthUser,
+} from "@services";
 
 // 로그인 상태
-// - 토큰은 services.tokens(메모리)에만 둠. 앱을 끄면 로그아웃 상태로 시작
-//   TODO(팀 결정): 자동 로그인 여부 미확정. 정하면 앱 시작 시 저장된 refreshToken으로 갱신하고 "loading"을 씀
+// - 자동 로그인(팀 확정): 앱 시작 때 "loading"으로 시작해 암호화 저장소의 토큰을 불러오고
+//   auth.restoreSession()(refresh → 내 정보)으로 복구. 저장된 토큰이 없거나 실패하면 signedOut(로그인 화면)
+//   - 세션이 끝남(401 등): 저장 토큰도 지움 → 다음에 켜도 로그인 화면
+//   - 네트워크 오류·시간 초과: 이번에는 로그인 화면이지만 저장 토큰은 남겨 다음 실행에서 다시 시도
+//     TODO(디자이너 공유): 오프라인으로 켰을 때 "다시 시도" 안내를 둘지
+// - 로그아웃하면 서버 세션을 끝내고 저장 토큰도 지움
 // - 앱 사용 중 토큰 갱신이 실패해 토큰이 지워지면(세션 만료) signedOut으로 바뀜
 export type SessionState =
   | { status: "loading" }
@@ -29,7 +40,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 const { auth, tokens } = services;
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<SessionState>({ status: "signedOut" });
+  const [session, setSession] = useState<SessionState>({ status: "loading" });
 
   // 토큰이 지워지면 로그인 화면으로 (로그아웃·갱신 실패 모두)
   useEffect(
@@ -39,6 +50,34 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       }),
     []
   );
+
+  // 앱 시작: 저장된 토큰으로 세션 복구
+  useEffect(() => {
+    let alive = true;
+    // 복구 중에 직접 로그인하면(지금 화면 구성에선 없음) 그 결과를 덮어쓰지 않음
+    const settle = (next: SessionState) => {
+      if (alive) {
+        setSession(cur => (cur.status === "loading" ? next : cur));
+      }
+    };
+    (async () => {
+      const saved = await tokens.load();
+      if (!saved) return settle({ status: "signedOut" });
+      try {
+        const user = await auth.restoreSession();
+        settle({ status: "signedIn", user });
+      } catch (error) {
+        const code = getErrorCode(error);
+        if (code !== NETWORK_ERROR && code !== TIMEOUT_ERROR && tokens.get()) {
+          tokens.set(null);
+        }
+        settle({ status: "signedOut" });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const signIn = useCallback(async (result: AuthResult) => {
     tokens.set(result.tokens);

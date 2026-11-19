@@ -1,8 +1,15 @@
+import * as Keychain from "react-native-keychain";
 import { AUTH_ERROR } from "../src/constants/auth";
-import { MOCK_VERIFICATION_CODE } from "../src/services/auth/mockAuthService";
 import {
+  MOCK_DEMO_ACCOUNT,
+  MOCK_VERIFICATION_CODE,
+} from "../src/services/auth/mockAuthService";
+import { services, STORAGE_KEYS } from "../src/services";
+import {
+  closeApp,
   findText,
   press,
+  pressByRole,
   renderApp,
   type,
   waitForNoText,
@@ -10,6 +17,67 @@ import {
 } from "../test-utils/app";
 
 // 인증 화면 테스트 (온보딩 흐름은 Onboarding.test.tsx)
+
+const savedTokens = async () => {
+  const saved = await Keychain.getGenericPassword({ service: "malssiat.auth.mock" });
+  return saved ? JSON.parse(saved.password) : null;
+};
+
+describe("자동 로그인", () => {
+  test("로그인하면 토큰을 암호화 저장소에 두고, 앱을 다시 켜면 갱신된 토큰으로 이어서 쓴다", async () => {
+    let root = await renderApp();
+    await press(root, "시작하기");
+    await press(root, "로그인");
+    await type(root, "아이디", MOCK_DEMO_ACCOUNT.loginId);
+    await type(root, "비밀번호", MOCK_DEMO_ACCOUNT.password);
+    await press(root, "로그인");
+    await waitForText(root, "작은 한마디가,\n다시 이어질 씨앗이 되도록");
+    const first = await savedTokens();
+    expect(first?.refreshToken).toBeTruthy();
+
+    // 앱을 끄고 다시 켬 → 시작하기 없이 멈춘 단계(온보딩)로
+    await closeApp();
+    root = await renderApp();
+    await waitForText(root, "작은 한마디가,\n다시 이어질 씨앗이 되도록");
+    expect(findText(root, "시작하기").length).toBe(0);
+    // 시작할 때 refresh → 새 토큰으로 교체 저장
+    const second = await savedTokens();
+    expect(second.refreshToken).not.toBe(first.refreshToken);
+  });
+
+  test("로그아웃하면 저장 토큰을 지우고, 다시 켜도 로그인 화면부터", async () => {
+    const login = await services.auth.login(MOCK_DEMO_ACCOUNT.loginId, MOCK_DEMO_ACCOUNT.password);
+    services.tokens.set(login.tokens);
+    await services.storage.setItem(
+      `${STORAGE_KEYS.onboarding}.${login.user.id}`,
+      JSON.stringify({ completed: true, lastStep: "OnboardingDone" })
+    );
+
+    let root = await renderApp();
+    await waitForText(root, "오늘의 연락");
+    await pressByRole(root, "tab", "설정");
+    await press(root, "로그아웃 (개발용)");
+    await waitForText(root, "시작하기");
+    // 서버 로그아웃 요청(mock 200ms)이 끝나면 저장소에서도 지워짐
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 400));
+    expect(await savedTokens()).toBeNull();
+
+    await closeApp();
+    root = await renderApp();
+    await waitForText(root, "시작하기");
+  });
+
+  test("저장된 토큰이 만료·재사용이면 지우고 시작하기를 보여 준다", async () => {
+    services.tokens.set({ accessToken: "old", refreshToken: "mock-refresh.malssiat.0.0", expiresIn: 1800 });
+    // 이미 쓴 토큰처럼: 한 번 복구해 교체된 뒤 옛 토큰을 다시 넣음
+    await services.auth.restoreSession();
+    services.tokens.set({ accessToken: "old", refreshToken: "mock-refresh.malssiat.0.0", expiresIn: 1800 });
+
+    const root = await renderApp();
+    await waitForText(root, "시작하기");
+    expect(await savedTokens()).toBeNull();
+  });
+});
 
 test("스플래시에서 시작하기를 누르면 계정 시작 화면으로 이동한다", async () => {
   const root = await renderApp();

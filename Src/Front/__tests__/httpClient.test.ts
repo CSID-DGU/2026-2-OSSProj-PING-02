@@ -1,5 +1,5 @@
 import { createHttpClient } from "../src/services/http/httpClient";
-import { createMemoryTokenStore } from "../src/services/auth/tokenStore";
+import { createTokenStore } from "../src/services/auth/tokenStore";
 import { ServiceError } from "../src/services/common";
 
 // 실제 서버 없이 fetch를 흉내 내서 HTTP 클라이언트 동작을 확인
@@ -15,7 +15,7 @@ const json = (status: number, body?: unknown, headers: Record<string, string> = 
   });
 
 const setup = (handler: Handler, timeoutMs = 1000) => {
-  const tokens = createMemoryTokenStore();
+  const tokens = createTokenStore();
   const calls: { url: string; auth?: string; body?: unknown }[] = [];
   const fetchImpl = (async (url: string, init: any) => {
     calls.push({

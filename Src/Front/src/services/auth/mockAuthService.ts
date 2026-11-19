@@ -8,6 +8,7 @@ import {
   type AuthUser,
   type Terms,
 } from "./AuthService";
+import { createTokenStore, type TokenStore } from "./tokenStore";
 
 // mock 인증: 서버 대신 메모리에 회원을 저장 (백엔드 main의 auth.service.ts 동작을 따름)
 // - 가입: 입력값 검사(400) → 필수 약관(422) → 아이디 중복(409). 이메일은 필수지만 인증하지 않고 중복도 허용
@@ -15,6 +16,8 @@ import {
 // - 로그인: 아이디 없음·비밀번호 틀림·잠김을 구분하지 않고 401. 5번 연속 틀리면 5분 잠김
 // - 아이디 찾기·비밀번호 코드 요청: 계정이 있는지와 관계없이 항상 성공
 //   비밀번호 재설정 코드는 항상 MOCK_VERIFICATION_CODE, 10분 유효, 5번 틀리면 무효, 한 번만 사용
+// - 자동 로그인(restoreSession): 갱신 토큰은 한 번 쓰면 바뀌고, 쓴 토큰·로그아웃한 토큰은 401
+//   토큰에 아이디를 넣어 둬서 앱을 다시 켜도 테스트 계정은 복구됨 (새로 가입한 계정은 앱을 끄면 사라져 401)
 // - 메일 발송 제한(같은 주소 60초에 한 통)·IP 요청 제한(429)은 흉내 내지 않음
 // - 바로 로그인해 볼 수 있는 테스트 계정: MOCK_DEMO_ACCOUNT
 export const MOCK_VERIFICATION_CODE = "123456";
@@ -78,6 +81,8 @@ interface MockOptions {
   latency?: number;
   // 잠금·코드 만료 시간을 테스트에서 바꿀 수 있게
   now?: () => number;
+  // 자동 로그인 때 갱신 토큰을 읽고 새 토큰을 넣는 곳 (실제 구현의 httpClient와 같은 역할)
+  tokens?: TokenStore;
 }
 
 const validationError = (field: string, reason = "matches") =>
@@ -111,6 +116,7 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
 export const createMockAuthService = ({
   latency = 600,
   now = Date.now,
+  tokens = createTokenStore(),
 }: MockOptions = {}): AuthService => {
   // key: 아이디
   const users = new Map<string, MockUser>([
@@ -130,7 +136,10 @@ export const createMockAuthService = ({
   ]);
   // key: 아이디. 비밀번호 재설정 코드 (새로 받으면 이전 코드는 무효)
   const resetCodes = new Map<string, ResetCode>();
+  // 이미 쓴(갱신·로그아웃) 갱신 토큰
+  const revoked = new Set<string>();
   let nextId = 1;
+  let issued = 0;
 
   const toUser = ({ id, loginId, name, email }: MockUser): AuthUser => ({
     id,
@@ -139,14 +148,27 @@ export const createMockAuthService = ({
     email,
   });
 
+  // 갱신 토큰: mock-refresh.<아이디>.<시각>.<번호> (아이디에는 '.'이 없음)
+  const issueTokens = (user: MockUser) => {
+    issued += 1;
+    return {
+      accessToken: `mock-access.${user.id}.${now()}.${issued}`,
+      refreshToken: `mock-refresh.${user.loginId}.${now()}.${issued}`,
+      expiresIn: 1800,
+    };
+  };
+
   const issue = (user: MockUser): AuthResult => ({
     user: toUser(user),
-    tokens: {
-      accessToken: `mock-access-${user.id}-${now()}`,
-      refreshToken: `mock-refresh-${user.id}-${now()}`,
-      expiresIn: 1800,
-    },
+    tokens: issueTokens(user),
   });
+
+  const refreshTokenInvalid = () =>
+    new ServiceError(
+      AUTH_ERROR_CODE.refreshTokenInvalid,
+      "리프레시 토큰이 유효하지 않습니다.",
+      { status: 401 }
+    );
 
   const assertEmail = (email: string) => {
     if (!EMAIL_FORMAT.test(email) || email.length > 255) throw emailFormatError();
@@ -240,8 +262,24 @@ export const createMockAuthService = ({
       return issue(user);
     },
 
-    async logout() {
+    async logout(refreshToken) {
       await delay(200);
+      revoked.add(refreshToken);
+    },
+
+    async restoreSession() {
+      await delay(latency / 2);
+      const refreshToken = tokens.get()?.refreshToken;
+      const [prefix, loginId] = refreshToken?.split(".") ?? [];
+      const user = loginId ? users.get(loginId) : undefined;
+      if (!refreshToken || prefix !== "mock-refresh" || !user || revoked.has(refreshToken)) {
+        // httpClient와 같이: 세션이 끝났으면 보관소 토큰을 지움
+        tokens.set(null);
+        throw refreshTokenInvalid();
+      }
+      revoked.add(refreshToken);
+      tokens.set(issueTokens(user));
+      return toUser(user);
     },
 
     async findLoginId(email) {

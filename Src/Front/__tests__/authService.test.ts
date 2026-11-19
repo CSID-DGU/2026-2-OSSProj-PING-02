@@ -4,7 +4,7 @@ import {
   MOCK_VERIFICATION_CODE,
 } from "../src/services/auth/mockAuthService";
 import { createHttpAuthService } from "../src/services/auth/httpAuthService";
-import { createMemoryTokenStore } from "../src/services/auth/tokenStore";
+import { createTokenStore } from "../src/services/auth/tokenStore";
 import { createHttpClient } from "../src/services/http/httpClient";
 import {
   NETWORK_ERROR,
@@ -135,12 +135,108 @@ describe("mock 인증 (백엔드 main 동작)", () => {
     await expect(auth.findLoginId("nobody@example.com")).resolves.toBeUndefined();
     expect((await catchError(auth.findLoginId("nope"))).code).toBe("INVALID_EMAIL_FORMAT");
   });
+
+  test("자동 로그인: 갱신 토큰은 한 번만 쓰이고, 쓴 토큰·로그아웃한 토큰은 401로 지워진다", async () => {
+    const tokens = createTokenStore();
+    const auth = createMockAuthService({ latency: 0, tokens });
+    const { tokens: first } = await auth.login(MOCK_DEMO_ACCOUNT.loginId, MOCK_DEMO_ACCOUNT.password);
+
+    tokens.set(first);
+    const user = await auth.restoreSession();
+    expect(user.loginId).toBe(MOCK_DEMO_ACCOUNT.loginId);
+    const second = tokens.get()!;
+    expect(second.refreshToken).not.toBe(first.refreshToken);
+
+    // 이미 쓴 토큰
+    tokens.set(first);
+    const reused = await catchError(auth.restoreSession());
+    expect([reused.code, reused.status]).toEqual(["REFRESH_TOKEN_INVALID", 401]);
+    expect(tokens.get()).toBeNull();
+
+    // 로그아웃한 토큰
+    await auth.logout(second.refreshToken);
+    tokens.set(second);
+    expect((await catchError(auth.restoreSession())).code).toBe("REFRESH_TOKEN_INVALID");
+  });
+
+  test("자동 로그인: 앱을 다시 켜도(새 mock) 테스트 계정은 복구, 없는 계정은 401", async () => {
+    const before = createMockAuthService({ latency: 0 });
+    const { tokens: saved } = await before.login(MOCK_DEMO_ACCOUNT.loginId, MOCK_DEMO_ACCOUNT.password);
+    const signup = await before.signup(input());
+
+    const tokens = createTokenStore();
+    const after = createMockAuthService({ latency: 0, tokens });
+    tokens.set(saved);
+    expect((await after.restoreSession()).loginId).toBe(MOCK_DEMO_ACCOUNT.loginId);
+    if (signup.status === "signedIn") tokens.set(signup.result.tokens);
+    expect((await catchError(after.restoreSession())).status).toBe(401);
+  });
+});
+
+describe("토큰 보관소 (암호화 저장소)", () => {
+  const memoryStorage = () => {
+    let value: string | null = null;
+    return {
+      read: jest.fn(async () => value),
+      write: jest.fn(async (next: string) => {
+        value = next;
+      }),
+      remove: jest.fn(async () => {
+        value = null;
+      }),
+    };
+  };
+  const t = (n: number) => ({ accessToken: `a${n}`, refreshToken: `r${n}`, expiresIn: 1800 });
+
+  // load()는 앞서 시작한 저장이 끝난 뒤 저장소를 읽음 → 저장이 끝나기를 기다리는 데 씀
+  test("저장한 토큰을 다음 실행에서 불러오고, 로그아웃(null)하면 지운다", async () => {
+    const storage = memoryStorage();
+    const first = createTokenStore(storage);
+    first.set(t(1));
+    await first.load();
+    const next = createTokenStore(storage);
+    expect(next.get()).toBeNull();
+    expect(await next.load()).toEqual(t(1));
+    expect(next.get()).toEqual(t(1));
+
+    next.set(null);
+    expect(await next.load()).toBeNull();
+    expect(storage.remove).toHaveBeenCalled();
+  });
+
+  test("연달아 바뀌어도 마지막 값이 남고, 깨진 값·읽기 실패는 null", async () => {
+    const storage = memoryStorage();
+    const store = createTokenStore(storage);
+    store.set(t(1));
+    store.set(t(2));
+    store.set(null);
+    store.set(t(3));
+    expect(await store.load()).toEqual(t(3));
+
+    await storage.write("not json");
+    expect(await createTokenStore(storage).load()).toBeNull();
+    storage.read.mockRejectedValueOnce(new Error("keystore"));
+    expect(await createTokenStore(storage).load()).toBeNull();
+  });
+
+  test("저장 실패는 메모리 값에 영향을 주지 않는다", async () => {
+    const storage = memoryStorage();
+    storage.write.mockRejectedValueOnce(new Error("keystore"));
+    const store = createTokenStore(storage);
+    store.set(t(1));
+    expect(store.get()).toEqual(t(1));
+    // 저장소에는 못 썼지만 다음 저장은 정상
+    store.set(t(2));
+    expect(store.get()).toEqual(t(2));
+    expect(await store.load()).toEqual(t(2));
+    expect(storage.write).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("실제 API 본문 (Doc/API_목록.md)", () => {
   const setup = () => {
     const calls: { method: string; url: string; body?: any; auth?: string }[] = [];
-    const tokens = createMemoryTokenStore();
+    const tokens = createTokenStore();
     const fetchImpl = (async (url: string, init: any) => {
       calls.push({
         method: init.method,
@@ -148,6 +244,18 @@ describe("실제 API 본문 (Doc/API_목록.md)", () => {
         body: init.body ? JSON.parse(init.body) : undefined,
         auth: init.headers.Authorization,
       });
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({ accessToken: "a2", refreshToken: "r2", expiresIn: 1800 }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/users/me")) {
+        return new Response(
+          JSON.stringify({ id: "u1", username: "newseed01", name: "새싹", email: "seed@example.com", gender: "FEMALE" }),
+          { status: 200 }
+        );
+      }
       if (url.endsWith("/auth/signup") || url.endsWith("/auth/login")) {
         return new Response(
           JSON.stringify({
@@ -188,6 +296,18 @@ describe("실제 API 본문 (Doc/API_목록.md)", () => {
       ["/auth/logout", { refreshToken: "r1" }],
     ]);
     expect(calls[3].auth).toBe("Bearer a1");
+  });
+
+  test("자동 로그인은 refresh로 토큰을 바꾼 뒤 새 토큰으로 내 정보를 받는다", async () => {
+    const { auth, calls, tokens } = setup();
+    tokens.set({ accessToken: "a1", refreshToken: "r1", expiresIn: 1800 });
+    const user = await auth.restoreSession();
+    expect(user).toEqual({ id: "u1", loginId: "newseed01", name: "새싹", email: "seed@example.com" });
+    expect(calls.map(c => [c.method, c.url.replace("http://server/v1", ""), c.body, c.auth])).toEqual([
+      ["POST", "/auth/refresh", { refreshToken: "r1" }, undefined],
+      ["GET", "/users/me", undefined, "Bearer a2"],
+    ]);
+    expect(tokens.get()?.refreshToken).toBe("r2");
   });
 });
 

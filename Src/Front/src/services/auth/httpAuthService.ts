@@ -80,6 +80,14 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
     });
   },
 
+  // 앱 시작 때마다 refresh를 먼저 보냄 (Doc/API_목록.md 2. 쓸 때마다 만료일이 30일로 다시 계산됨)
+  // 갱신은 httpClient.refreshTokens() 한 곳에서만
+  async restoreSession() {
+    await http.refreshTokens();
+    const me = await http.request<ServerUser>("GET", "/users/me", { auth: true });
+    return toUser(me);
+  },
+
   // 아이디·비밀번호 찾기 (Doc/API_목록.md 4.5-1 ~ 4.5-3). 모두 204
   async findLoginId(email) {
     await http.request<void>("POST", "/auth/username/find", { body: { email } });

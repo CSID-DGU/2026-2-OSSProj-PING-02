@@ -80,7 +80,16 @@ afterEach(async () => {
   await ReactTestRenderer.act(async () => {
     mounted.splice(0).forEach(renderer => renderer.unmount());
   });
+  // 자동 로그인 토큰(암호화 저장소 mock)도 비워 다음 테스트가 로그아웃 상태로 시작하게
+  require("react-native-keychain").__reset();
 });
+
+// 앱을 끄고 다시 켠 것처럼: 화면만 내림 (저장소의 토큰은 남김)
+export const closeApp = async () => {
+  await ReactTestRenderer.act(async () => {
+    mounted.splice(0).forEach(renderer => renderer.unmount());
+  });
+};
 
 export const renderApp = async () => {
   let renderer!: ReactTestRenderer.ReactTestRenderer;
