@@ -6507,6 +6507,7 @@ __metadata:
     prettier: "npm:2.8.8"
     react: "npm:19.3.0"
     react-native: "npm:0.88.1"
+    react-native-keychain: "npm:10.0.0"
     react-native-safe-area-context: "npm:^5.11.0"
     react-native-screens: "npm:^4.30.1"
     react-native-svg: "npm:^15.16.0"
@@ -7576,6 +7577,13 @@ __metadata:
   version: 19.3.1
   resolution: "react-is@npm:19.3.1"
   checksum: 10c0/428e02d986d56f1859c57756084489f6d2900fd686905003c405b32f1168738b78772bfa4bb6c706f5ac821199171522c28bf6434281f524f901459390a19606
+  languageName: node
+  linkType: hard
+
+"react-native-keychain@npm:10.0.0":
+  version: 10.0.0
+  resolution: "react-native-keychain@npm:10.0.0"
+  checksum: 10c0/a632ad27e58264506d2b373d329a867f042fb014e8a78db3a63031e953d61b5c98066eed1be238ee6c186d3f213d0efaa2a26526fb3a1d36a624c4460e982230
   languageName: node
   linkType: hard
 

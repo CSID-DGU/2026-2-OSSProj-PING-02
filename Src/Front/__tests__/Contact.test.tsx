@@ -27,7 +27,8 @@ const seed = async ({ modelInstalled }: { modelInstalled: boolean }) => {
     MOCK_DEMO_ACCOUNT.loginId,
     MOCK_DEMO_ACCOUNT.password
   );
-  await services.storage.setItem(STORAGE_KEYS.session, JSON.stringify(login));
+  // 저장된 토큰 → 앱을 켜면 자동 로그인
+  services.tokens.set(login.tokens);
   await services.storage.setItem(
     `${STORAGE_KEYS.onboarding}.${USER_ID}`,
     JSON.stringify({ completed: true, lastStep: "OnboardingDone" })
@@ -40,6 +41,13 @@ const seed = async ({ modelInstalled }: { modelInstalled: boolean }) => {
     await services.model.startDownload(info, () => {}).done;
   }
 };
+
+// 자동 로그인(저장 토큰 복구)이 끝나 탭바가 보일 때까지
+const waitForTabs = (root: Instance) =>
+  waitUntil(
+    () => root.findAll(n => n.props.accessibilityRole === "tab").length > 0,
+    "탭바 표시"
+  );
 
 const openContacts = async () => {
   const root = await renderApp();
@@ -257,6 +265,7 @@ describe("오류·빈 상태", () => {
     await seed({ modelInstalled: true });
     services.conversation = createMockConversationService({ failList: true });
     const root = await renderApp();
+    await waitForTabs(root);
     await pressByRole(root, "tab", "연락");
     await waitForText(root, "연락을 불러오지 못했어요");
     expect(findText(root, "다시 불러오기").length).toBeGreaterThan(0);
@@ -266,6 +275,7 @@ describe("오류·빈 상태", () => {
     await seed({ modelInstalled: true });
     services.conversation = createMockConversationService({ empty: true });
     const root = await renderApp();
+    await waitForTabs(root);
     await pressByRole(root, "tab", "연락");
     await waitForText(root, "아직 모인 연락이 없어요");
   });

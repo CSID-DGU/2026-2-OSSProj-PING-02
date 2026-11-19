@@ -20,9 +20,8 @@ import {
 // - 거부 흐름: services/index.ts의 개발 옵션("deny")과 같은 mock으로 따로 확인
 const USER_ID = "mock-user-demo";
 
-// 로그인 상태·진행 상황을 지우고 권한 mock을 새로 만듦 (테스트끼리 영향 없게)
+// 진행 상황을 지우고 권한 mock을 새로 만듦 (테스트끼리 영향 없게. 저장 토큰은 test-utils가 비움)
 const reset = async (scenario: "allow" | "deny") => {
-  await services.storage.removeItem(STORAGE_KEYS.session);
   await services.storage.removeItem(`${STORAGE_KEYS.onboarding}.${USER_ID}`);
   services.permission = createMockPermissionService(scenario);
 };
