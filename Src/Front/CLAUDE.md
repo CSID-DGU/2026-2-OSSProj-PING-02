@@ -39,6 +39,8 @@
 
 - [src/services/index.ts](src/services/index.ts)가 교체 지점: 인터페이스 + mock. 실제 API·네이티브 모듈이 준비되면 여기만 바꿈
 - mock 테스트 계정: **아이디 `malssiat` / 비밀번호 `abcd1234`** (이메일 `demo@malssiat.app`), 인증 코드 `123456`
+- 인증 API: [src/services/config.ts](src/services/config.ts) 한 곳에서 `API_CONFIG.mode`(`"mock"` 기본 / `"http"`)·`baseUrl`, `AUTH_FEATURES`(`emailVerification` false: 백엔드에 없음·화면 숨김 / `accountRecovery` true). 기준 문서는 백엔드 main의 `Doc/API_목록.md`
+- 토큰은 메모리에만(`services.tokens`). 401이면 `httpClient`가 `/auth/refresh`를 한 곳에서 한 번만 보내 갱신. 자동 로그인 없음
 - 개발 옵션 (services/index.ts): 권한 `DEV_PERMISSION_SCENARIO = "deny"`로 거부 흐름, 모델 `failFirstAttemptAt`로 다운로드 실패, 네트워크 `"cellular"`
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
 - mock 저장소는 메모리라 앱을 완전히 끄면 로그인·진행 상황이 초기화됨
@@ -68,10 +70,11 @@
 - Figma와 다르게 간 부분: 온보딩 뒤로가기 화살표 추가, 03 아이콘을 위로, 05 버튼 "다음", 11 버튼 "‘요즘 나의 상태’부터 쓰기", AI 모델 다운로드 화면 추가
 - 04 연락: 앱바 햄버거·프로필 생략, "Label" 자리는 화면 이름, ○/● 카드는 `RadioCard`(Card 조합), 09-C는 ○ 3줄+버튼 2개 → 안내 줄 + ○ 2개 + 버튼 1개로 합침, 09-C 질문 있을 때 제목·설명(임시), 10 "복사하고 메신저 열기" 추가, 08 "친구 정보 보기" 텍스트 버튼 추가
 - 05 친구: 14 "연결된 계정" 카드(합치기·따로 보기)·얼려두기 버튼, 15 "직접 쓰기" 버튼, 15 두 번째 후보 "연락이 늦었어…" → 사과 없는 문장으로 바꿈, 16(잘린 메시지) "{앱} 열어서 복사하기" 추가, 관계 메모·생일 편집 시안 없음
+- 인증(백엔드 기준): 01-3 이메일 칸 도움말 "찾기에 쓰여요", 01-4 아이디 찾기는 이메일만 받고 메일로 아이디(다이얼로그에 아이디 표시 안 함), 01-5 비밀번호 찾기는 임시 비밀번호 대신 코드 + 새 비밀번호 2단계
 
 팀 결정 필요
-- 자동 로그인 여부 미확정 (지금은 앱을 끄면 로그아웃, 토큰은 메모리에만)
-- 아이디·비밀번호 복구 방식 (백엔드가 이메일을 받지 않아 지금은 없음)
+- 자동 로그인 여부 미확정 (지금은 앱을 끄면 로그아웃, 토큰은 메모리에만. 백엔드 문서는 앱 시작 때 refresh 권장 → 정하면 react-native-keychain + SessionProvider "loading")
+- 로그인 `deviceId`(선택)를 보낼지 (기기별 세션 구분)
 - 11 예시 칩을 다시 누르면 빠지는 동작이 맞는지
 - AI 모델 다운로드 화면(`ModelDownload`)과 `ModelService`: 기기 안 모델을 쓰지 않기로 해서 받을 모델이 없음. 온보딩에서 뺄지
 - 얼려둔 관계를 알림·제안(홈 작은 행동 등)에서도 뺄지
@@ -87,9 +90,10 @@
 
 ## 다음 작업
 
-- 완료: **05 친구** 13 목록·14 상세·15 첫마디 + 16 시안을 잘린 메시지 화면에 적용 → `feat/#30-friends` (PR #37 리뷰 대기. #35 마스킹·AI 답장이 들어간 main 위로 rebase 완료)
+- 완료: **인증 API 연결** `feat/#27-auth-api` (origin/main 위로 rebase, PR 리뷰 대기). 서버 주소가 정해지면 `config.ts`의 `mode: "http"`·`baseUrl`만 바꿔 실기기 확인 (회원가입 → 로그인 → 토큰 만료 후 갱신 → 로그아웃)
+- 머지됨: **05 친구** 13 목록·14 상세·15 첫마디 + 16 시안을 잘린 메시지 화면에 적용 → `feat/#30-friends` (PR #37)
 - 머지됨: 하단 탭바·홈(임시)·04 연락 전체(07·08·09-A·B·C·10·11·12·잘린 메시지) → `feat/#29-contacts` (PR #31)
 - 다음 후보: 캘린더·설정 탭 (시안·이슈 확인부터. 이슈 초안을 쓰고 번호를 받은 뒤 브랜치 생성)
-- 보류: 인증 API 연결 `feat/#27-auth-api` (백엔드 수정 대기, push 안 함, 마지막 커밋은 작업 중이라 tsc 실패). 재개할 때 main 위로 rebase하면서 CLAUDE.md 규칙 커밋 중복 정리
-- 시안: `docs/figma/home` (04 연락은 와이어프레임 → 구조·문구만 따르고 색·컴포넌트는 design-system), `docs/figma/friends` (05 친구 Screens 13~16, 디자인 화면이 기준)
+- 머지 순서 주의: CLAUDE.md는 브랜치마다 고치므로 뒤에 머지하는 쪽에서 충돌이 날 수 있음 (두 쪽 내용을 합치면 됨)
+- 시안: `docs/figma/home` (04 연락은 와이어프레임 → 구조·문구만 따르고 색·컴포넌트는 design-system), `docs/figma/friends` (05 친구 Screens 13~16, 디자인 화면이 기준), `docs/figma/auth` (01 인증)
 - 친구 mock: `createMockFriendService({ empty: true })` / `({ failList: true })`. 민지는 카카오톡+인스타그램이 합쳐진 상태, 문자 "김민지"는 합치기 후보, 지연은 얼려둔 관계
