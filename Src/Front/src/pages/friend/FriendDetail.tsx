@@ -24,7 +24,20 @@ import * as s from "../contact/Contact_styled";
 // TODO(디자이너 공유): 관계 메모·생일 편집 화면 (지금은 보기만)
 type Confirm =
   | { kind: "split"; account: Account }
-  | { kind: "merge"; account: Account; ownerName: string | null };
+  | { kind: "merge"; account: Account; ownerName: string | null; mergesOwner: boolean };
+
+// 합치기 확인 문구. 다른 친구가 통째로 합쳐지면 그 친구가 사라진다는 것과 메모는 남는다는 것을 알림
+const mergeDescription = (
+  { account, ownerName, mergesOwner }: Extract<Confirm, { kind: "merge" }>,
+  name: string
+) => {
+  const base = `${APP_LABEL[account.app]} ‘${account.senderName}’ 계정을 ${name}의 계정으로 함께 볼게요.`;
+  const owner =
+    mergesOwner && ownerName
+      ? ` ‘${ownerName}’ 친구는 ${name}에 합쳐지고, 메모는 합쳐서 남겨요.`
+      : "";
+  return `${base}${owner} 나중에 다시 따로 볼 수 있어요.`;
+};
 
 const FriendDetail = () => {
   const navigation = useAuthNavigation();
@@ -224,6 +237,7 @@ const FriendDetail = () => {
                   kind: "merge",
                   account: picked.account,
                   ownerName: picked.ownerName,
+                  mergesOwner: picked.mergesOwner,
                 })
               }
             >
@@ -267,7 +281,7 @@ const FriendDetail = () => {
           confirm
             ? confirm.kind === "split"
               ? `${APP_LABEL[confirm.account.app]} ‘${confirm.account.senderName}’ 계정을 ${withWa(name)} 다른 사람으로 볼게요. 주고받은 대화는 지워지지 않아요.`
-              : `${APP_LABEL[confirm.account.app]} ‘${confirm.account.senderName}’ 계정을 ${name}의 계정으로 함께 볼게요. 나중에 다시 따로 볼 수 있어요.`
+              : mergeDescription(confirm, name)
             : undefined
         }
         confirmLabel={confirm?.kind === "split" ? "따로 보기" : "합치기"}

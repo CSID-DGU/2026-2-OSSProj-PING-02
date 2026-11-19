@@ -6,7 +6,7 @@ import {
 } from "../src/services/conversation/mockConversationService";
 import { createMockFriendService } from "../src/services/friend/mockFriendService";
 import { formatSince } from "../src/constants/friend";
-import { services, STORAGE_KEYS } from "../src/services";
+import { mergeMemos, services, STORAGE_KEYS } from "../src/services";
 import {
   findText,
   press,
@@ -81,6 +81,14 @@ const isDisabled = (root: Instance, text: string) =>
     )
     .map(n => n.props.accessibilityState?.disabled ?? n.props.disabled)
     .at(-1);
+
+const hasTextContaining = (root: Instance, text: string) =>
+  root.findAll(
+    n =>
+      typeof n.type === "string" &&
+      typeof n.props.children === "string" &&
+      n.props.children.includes(text)
+  ).length > 0;
 
 beforeEach(seed);
 
@@ -164,6 +172,8 @@ describe("14 친구 상세", () => {
     );
     await press(root, "고른 계정 합치기");
     await waitForText(root, "같은 사람으로 합칠까요?");
+    // 연결 안 된 발신자라 합쳐지는 친구·메모 안내는 없음
+    expect(hasTextContaining(root, "메모는 합쳐서 남겨요")).toBe(false);
     await press(root, "합치기");
     await waitForText(root, "문자 메신저 · 김민지");
 
@@ -182,6 +192,35 @@ describe("14 친구 상세", () => {
     // 목록에 분리한 계정이 새 친구로
     await pressBack();
     await waitForText(root, "minji_daily");
+  });
+
+  test("다른 친구를 통째로 합치면 확인 팝업에서 알리고, 두 사람의 메모를 이어 붙여 남긴다", async () => {
+    const root = await openFriends();
+    await openFriend(root, "민지");
+    await press(root, "같은 사람의 다른 계정 합치기");
+    await waitForText(root, "준호 (지금은 ‘준호’으로 보고 있어요)");
+    await pressByRole(root, "radio", "카카오톡, 준호 (지금은 ‘준호’으로 보고 있어요)");
+    await press(root, "고른 계정 합치기");
+
+    await waitForText(root, "같은 사람으로 합칠까요?");
+    expect(
+      hasTextContaining(root, "‘준호’ 친구는 민지에 합쳐지고, 메모는 합쳐서 남겨요.")
+    ).toBe(true);
+    await press(root, "합치기");
+
+    await waitForText(root, "카카오톡 · 준호");
+    expect(
+      findText(root, "대학교 친구 · 편하게 안부를 물어볼 수 있음\n고등학교 친구 · 생일을 먼저 챙겨 줌")
+        .length
+    ).toBe(1);
+
+    // 준호는 민지에 합쳐져 목록에서 빠짐
+    await pressBack();
+    await waitForText(root, "다시 연락하고 싶은 관계를 천천히 살펴봐요.");
+    await waitUntil(
+      () => !friendCardLabels(root).some(label => label.startsWith("준호,")),
+      "준호가 목록에서 빠짐"
+    );
   });
 
   test("얼려두면 목록 아래로 가고, 다시 꺼낼 수 있다", async () => {
@@ -248,6 +287,51 @@ describe("15 첫마디 → 10 다듬기", () => {
     await waitForText(root, "첫마디를 복사했어요");
     await press(root, "보냈다고 표시하기");
     await waitForText(root, "오늘 · 여기에 모인 대화는 아직 없어요");
+  });
+});
+
+describe("친구 합치기 (서비스)", () => {
+  test.each([
+    ["둘 다 있으면 줄바꿈으로", "대학교 친구", "동아리 선배", "대학교 친구\n동아리 선배"],
+    ["한쪽만 있으면 그 메모", undefined, "동아리 선배", "동아리 선배"],
+    ["합쳐지는 쪽이 없으면 그대로", "대학교 친구", undefined, "대학교 친구"],
+    ["같은 메모는 한 번만", "대학교 친구", " 대학교 친구 ", "대학교 친구"],
+    ["둘 다 비면 없음", " ", undefined, undefined],
+  ])("mergeMemos: %s", (_, keep, merged, expected) => {
+    expect(mergeMemos(keep, merged)).toBe(expected);
+  });
+
+  test("마지막 계정을 합치면 그 친구가 합쳐지며 메모를 이어 붙이고, 생일은 없을 때만 가져온다", async () => {
+    const friends = createMockFriendService({ latency: 0 });
+    const candidates = await friends.getMergeCandidates("p-junho");
+    expect(candidates.find(c => c.account.id === "seoyeon-김서연 선배")).toMatchObject({
+      ownerName: "김서연 선배",
+      mergesOwner: true,
+    });
+
+    await friends.mergeAccount("p-junho", "seoyeon-김서연 선배");
+    const junho = await friends.get("p-junho");
+    expect(junho.person.memo).toBe("고등학교 친구 · 생일을 먼저 챙겨 줌\n동아리 선배");
+    expect(junho.person.birthday).toBe("12-03");
+    expect((await friends.list()).map(f => f.person.id)).not.toContain("p-seoyeon");
+
+    // 생일이 이미 있으면 그대로 (민지 05-18 ← 지연 09-02)
+    await friends.mergeAccount("p-minji", "sms-지연");
+    const minji = await friends.get("p-minji");
+    expect(minji.person.birthday).toBe("05-18");
+    expect(minji.person.memo).toBe("대학교 친구 · 편하게 안부를 물어볼 수 있음\n중학교 친구");
+  });
+
+  test("계정이 더 남는 친구에서 하나만 가져오면 그 친구와 메모는 그대로", async () => {
+    const friends = createMockFriendService({ latency: 0 });
+    const candidates = await friends.getMergeCandidates("p-junho");
+    expect(candidates.find(c => c.account.id === "ig-minji_daily")?.mergesOwner).toBe(false);
+
+    await friends.mergeAccount("p-junho", "ig-minji_daily");
+    expect((await friends.get("p-minji")).person.memo).toBe(
+      "대학교 친구 · 편하게 안부를 물어볼 수 있음"
+    );
+    expect((await friends.get("p-junho")).person.memo).toBe("고등학교 친구 · 생일을 먼저 챙겨 줌");
   });
 });
 

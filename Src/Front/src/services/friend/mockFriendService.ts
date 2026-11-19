@@ -3,6 +3,7 @@ import { SEEDS } from "../conversation/mockConversationData";
 import type { Account, Person } from "../conversation/types";
 import {
   FRIEND_ERROR_CODE,
+  mergeMemos,
   type FriendDetail,
   type FriendService,
   type FriendSummary,
@@ -131,7 +132,11 @@ export const createMockFriendService = ({
         person.displayName.includes(a.senderName);
       return accounts
         .filter(a => a.personId !== personId)
-        .map<MergeCandidate>(a => ({ account: { ...a }, ownerName: nameOf(a.personId) }))
+        .map<MergeCandidate>(a => ({
+          account: { ...a },
+          ownerName: nameOf(a.personId),
+          mergesOwner: !!a.personId && accountsOf(a.personId).length === 1,
+        }))
         .sort(
           (a, b) =>
             Number(b.ownerName === null) - Number(a.ownerName === null) ||
@@ -149,8 +154,20 @@ export const createMockFriendService = ({
       const previous = target.personId;
       accounts = accounts.map(a => (a.id === accountId ? { ...a, personId } : a));
       // 계정이 하나도 남지 않은 친구는 이 친구에 합쳐진 것으로 봄
+      // 메모는 둘 다 남기고, 생일은 이 친구에 없을 때만 가져옴
       if (previous && accountsOf(previous).length === 0) {
-        persons = persons.filter(p => p.id !== previous);
+        const absorbed = persons.find(p => p.id === previous);
+        persons = persons
+          .filter(p => p.id !== previous)
+          .map(p =>
+            p.id === personId && absorbed
+              ? {
+                  ...p,
+                  memo: mergeMemos(p.memo, absorbed.memo),
+                  birthday: p.birthday ?? absorbed.birthday,
+                }
+              : p
+          );
       }
     },
 
