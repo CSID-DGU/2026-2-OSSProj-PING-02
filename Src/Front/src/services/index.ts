@@ -15,6 +15,8 @@ import {
   type MockPermissionScenario,
 } from "./permission/mockPermissionService";
 import { createMemoryStorage } from "./storage/memoryStorage";
+import { createMockAiReplyService } from "./ai/AiReplyService";
+import { createKeyValueAiReplyStore } from "./ai/AiReplyStore";
 
 // 서비스 교체 지점
 // API·네이티브 모듈이 준비되면 여기서 mock 대신 실제 구현을 넣으면 됨. 화면 코드는 바꿀 필요 없음
@@ -25,6 +27,9 @@ import { createMemoryStorage } from "./storage/memoryStorage";
 // 개발 옵션: 권한 거부 → 다시 묻지 않음 → 설정 열기 흐름을 보려면 "deny"
 const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 
+// 기기 저장소 (mock은 메모리). AI 답장 결과도 같은 저장소에 둠
+const storage = createMemoryStorage();
+
 export const services = {
   auth: createMockAuthService(),
   permission: createMockPermissionService(DEV_PERMISSION_SCENARIO),
@@ -34,7 +39,10 @@ export const services = {
   // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
   conversation: createMockConversationService(),
   messenger: createMockMessengerService(),
-  storage: createMemoryStorage(),
+  storage,
+  // AI 답장 (백엔드 PR #36 POST /v1/ai/reply). 서버 연결 시 createHttpAiReplyService로 교체
+  ai: createMockAiReplyService(),
+  aiReplies: createKeyValueAiReplyStore(storage),
 };
 
 export type Services = typeof services;
@@ -57,3 +65,7 @@ export * from "./contacts/ContactsService";
 export * from "./conversation/types";
 export * from "./conversation/ConversationService";
 export * from "./storage/KeyValueStorage";
+export * from "./ai/AiReplyService";
+export * from "./ai/AiReplyStore";
+export * from "./ai/classifyMessage";
+export * from "./ai/requestAiReply";

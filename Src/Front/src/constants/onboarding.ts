@@ -10,7 +10,7 @@ export const ONBOARDING_STEPS = [
   "PrivacyNotice", // 03 개인정보 처리 안내
   "NotificationAccess", // 04 알림 접근 권한
   "LinkedApps", // 05 연동 앱 선택
-  "ModelDownload", // (Figma 없음) 05 다음: 가리기용 기기 안 모델
+  "ModelDownload", // (Figma 없음) 05 다음: 기기 안 모델 다운로드 (모델을 안 쓰기로 해서 뺄지 팀 결정)
   "NotificationTypes", // 06 받을 알림 선택 (+ 시스템 알림 권한)
   "BatteryOptimization", // 07 배터리 최적화 예외
   "ContactsImport", // 08 연락처 가져오기
