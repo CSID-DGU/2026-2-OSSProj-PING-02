@@ -4,7 +4,7 @@ import {
   MOCK_VERIFICATION_CODE,
 } from "./auth/mockAuthService";
 import { createHttpAuthService } from "./auth/httpAuthService";
-import { createMemoryTokenStore } from "./auth/tokenStore";
+import { createTokenStore } from "./auth/tokenStore";
 import { API_CONFIG, AUTH_FEATURES } from "./config";
 import { createHttpClient } from "./http/httpClient";
 import { createMockContactsService } from "./contacts/ContactsService";
@@ -19,6 +19,7 @@ import {
   createMockPermissionService,
   type MockPermissionScenario,
 } from "./permission/mockPermissionService";
+import { createKeychainStorage } from "./storage/keychainStorage";
 import { createMemoryStorage } from "./storage/memoryStorage";
 import { createMockAiReplyService } from "./ai/AiReplyService";
 import { createKeyValueAiReplyStore } from "./ai/AiReplyStore";
@@ -26,7 +27,7 @@ import { createKeyValueAiReplyStore } from "./ai/AiReplyStore";
 // 서비스 교체 지점
 // API·네이티브 모듈이 준비되면 여기서 mock 대신 실제 구현을 넣으면 됨. 화면 코드는 바꿀 필요 없음
 //
-// 인증: services/config.ts의 API_CONFIG.mode
+// 인증: services/config.ts의 DEV_API_MODE
 //   "mock" → 메모리 mock (기본, 테스트 기준) / "http" → API_CONFIG.baseUrl의 실제 백엔드
 //
 // 실패 화면을 확인하고 싶을 때:
@@ -38,8 +39,11 @@ const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 // 기기 저장소 (mock은 메모리). AI 답장 결과도 같은 저장소에 둠
 const storage = createMemoryStorage();
 
-// 로그인 토큰 (메모리). HTTP 클라이언트와 SessionProvider가 같이 씀
-const tokens = createMemoryTokenStore();
+// 로그인 토큰 (메모리 + 암호화 저장소, 자동 로그인용). HTTP 클라이언트와 SessionProvider가 같이 씀
+// mock과 실서버 토큰이 섞이지 않게 모드별로 따로 저장
+const tokens = createTokenStore(
+  createKeychainStorage(`malssiat.auth.${API_CONFIG.mode}`)
+);
 
 const createAuthService = () =>
   API_CONFIG.mode === "http"
@@ -50,7 +54,7 @@ const createAuthService = () =>
           tokens,
         })
       )
-    : createMockAuthService();
+    : createMockAuthService({ tokens });
 
 export const services = {
   auth: createAuthService(),

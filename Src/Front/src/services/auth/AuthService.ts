@@ -72,6 +72,10 @@ export interface AuthService {
   login(loginId: string, password: string): Promise<AuthResult>;
   // 서버 세션을 끝냄 (그 세션의 액세스 토큰도 바로 무효)
   logout(refreshToken: string): Promise<void>;
+  // 자동 로그인: 토큰 보관소(services.tokens)에 불러온 refreshToken으로 갱신(POST /auth/refresh)한 뒤
+  // 내 정보(GET /users/me)를 받음. 갱신된 토큰은 보관소에 바로 저장됨
+  // 갱신 토큰이 만료·재사용이면 401 REFRESH_TOKEN_INVALID (보관소 토큰도 지워짐)
+  restoreSession(): Promise<AuthUser>;
 
   // 아이디·비밀번호 찾기 (AUTH_FEATURES.accountRecovery)
   // 가입한 이메일로 아이디를 보냄. 계정이 있는지는 알려 주지 않음 (항상 성공)
