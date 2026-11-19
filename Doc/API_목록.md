@@ -412,6 +412,7 @@
 | `text` | **마스킹을 끝낸** 메시지, 최대 1,000자. 앱 마스킹 모듈이 개인정보를 `[이름1]`, `[전화번호1]` 같은 자리표시로 바꿔서 보냅니다 |
 | `relation` | `FRIEND` / `SUPERIOR` / `INSTITUTION` (답장 말투: 반말 / 존댓말 / 격식체) |
 | `needsDecision` | 수락·거절을 정해야 하는 메시지면 `true` |
+| `stance` | 선택. `ACCEPT` / `HOLD` / `DECLINE`. 고른 입장을 유지한 채 말투만 다른 답장 3개를 받을 때 보냄. `needsDecision: true`일 때만 가능 |
 
 응답 200
 ```json
@@ -424,13 +425,13 @@
   ]
 }
 ```
-- 라벨은 `needsDecision`이 `true`면 수락 → 보류 → 거절, `false`면 짧게 → 다정하게 → 공손하게 순서입니다.
+- 라벨은 `needsDecision`이 `true`면 수락 → 보류 → 거절, `false`면 짧게 → 다정하게 → 공손하게 순서입니다. `stance`를 보내면 짧게 → 다정하게 → 공손하게이고, 3개 모두 그 입장을 유지합니다.
 - **서버는 메시지와 결과를 저장하지 않습니다.** 결과는 앱이 로컬 DB에만 저장합니다.
 - `model`, `messages`, `prompt` 같은 필드는 보낼 수 없습니다(400). 프롬프트와 모델은 서버가 정합니다.
 - 서버는 자동으로 다시 생성하지 않습니다. 사용자가 "다시"를 누를 때만 다시 보냅니다.
 
 에러
-- 400 `VALIDATION_FAILED`: 입력 오류, 1,000자 초과
+- 400 `VALIDATION_FAILED`: 입력 오류, 1,000자 초과, `needsDecision: false`인데 `stance`를 보냄
 - 400 `UNMASKED_CONTENT`: 앱 마스킹이 놓친 개인정보가 있음(외부로 보내지 않음). 실제 국번의 전화번호, 이메일, 은행·입금 단서가 있는 계좌번호, 주민번호만 막고(링크는 막지 않음) 주문번호·운송장·날짜 같은 숫자는 막지 않음
 - 429 `RATE_LIMITED`: 사용자별 분당 10회, 하루 300회 초과
 - 502 `AI_RESPONSE_INVALID`, 503 `UPSTREAM_UNAVAILABLE`, 504 `UPSTREAM_TIMEOUT`: AI 서버 문제. "다시 시도" 버튼
