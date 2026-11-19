@@ -137,6 +137,20 @@ const ConversationDetail = () => {
         >
           나중에 답하기
         </Button>
+        {/* 친구로 연결된 1:1 대화만 → 05 / 14 친구 상세
+            TODO(디자이너 공유): 08 시안에 없는 텍스트 버튼 */}
+        {conversation.kind === "direct" && conversation.personId && (
+          <Button
+            variant="text"
+            onPress={() =>
+              navigation.navigate("FriendDetail", {
+                personId: conversation.personId!,
+              })
+            }
+          >
+            친구 정보 보기
+          </Button>
+        )}
       </s.Actions>
     </AuthLayout>
   );

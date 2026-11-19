@@ -133,7 +133,11 @@ export const createMockConversationService = ({
       }
       // TODO(네이티브): 기기 안 모델로 가린 뒤 요약. mock은 앞부분만 잘라 보여 줌
       const head = trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed;
-      return `붙여 넣은 내용을 정리했어요: ${head}`;
+      const summary = `붙여 넣은 내용을 정리했어요: ${head}`;
+      // 정리한 내용을 분석 결과로 남겨 09 답장 후보에서도 보이게 함 (원문은 저장하지 않음)
+      const current = analyses.get(id);
+      if (current) analyses.set(id, { ...current, status: "done", summary });
+      return summary;
     },
 
     async markChecked(id) {

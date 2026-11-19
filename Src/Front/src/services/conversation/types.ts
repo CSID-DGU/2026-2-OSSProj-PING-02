@@ -9,9 +9,16 @@ export interface Person {
   id: string;
   displayName: string;
   isFriend: boolean;
+  // 05 친구: 사용자가 남기는 관계 메모 (평가가 아니라 다시 시작하기 위한 메모)
+  memo?: string;
+  // 생일 "MM-DD" (연도는 받지 않음)
+  birthday?: string;
+  // 얼려둔 관계: 사용자가 잠시 쉬어 두기로 한 친구
+  frozen: boolean;
 }
 
 // account: 메신저별 계정 (알림의 발신자 이름으로 구분)
+// 같은 사람의 앱별 계정은 personId로 묶음 (합치기 = personId 바꾸기, 분리 = 새 person)
 export interface Account {
   id: string;
   personId: string | null; // 아직 친구와 연결 안 된 발신자는 null
