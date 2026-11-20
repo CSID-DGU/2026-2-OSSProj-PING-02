@@ -205,6 +205,11 @@ const list = await NotificationStore.getNotifications({ packageName: "com.kakao.
 
 개발용 확인 화면은 `src/pages/dev/NotificationDebug.tsx`입니다. `initialRouteName`을 잠시 `"NotificationDebug"`로 바꾸면 권한 허용 → 앱 선택 → 저장된 알림 확인을 한 화면에서 할 수 있습니다.
 
+**연락 화면 연결:** 연락 목록·상세는 이 메시지로 만듭니다 (`src/services/conversation/deviceConversationService.ts`).
+- 목록에서는 기기 안 규칙으로만 분석합니다 (질문·멘션·경조사·마감·기관 발신자). 서버로 아무것도 보내지 않습니다.
+- 대화방을 열면 그 방의 최근 메시지만 마스킹해서 AI 답장 API로 **한 번** 보내고, 요약·답장 후보를 기기에 저장해 답장 화면에서 다시 씁니다. 새 메시지가 오기 전까지 다시 보내지 않습니다.
+- 안내 문구(`isPlaceholder`)는 AI로 보내지 않고, 기관·번호 발신자 대화는 AI를 부르지 않습니다.
+
 ### 앱별 알림 형식 확인 기록
 
 앱마다 알림에 담기는 값이 달라서, 실기기에서 알림 원본(JSON)을 모아 파서를 맞췄습니다 (이슈 #42).
