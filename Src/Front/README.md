@@ -163,6 +163,58 @@ Front/
 | `@routes` | `src/routes` |
 | `@assets` | `src/assets` |
 | `@hooks` · `@apis` · `@constants` | `src/hooks` · `src/apis` · `src/constants` |
+| `@native` | `src/native` (Kotlin 네이티브 모듈 래퍼) |
+
+<br>
+
+## 🔔 알림 수집 (네이티브 모듈)
+
+사용자가 고른 앱(카카오톡, 인스타그램, 문자 등)의 알림 텍스트를 기기 안 DB에 저장합니다. 코드는 `android/app/src/main/java/com/malssiat/notification/`에 있습니다.
+
+| 파일 | 역할 |
+|---|---|
+| `MessageNotificationListener.kt` | `NotificationListenerService`. 알림을 받아 선택한 앱이면 DB에 저장 (앱이 꺼져 있어도 동작) |
+| `NotificationParser.kt` | 알림 → 메시지 변환. 메신저 알림(MessagingStyle)은 메시지마다 한 행으로 나누고, 단톡 여부와 대화방 이름을 뽑음 |
+| `data/` | Room DB (`notification_messages` 테이블)와 선택한 앱 목록(SharedPreferences) |
+| `bridge/` | JS에서 부르는 `NotificationStore` 모듈 |
+
+- 메신저 알림은 새 메시지가 올 때마다 이전 메시지까지 다시 담아 오기 때문에 같은 메시지는 한 번만 저장합니다.
+  - 앱이 메시지 고유 ID를 주면(카카오톡 `chatLogId`) 그 ID로 판단합니다.
+  - 없으면 (앱, 대화방 ID, 보낸 사람, 내용, 메시지 시각)이 같을 때 같은 메시지로 봅니다.
+- 대화방은 이름이 아니라 **대화방 ID**(`conversation_id`)로 구분합니다. 카카오톡은 1:1이든 단톡이든 알림 제목이 "보낸 사람 이름"이라, 이름으로 묶으면 같은 사람과의 1:1과 단톡이 섞입니다.
+  - 대화방 ID는 알림의 대화 바로가기 ID(카카오톡은 채팅방 ID)이고, 없으면 대화방 이름으로 대신합니다.
+  - 카카오톡 단톡방 이름은 알림 본문에 없고 대화 바로가기 이름(Android 11+)으로만 옵니다. 그것도 없으면 대화방 이름은 빈 문자열입니다.
+- 카카오톡이 본문 앞에 붙이는 `[나를 멘션]`은 떼어 내고 `is_mention`으로 저장합니다.
+- 사진·이모티콘처럼 미디어가 붙은 메시지는 `content_type`(`image` 등, 인스타 릴스·게시물 공유는 `share`)으로 구분합니다.
+- 본문이 실제 대화가 아닌 안내 문구("새로운 메시지가 있습니다.", "사진을 보냈습니다.", "회원님에게 릴스를 보냈습니다")면 `is_placeholder`로 표시합니다. **AI 요약·답장 재료에서는 빼야 합니다.**
+- 친구 매칭은 이름 대신 `sender_id`로 합니다 (문자 `tel:번호`, 인스타 `ig:사용자ID`). 이름은 방·앱마다 달라집니다 (인스타 1:1은 별명, 그룹은 실명 / 문자는 연락처 이름+이모지). 카카오톡은 알림에 이런 값이 없어 `null`입니다.
+- 저장하지 않는 알림: 인스타 DM이 아닌 알림(좋아요·댓글·팔로우), 인증번호·비밀번호 재설정 문자, `(광고)` 문자. 숫자만 있는 문자는 일반 대화일 수 있어 그대로 저장합니다.
+- 문자 앱이 이름·번호 앞뒤에 붙이는 보이지 않는 문자(U+2068·U+2069 등)는 지우고 저장합니다.
+- 원본 기록(테스트용)의 전화번호는 가려서 남깁니다 (`010-****-1234`).
+- 실기기에서 확인한 알림 형식은 `NotificationParser.kt` 상단 주석과 단위 테스트(`android/app/src/test/.../NotificationParser*Test.kt`)에 정리돼 있습니다. 파서를 고친 뒤에는 `cd android && ./gradlew :app:testDebugUnitTest`로 확인하세요.
+- 묶음 요약 알림("새 메시지 3개")과 상시 알림(음악 재생 등)은 저장하지 않습니다.
+- ⚠️ 아직 DB가 암호화되어 있지 않습니다. SQLCipher 적용 예정입니다 (`NotificationDatabase.kt`의 TODO 참고).
+
+```ts
+import NotificationStore from "@native/NotificationStore";
+
+await NotificationStore.isPermissionGranted();       // 알림 접근 허용 여부
+await NotificationStore.openPermissionSettings();    // 허용 설정 화면 열기
+await NotificationStore.setMonitoredApps(["com.kakao.talk"]);
+const list = await NotificationStore.getNotifications({ packageName: "com.kakao.talk", limit: 50 });
+```
+
+개발용 확인 화면은 `src/pages/dev/NotificationDebug.tsx`입니다. `initialRouteName`을 잠시 `"NotificationDebug"`로 바꾸면 권한 허용 → 앱 선택 → 저장된 알림 확인을 한 화면에서 할 수 있습니다.
+
+### 원본 수집 (앱별 알림 형식 확인용)
+
+앱마다 알림에 담기는 값이 달라서, 실제 기기에서 원본을 모아 파서를 맞춥니다.
+
+- 확인 화면의 **알림 원본 기록하기**를 켜면 선택한 앱의 알림이 통째로 JSON으로 남습니다 (`raw_notification_dumps` 테이블, 기본 꺼짐).
+- 파서가 건너뛴 알림도 남고, 각 원본에 파서가 해석한 결과(`parsed`)와 실제로 새로 저장된 건수(`savedCount`, 중복 제외)가 같이 들어 있어 비교할 수 있습니다.
+- 묶음 요약 알림("새 메시지 3개")은 내용이 없고 양만 많아서 원본에도 남기지 않습니다.
+- **JSON 복사**·**공유** 버튼으로 내보냅니다.
+- 팀원에게 테스트를 부탁할 때는 [알림 수집 테스트 가이드](./docs/notification-test-guide.md)를 전달하세요.
 
 <br>
 
