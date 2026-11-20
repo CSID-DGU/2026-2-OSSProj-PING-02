@@ -132,6 +132,15 @@ describe('정상 흐름', () => {
     expect(res.body.replies.map((r: { label: string }) => r.label)).toEqual(['짧게', '다정하게', '공손하게']);
   });
 
+  it('입장(stance)을 보내면 말투 라벨이 붙고, 프롬프트에 그 입장을 유지하라고 들어간다', async () => {
+    const res = await ask(await token(), body({ stance: 'DECLINE' }));
+    expect(res.status).toBe(200);
+    expect(res.body.replies.map((r: { label: string }) => r.label)).toEqual(['짧게', '다정하게', '공손하게']);
+    const user = fake.requests[0].body.messages[1].content;
+    expect(user).toContain("'거절' 입장으로 정했다");
+    expect(user).toContain('짧게 → 다정하게 → 공손하게');
+  });
+
   it('OpenRouter 로 가는 요청에 ZDR 옵션이 항상 들어가고, 키는 서버가 넣으며, 사용자 정보는 없다', async () => {
     const accessToken = await token();
     await ask(accessToken);
@@ -170,10 +179,19 @@ describe('인증과 입력 검사', () => {
     ['빈 text', { text: '   ' }],
     ['관계 값 오류', { relation: 'BOSS' }],
     ['needsDecision 이 불리언이 아님', { needsDecision: 'yes' }],
+    ['입장 값 오류', { stance: 'MAYBE' }],
   ])('%s 이면 400 VALIDATION_FAILED', async (_label, over) => {
     const res = await ask(await token(), body(over));
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    expect(fake.requests).toHaveLength(0);
+  });
+
+  it('정해야 할 답이 없는 메시지(needsDecision: false)에 입장을 보내면 400 이고 외부로 보내지 않는다', async () => {
+    const res = await ask(await token(), body({ needsDecision: false, stance: 'ACCEPT' }));
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    expect(res.body.error.details).toEqual([{ field: 'stance', reason: 'requiresNeedsDecision' }]);
     expect(fake.requests).toHaveLength(0);
   });
 

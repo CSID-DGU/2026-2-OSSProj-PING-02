@@ -251,11 +251,19 @@ curl -s -X POST "$BASE/ai/reply" \
 }
 ```
 
+입장을 고른 뒤 말투만 바꿀 때는 `stance`를 같이 보냅니다(`ACCEPT` / `HOLD` / `DECLINE`, `needsDecision: true`일 때만). 라벨이 짧게·다정하게·공손하게로 오고, 3개 모두 고른 입장을 유지합니다.
+
+```bash
+curl -s -X POST "$BASE/ai/reply" \
+  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d '{"text":"[이름1]: 이번 주 금요일에 저녁 먹을래?","relation":"FRIEND","needsDecision":true,"stance":"DECLINE"}'
+```
+
 | 응답 | 의미 |
 |---|---|
 | 200 | 결과의 자리표시자를 `unmaskPii`로 되돌려 로컬 DB에 저장 |
 | 400 `UNMASKED_CONTENT` | 마스킹 누락(`details.reason`: `phone`, `email`, `account`, `national_id`). 앱 버그로 기록 |
-| 400 `VALIDATION_FAILED` | 입력 오류, 1,000자 초과, `model`·`messages` 같은 필드를 보냄 |
+| 400 `VALIDATION_FAILED` | 입력 오류, 1,000자 초과, `model`·`messages` 같은 필드를 보냄, `needsDecision: false`인데 `stance`를 보냄 |
 | 429 `RATE_LIMITED` | 사용자별 분당 10회, 하루 300회 초과 |
 | 502 / 503 / 504 | AI 서버 문제. 자동 재시도하지 말고 "다시 시도" 버튼 |
 

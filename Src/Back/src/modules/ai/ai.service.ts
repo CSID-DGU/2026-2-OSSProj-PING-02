@@ -37,6 +37,16 @@ export class AiService {
       );
     }
 
+    // 입장은 수락/보류/거절을 정해야 하는 메시지에만 있다
+    if (dto.stance && !dto.needsDecision) {
+      throw new AppException(
+        ErrorCode.VALIDATION_FAILED,
+        '입장(stance)은 needsDecision 이 true 일 때만 보낼 수 있습니다.',
+        400,
+        [{ field: 'stance', reason: 'requiresNeedsDecision' }],
+      );
+    }
+
     // 마스킹 누락이 있으면 외부로 보내지 않는다. 어떤 종류인지만 알려 주고 값은 응답에 담지 않는다.
     const kinds = findUnmaskedKinds(dto.text);
     if (kinds.length > 0) {
@@ -55,7 +65,7 @@ export class AiService {
       throw toAppException(error);
     }
 
-    return parseReply(content, labelsFor(dto.needsDecision));
+    return parseReply(content, labelsFor(dto.needsDecision, dto.stance));
   }
 }
 
