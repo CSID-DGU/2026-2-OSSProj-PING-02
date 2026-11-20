@@ -124,6 +124,18 @@ class NotificationStoreModule(
         }
     }
 
+    /** 한 대화방의 최근 메시지를 최신순으로 */
+    @ReactMethod
+    fun getConversationMessages(packageName: String, conversationId: String, limit: Double, promise: Promise) {
+        scope.launch {
+            runCatching {
+                val rows = dao.getRecentByConversation(packageName, conversationId, limit.toInt().coerceIn(1, MAX_LIMIT))
+                Arguments.createArray().apply { rows.forEach { pushMap(it.toWritableMap()) } }
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_DB", it) }
+        }
+    }
+
     /** 저장된 알림을 지운다. packageName이 null이면 전체. 지운 개수를 돌려준다 */
     @ReactMethod
     fun clearNotifications(packageName: String?, promise: Promise) {

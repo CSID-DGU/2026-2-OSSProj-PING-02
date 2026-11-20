@@ -21,6 +21,17 @@ interface NotificationDao {
     )
     suspend fun getRecentByPackage(packageName: String, limit: Int): List<NotificationEntity>
 
+    /** 한 대화방의 최근 메시지 (최신순). 대화방 ID는 앱마다 겹칠 수 있어 앱도 함께 본다 */
+    @Query(
+        "SELECT * FROM notification_messages WHERE package_name = :packageName AND conversation_id = :conversationId " +
+            "ORDER BY message_time DESC, id DESC LIMIT :limit"
+    )
+    suspend fun getRecentByConversation(
+        packageName: String,
+        conversationId: String,
+        limit: Int,
+    ): List<NotificationEntity>
+
     @Query("SELECT COUNT(*) FROM notification_messages")
     suspend fun count(): Int
 

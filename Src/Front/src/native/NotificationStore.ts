@@ -46,12 +46,20 @@ interface NotificationStoreNative {
     packageName: string | null,
     limit: number
   ): Promise<StoredNotification[]>;
+  getConversationMessages(
+    packageName: string,
+    conversationId: string,
+    limit: number
+  ): Promise<StoredNotification[]>;
   clearNotifications(packageName: string | null): Promise<number>;
 }
 
 const native = NativeModules.NotificationStore as
   | NotificationStoreNative
   | undefined;
+
+/** 네이티브 모듈이 있는지 (Jest·iOS·옛 빌드에는 없음) */
+export const isNotificationStoreAvailable = () => native != null;
 
 const getNative = (): NotificationStoreNative => {
   if (!native) {
@@ -87,6 +95,12 @@ const NotificationStore = {
       options.packageName ?? null,
       options.limit ?? 100
     ),
+  /** 한 대화방의 최근 메시지 (최신순) */
+  getConversationMessages: (
+    packageName: string,
+    conversationId: string,
+    limit = 100
+  ) => getNative().getConversationMessages(packageName, conversationId, limit),
   /** 저장된 알림 삭제. packageName을 빼면 전체. 지운 개수를 돌려줌 */
   clearNotifications: (packageName?: string) =>
     getNative().clearNotifications(packageName ?? null),
