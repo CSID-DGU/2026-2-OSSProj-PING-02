@@ -6,6 +6,8 @@ buildscript {
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.2.0"
+        roomVersion = "2.8.4"
+        coroutinesVersion = "1.10.2"
     }
     repositories {
         google()
@@ -15,6 +17,8 @@ buildscript {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        // Room 어노테이션 처리용
+        classpath("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:2.3.6")
     }
 }
 

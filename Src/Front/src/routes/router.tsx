@@ -33,6 +33,7 @@ import TruncatedMessage from "@pages/contact/TruncatedMessage";
 import type { MainTabKey } from "@constants/tabs";
 import type { ReplyStance as Stance, ReplyTone as Tone } from "@services";
 import Playground from "@pages/dev/Playground";
+import NotificationDebug from "@pages/dev/NotificationDebug";
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -78,6 +79,7 @@ export type RootStackParamList = {
   // 08 "메시지가 잘린 상태 보기" (시안 없음)
   TruncatedMessage: { conversationId: string };
   Playground: undefined;
+  NotificationDebug: undefined;
 };
 
 // useNavigation()에서 화면 이름 자동완성
@@ -136,6 +138,7 @@ const Router = () => {
 
       {/* Dev (개발용 테스트 화면) */}
       <Stack.Screen name="Playground" component={Playground} />
+      <Stack.Screen name="NotificationDebug" component={NotificationDebug} />
     </Stack.Navigator>
   );
 };
