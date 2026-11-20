@@ -1,6 +1,5 @@
 package com.malssiat.notification
 
-import android.app.Notification
 import android.content.pm.PackageManager
 import android.os.Build
 import android.service.notification.NotificationListenerService
@@ -27,19 +26,17 @@ class MessageNotificationListener : NotificationListenerService() {
     private val appNameCache = ConcurrentHashMap<String, String>()
 
     private val monitoredApps by lazy { MonitoredAppsStore(this) }
-    private val db by lazy { NotificationDatabase.get(this) }
-    private val dao by lazy { db.notificationDao() }
+    private val dao by lazy { NotificationDatabase.get(this).notificationDao() }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        // 권한을 켜기 전부터 알림창에 남아 있던 알림도 한 번 저장해 둔다.
-        // 앱 업데이트·재부팅 때마다 다시 연결되므로, 원본 기록은 새로 온 알림에만 남긴다.
+        // 권한을 켜기 전부터 알림창에 남아 있던 알림도 한 번 저장해 둔다 (이미 저장된 메시지는 중복으로 걸러짐).
         val active = runCatching { activeNotifications }.getOrNull() ?: return
-        active.forEach { handle(it, recordRaw = false) }
+        active.forEach(::handle)
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        sbn?.let { handle(it, recordRaw = true) }
+        sbn?.let(::handle)
     }
 
     override fun onDestroy() {
@@ -47,34 +44,18 @@ class MessageNotificationListener : NotificationListenerService() {
         super.onDestroy()
     }
 
-    private fun handle(sbn: StatusBarNotification, recordRaw: Boolean) {
+    private fun handle(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
         if (!monitoredApps.isMonitored(sbn.packageName)) return
 
-        val appName = appNameOf(sbn.packageName)
         val shortcut = conversationShortcutOf(sbn)
-        val items = NotificationParser.parse(sbn, appName, shortcut?.label)
-        val shouldDump = recordRaw && monitoredApps.isRawDumpEnabled && !isGroupSummary(sbn)
-
-        if (items.isEmpty() && !shouldDump) return
+        val items = NotificationParser.parse(sbn, appNameOf(sbn.packageName), shortcut?.label)
+        if (items.isEmpty()) return
 
         scope.launch {
-            // 메시지를 먼저 저장해야 "새로 저장된 건수"(중복 제외)를 원본에 함께 남길 수 있다.
-            val savedCount = if (items.isEmpty()) 0 else {
-                runCatching { dao.insertAll(items).count { it != -1L } }
-                    .onFailure { Log.e(TAG, "알림 저장 실패", it) }
-                    .getOrDefault(0)
-            }
-            if (savedCount > 0) Log.d(TAG, "${sbn.packageName}: ${savedCount}건 저장")
-
-            // 테스트용 원본 기록. 묶음 요약("새 메시지 3개")은 내용이 없고 양만 많아서 남기지 않는다.
-            if (shouldDump) {
-                runCatching {
-                    db.rawDumpDao().insert(
-                        NotificationDumper.dump(sbn, appName, shortcut, items, savedCount)
-                    )
-                }.onFailure { Log.e(TAG, "원본 저장 실패", it) }
-            }
+            runCatching { dao.insertAll(items).count { it != -1L } }
+                .onSuccess { saved -> if (saved > 0) Log.d(TAG, "${sbn.packageName}: ${saved}건 저장") }
+                .onFailure { Log.e(TAG, "알림 저장 실패", it) }
         }
     }
 
@@ -97,9 +78,6 @@ class MessageNotificationListener : NotificationListenerService() {
             }
         }.onFailure { Log.w(TAG, "대화 바로가기 조회 실패", it) }.getOrNull()
     }
-
-    private fun isGroupSummary(sbn: StatusBarNotification): Boolean =
-        sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0
 
     private fun appNameOf(pkg: String): String = appNameCache.getOrPut(pkg) {
         try {

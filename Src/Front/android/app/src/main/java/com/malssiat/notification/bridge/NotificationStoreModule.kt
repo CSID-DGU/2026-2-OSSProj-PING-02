@@ -1,7 +1,5 @@
 package com.malssiat.notification.bridge
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
@@ -135,64 +133,6 @@ class NotificationStoreModule(
             }.onSuccess(promise::resolve)
                 .onFailure { promise.reject("E_DB", it) }
         }
-    }
-
-    // ───────── 테스트용 원본 수집 ─────────
-
-    @ReactMethod
-    fun isRawDumpEnabled(promise: Promise) {
-        promise.resolve(monitoredApps.isRawDumpEnabled)
-    }
-
-    @ReactMethod
-    fun setRawDumpEnabled(enabled: Boolean, promise: Promise) {
-        monitoredApps.isRawDumpEnabled = enabled
-        promise.resolve(null)
-    }
-
-    /** 원본 기록을 최신순으로. packageName이 null이면 전체 앱 */
-    @ReactMethod
-    fun getRawDumps(packageName: String?, limit: Double, promise: Promise) {
-        scope.launch {
-            runCatching {
-                val n = limit.toInt().coerceIn(1, MAX_LIMIT)
-                val dumpDao = NotificationDatabase.get(reactContext).rawDumpDao()
-                val rows = if (packageName == null) dumpDao.getRecent(n)
-                else dumpDao.getRecentByPackage(packageName, n)
-                Arguments.createArray().apply {
-                    rows.forEach { row ->
-                        pushMap(Arguments.createMap().apply {
-                            putDouble("id", row.id.toDouble())
-                            putString("packageName", row.packageName)
-                            putString("appName", row.appName)
-                            putDouble("postedAt", row.postedAt.toDouble())
-                            putString("summary", row.summary)
-                            putString("json", row.json)
-                        })
-                    }
-                }
-            }.onSuccess(promise::resolve)
-                .onFailure { promise.reject("E_DB", it) }
-        }
-    }
-
-    @ReactMethod
-    fun clearRawDumps(promise: Promise) {
-        scope.launch {
-            runCatching { NotificationDatabase.get(reactContext).rawDumpDao().deleteAll() }
-                .onSuccess(promise::resolve)
-                .onFailure { promise.reject("E_DB", it) }
-        }
-    }
-
-    /** 원본 JSON을 팀원에게 보내기 쉽도록 클립보드에 복사 */
-    @ReactMethod
-    fun copyToClipboard(text: String, promise: Promise) {
-        runCatching {
-            val clipboard = reactContext.getSystemService(ClipboardManager::class.java)
-            clipboard.setPrimaryClip(ClipData.newPlainText("malssiat-notification-dump", text))
-        }.onSuccess { promise.resolve(null) }
-            .onFailure { promise.reject("E_CLIPBOARD", it) }
     }
 
     private fun NotificationEntity.toWritableMap(): WritableMap = Arguments.createMap().apply {

@@ -21,14 +21,8 @@ class MonitoredAppsStore(context: Context) {
         prefs.edit().putStringSet(KEY_PACKAGES, packageNames.toSet()).apply()
     }
 
-    /** 테스트용 원본 수집(RawNotificationDump) 켜짐 여부. 기본 꺼짐 */
-    var isRawDumpEnabled: Boolean
-        get() = prefs.getBoolean(KEY_RAW_DUMP, false)
-        set(value) = prefs.edit().putBoolean(KEY_RAW_DUMP, value).apply()
-
     companion object {
         private const val PREFS_NAME = "malssiat_notification_prefs"
         private const val KEY_PACKAGES = "monitored_packages"
-        private const val KEY_RAW_DUMP = "raw_dump_enabled"
     }
 }

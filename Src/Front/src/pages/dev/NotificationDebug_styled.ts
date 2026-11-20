@@ -32,29 +32,12 @@ export const StatusText = styled.Text<{ $ok: boolean }>`
     $ok ? theme.colors.feedbackSuccessText : theme.colors.feedbackDangerText};
 `;
 
-export const Row = styled.View<{ $top?: number }>`
+export const Row = styled.View`
   flex-direction: row;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: ${({ $top }) => $top ?? 0}px;
 `;
 
 export const AppList = styled.View`
   gap: 14px;
-`;
-
-export const Warning = styled.Text`
-  ${({ theme }) => theme.fonts.bodySmall};
-  color: ${({ theme }) => theme.colors.feedbackDangerText};
-  background-color: ${({ theme }) => theme.colors.feedbackDangerBg};
-  padding: 12px;
-  border-radius: 8px;
-`;
-
-// 원본 JSON 펼쳐 보기
-export const RawJson = styled.Text`
-  margin-top: 12px;
-  ${({ theme }) => theme.fonts.captionXSmall};
-  font-family: monospace;
-  color: ${({ theme }) => theme.colors.textSecondary};
 `;

@@ -36,16 +36,6 @@ export interface StoredNotification {
   savedAt: number; // epoch ms
 }
 
-// 테스트용 원본 기록 (앱별 알림 형식 확인용)
-export interface RawNotificationDump {
-  id: number;
-  packageName: string;
-  appName: string;
-  postedAt: number; // epoch ms
-  summary: string; // "제목: 본문" 한 줄 요약
-  json: string; // 알림 원본 전체
-}
-
 interface NotificationStoreNative {
   isPermissionGranted(): Promise<boolean>;
   openPermissionSettings(): Promise<void>;
@@ -57,14 +47,6 @@ interface NotificationStoreNative {
     limit: number
   ): Promise<StoredNotification[]>;
   clearNotifications(packageName: string | null): Promise<number>;
-  isRawDumpEnabled(): Promise<boolean>;
-  setRawDumpEnabled(enabled: boolean): Promise<void>;
-  getRawDumps(
-    packageName: string | null,
-    limit: number
-  ): Promise<RawNotificationDump[]>;
-  clearRawDumps(): Promise<number>;
-  copyToClipboard(text: string): Promise<void>;
 }
 
 const native = NativeModules.NotificationStore as
@@ -108,23 +90,6 @@ const NotificationStore = {
   /** 저장된 알림 삭제. packageName을 빼면 전체. 지운 개수를 돌려줌 */
   clearNotifications: (packageName?: string) =>
     getNative().clearNotifications(packageName ?? null),
-
-  // ───────── 테스트용 원본 수집 ─────────
-  /** 켜 두면 선택한 앱의 알림 원본(JSON)을 그대로 기록 */
-  isRawDumpEnabled: () => getNative().isRawDumpEnabled(),
-  setRawDumpEnabled: (enabled: boolean) =>
-    getNative().setRawDumpEnabled(enabled),
-  getRawDumps: (options: { packageName?: string; limit?: number } = {}) =>
-    getNative().getRawDumps(options.packageName ?? null, options.limit ?? 50),
-  clearRawDumps: () => getNative().clearRawDumps(),
-  copyToClipboard: (text: string) => getNative().copyToClipboard(text),
 };
-
-/**
- * 원본 기록 여러 개를 팀원에게 보내기 좋은 JSON 배열 문자열로.
- * JSON.parse를 거치면 chatLogId 같은 큰 정수의 끝자리가 뭉개지므로 원본 문자열을 그대로 잇는다.
- */
-export const toExportJson = (dumps: RawNotificationDump[]) =>
-  `[\n${dumps.map((d) => d.json).join(",\n")}\n]`;
 
 export default NotificationStore;

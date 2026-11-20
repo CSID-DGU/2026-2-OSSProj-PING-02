@@ -223,11 +223,4 @@ class NotificationParserAppFormatsTest {
         assertTrue(ad.isEmpty())
         assertEquals(1, delivery.size) // 택배 같은 알림성 문자는 저장 (팀 결정 전 기본값)
     }
-
-    @Test
-    fun `원본 기록의 전화번호는 가린다`() {
-        val masked = NotificationDumper.maskPhones("\"uri\": \"tel:01045308071\", \"title\": \"010-3247-9643\", \"chatLogId\": 3977244079010179074")
-
-        assertEquals("\"uri\": \"tel:010****71\", \"title\": \"010-****-9643\", \"chatLogId\": 3977244079010179074", masked)
-    }
 }

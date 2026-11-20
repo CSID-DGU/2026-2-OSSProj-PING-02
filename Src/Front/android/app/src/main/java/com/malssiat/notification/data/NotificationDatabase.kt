@@ -15,20 +15,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  *       passphrase는 Android Keystore로 감싸서 보관한다.
  */
 @Database(
-    entities = [NotificationEntity::class, RawNotificationDump::class],
-    version = 5,
+    entities = [NotificationEntity::class],
+    version = 6,
     exportSchema = false,
 )
 abstract class NotificationDatabase : RoomDatabase() {
 
     abstract fun notificationDao(): NotificationDao
 
-    abstract fun rawDumpDao(): RawNotificationDumpDao
-
     companion object {
         private const val DB_NAME = "malssiat_notifications.db"
 
-        /** v2: 테스트용 원본 수집 테이블 추가 (기존 메시지는 그대로 유지) */
+        /** v2: 테스트용 원본 수집 테이블 추가 (v6에서 다시 삭제) */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -118,6 +116,13 @@ abstract class NotificationDatabase : RoomDatabase() {
             }
         }
 
+        /** v6: 알림 형식 확인이 끝나서 테스트용 원본 기록 테이블 삭제 (대화 원문이 담겨 있으므로 남기지 않음) */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `raw_notification_dumps`")
+            }
+        }
+
         @Volatile
         private var instance: NotificationDatabase? = null
 
@@ -127,7 +132,7 @@ abstract class NotificationDatabase : RoomDatabase() {
                     context.applicationContext,
                     NotificationDatabase::class.java,
                     DB_NAME,
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build().also { instance = it }
             }
     }
 }
