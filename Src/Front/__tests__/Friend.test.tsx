@@ -35,7 +35,8 @@ const seed = async () => {
     MOCK_DEMO_ACCOUNT.loginId,
     MOCK_DEMO_ACCOUNT.password
   );
-  await services.storage.setItem(STORAGE_KEYS.session, JSON.stringify(login));
+  // 저장된 토큰 → 앱을 켜면 자동 로그인
+  services.tokens.set(login.tokens);
   await services.storage.setItem(
     `${STORAGE_KEYS.onboarding}.${USER_ID}`,
     JSON.stringify({ completed: true, lastStep: "OnboardingDone" })

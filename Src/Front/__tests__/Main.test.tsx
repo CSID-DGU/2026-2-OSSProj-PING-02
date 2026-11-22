@@ -17,7 +17,8 @@ const seedSignedIn = async ({ modelInstalled }: { modelInstalled: boolean }) => 
     MOCK_DEMO_ACCOUNT.loginId,
     MOCK_DEMO_ACCOUNT.password
   );
-  await services.storage.setItem(STORAGE_KEYS.session, JSON.stringify(login));
+  // 저장된 토큰 → 앱을 켜면 자동 로그인
+  services.tokens.set(login.tokens);
   await services.storage.setItem(
     `${STORAGE_KEYS.onboarding}.${USER_ID}`,
     JSON.stringify({ completed: true, lastStep: "OnboardingDone" })
@@ -30,7 +31,8 @@ const seedSignedIn = async ({ modelInstalled }: { modelInstalled: boolean }) => 
 };
 
 describe("모델이 준비된 경우", () => {
-  beforeAll(() => seedSignedIn({ modelInstalled: true }));
+  // 저장 토큰은 테스트마다 비워지므로(test-utils) 매번 준비
+  beforeEach(() => seedSignedIn({ modelInstalled: true }));
 
   test("홈: 꼭 챙길 연락은 최대 3개, 단톡은 접혀 있다가 펼쳐진다", async () => {
     const root = await renderApp();

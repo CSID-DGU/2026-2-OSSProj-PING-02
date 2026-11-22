@@ -6,10 +6,15 @@ import AuthIntro from "@components/auth/AuthIntro";
 import AuthPrompt from "@components/auth/AuthPrompt";
 import FindLinks from "@components/auth/FindLinks";
 import Notice from "@components/onboarding/Notice";
-import { AUTH_ERROR } from "@constants/auth";
+import {
+  AUTH_ERROR,
+  getAuthErrorMessage,
+  normalizeLoginId,
+} from "@constants/auth";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import {
   AUTH_ERROR_CODE,
+  AUTH_FEATURES,
   getErrorCode,
   ServiceError,
   services,
@@ -30,10 +35,11 @@ const Login = () => {
 
   const handleLogin = async () => {
     if (submitting) return;
-    const trimmed = id.trim();
+    // 서버와 같게 소문자·앞뒤 공백 제거
+    const loginId = normalizeLoginId(id);
     const next: LoginErrors = {};
     // 로그인에서는 형식 검사 없이 비어 있는지만 확인 (규칙이 바뀌어도 기존 아이디로 로그인 가능하게)
-    if (!trimmed) next.id = AUTH_ERROR.idRequired;
+    if (!loginId) next.id = AUTH_ERROR.idRequired;
     if (!password) next.password = AUTH_ERROR.passwordRequired;
     setErrors(next);
     setFormError(undefined);
@@ -41,20 +47,25 @@ const Login = () => {
 
     setSubmitting(true);
     try {
-      const result = await services.auth.login(trimmed, password);
+      const result = await services.auth.login(loginId, password);
       await signIn(result);
       // 이동은 Splash가 온보딩 진행 상황을 보고 결정
       navigation.popTo("Splash");
     } catch (error) {
       const code = getErrorCode(error);
+      const email =
+        error instanceof ServiceError ? error.data?.email : undefined;
       if (code === AUTH_ERROR_CODE.invalidCredentials) {
         setErrors({ password: AUTH_ERROR.loginFailed });
-      } else if (code === AUTH_ERROR_CODE.emailNotVerified) {
-        const email = error instanceof ServiceError ? error.data?.email : undefined;
-        if (email) navigation.navigate("EmailVerify", { email, resend: true });
-        else setFormError(AUTH_ERROR.network);
+      } else if (
+        code === AUTH_ERROR_CODE.emailNotVerified &&
+        AUTH_FEATURES.emailVerification &&
+        email
+      ) {
+        // 인증 전 계정: 인증 화면을 열면서 코드를 새로 보냄
+        navigation.navigate("EmailVerify", { email, resend: true });
       } else {
-        setFormError(AUTH_ERROR.network);
+        setFormError(getAuthErrorMessage(error));
       }
     } finally {
       setSubmitting(false);
