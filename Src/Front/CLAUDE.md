@@ -11,8 +11,10 @@
 ## 디자인 규칙
 
 - 색·글자: [UI/docs/design-system.md](../../UI/docs/design-system.md) 토큰(`theme.colors`, `theme.fonts`)만. hex·폰트 크기 직접 입력 금지
-- 컴포넌트: `@core/ui` 공통 컴포넌트만. 비슷한 컴포넌트를 새로 만들지 말고 **조합**으로 해결
-- `src/core`는 수정하지 않음. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 디자이너가 준 아이콘 SVG 등록
+- 컴포넌트: `@core/ui` 공통 컴포넌트만. 비슷한 컴포넌트를 화면 폴더에 새로 만들지 말고 **조합**으로 해결
+- `@core/ui`에 **새 공통 컴포넌트 추가는 가능** (공통 컴포넌트 담당 팀원 허락, #44). 여러 화면에서 쓰는 것만, 폴더 하나 + `index.ts` + `core/index.ts` export + Playground 예시 + `__tests__/CommonUi.test.tsx`
+- **기존** `src/core` 컴포넌트는 최소한으로만 수정. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 아이콘 등록
+- #44에서 추가: `BottomSheet`·`BottomSheetActions`(sheet), `Toast`·`ToastProvider`·`useToast`(toast, App에 Provider 있음), `Switch`·`SwitchRow`(switch), `UnderlineTabs`(tabs, `scrollable`), `Calendar`·`TimeSelect`·`DateTimeSheet`·날짜 도우미(calendar, 패키지 없이 구현), `FooterLayout`(layout, 목록 + 아래 고정 버튼), 아이콘 `ChevronRightIcon`·`BellIcon`
 - 아이콘: `UI/assets/icons/ui` SVG를 `@core/ui/icon`에 등록해서 사용
 - 토큰에 없는 Figma 색은 가장 가까운 기존 토큰을 쓰고 차이를 보고 (새 토큰 추가 금지)
 

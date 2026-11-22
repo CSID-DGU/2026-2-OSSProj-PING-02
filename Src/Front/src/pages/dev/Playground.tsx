@@ -11,6 +11,18 @@ import { ChoiceGroup } from "@core/ui/choice";
 import { Dialog, DialogHighlight } from "@core/ui/dialog";
 import { Select } from "@core/ui/select";
 import { Card, CardTitle, CardDescription, CardMeta } from "@core/ui/card";
+import { BottomSheet, BottomSheetActions } from "@core/ui/sheet";
+import { Toast, useToast } from "@core/ui/toast";
+import { Switch, SwitchRow } from "@core/ui/switch";
+import { UnderlineTabs } from "@core/ui/tabs";
+import {
+  Calendar,
+  DateTimeSheet,
+  TimeSelect,
+  formatDate,
+  formatDateTime,
+} from "@core/ui/calendar";
+import { FooterLayout } from "@core/ui/layout";
 
 // 공통 컴포넌트 확인용 임시 화면 (개발용)
 
@@ -75,6 +87,32 @@ const DOMAINS = ["gmail.com", "naver.com", "daum.net", "kakao.com"].map(
   (d) => ({ label: d, value: d })
 );
 
+// 밑줄 탭 예시 (시안 D01 연락 목록, 06 친구)
+type ContactTab = "all" | "must" | "deferred";
+const CONTACT_TABS: { key: ContactTab; label: string }[] = [
+  { key: "all", label: "전체" },
+  { key: "must", label: "꼭 챙길 연락" },
+  { key: "deferred", label: "미뤄둔 답장" },
+];
+type FriendTab = "all" | "new" | "friend" | "family" | "work" | "etc";
+const FRIEND_TABS: { key: FriendTab; label: string; accessibilityLabel?: string }[] = [
+  { key: "all", label: "전체" },
+  { key: "new", label: "NEW", accessibilityLabel: "새 친구" },
+  { key: "friend", label: "친구" },
+  { key: "family", label: "가족" },
+  { key: "work", label: "직장" },
+  { key: "etc", label: "기타" },
+];
+const LONG_TABS = [
+  "전체",
+  "대학교 동기",
+  "동아리 PING",
+  "아르바이트",
+  "가족",
+  "오래 연락 못 한 친구",
+].map(label => ({ key: label, label }));
+const DEFER_OPTIONS =toOptions(["오늘 저녁", "내일", "3일 뒤", "1주일 뒤"]);
+
 // Card 테스트용 답장 후보
 const REPLIES = [
   "답이 늦어서 미안해. 요즘 조금 정신이 없었어.",
@@ -95,6 +133,19 @@ const Playground = () => {
   const [day, setDay] = useState<string>();
   const [domain, setDomain] = useState<string>("gmail.com");
   const [replyIndex, setReplyIndex] = useState(0);
+  const toast = useToast();
+  const [deferOpen, setDeferOpen] = useState(false);
+  const [defer, setDefer] = useState("내일");
+  const [analyze, setAnalyze] = useState(true);
+  const [contactTab, setContactTab] = useState<ContactTab>("all");
+  const [friendTab, setFriendTab] = useState<FriendTab>("all");
+  const [longTab, setLongTab] = useState("전체");
+  const [calDay, setCalDay] = useState<Date | null>(null);
+  const [time, setTime] = useState<number>();
+  const [remindOpen, setRemindOpen] = useState(false);
+  const [eventOpen, setEventOpen] = useState(false);
+  const [picked, setPicked] = useState<Date>();
+  const [footerDemo, setFooterDemo] = useState(false);
 
   return (
     <Screen>
@@ -351,11 +402,212 @@ const Playground = () => {
             disabled 버튼
           </Button>
           <Button variant="text">텍스트 버튼</Button>
+
+          {/* ───────── UnderlineTabs ───────── */}
+          <SectionTitle>UnderlineTabs - 칸 나누기 (연락 목록)</SectionTitle>
+          <UnderlineTabs
+            tabs={CONTACT_TABS}
+            value={contactTab}
+            onChange={setContactTab}
+          />
+          <SectionTitle>UnderlineTabs - 6개 (친구)</SectionTitle>
+          <UnderlineTabs
+            tabs={FRIEND_TABS}
+            value={friendTab}
+            onChange={setFriendTab}
+          />
+          <SectionTitle>UnderlineTabs - scrollable (많거나 길 때)</SectionTitle>
+          <UnderlineTabs
+            scrollable
+            tabs={LONG_TABS}
+            value={longTab}
+            onChange={setLongTab}
+          />
+
+          {/* ───────── Switch ───────── */}
+          <SectionTitle>SwitchRow (메신저 연결 관리)</SectionTitle>
+          <SwitchRow
+            label="이 계정의 연락 분석"
+            description="이 계정에서 오는 알림을 분석해요"
+            value={analyze}
+            onValueChange={setAnalyze}
+          />
+          <SwitchRow
+            label="비활성"
+            value={false}
+            onValueChange={() => {}}
+            disabled
+          />
+          <SectionTitle>Switch - 단독</SectionTitle>
+          <Row>
+            <Switch
+              value={analyze}
+              onValueChange={setAnalyze}
+              accessibilityLabel="연락 분석"
+            />
+          </Row>
+
+          {/* ───────── Toast ───────── */}
+          <SectionTitle>Toast</SectionTitle>
+          <Toast message="붙여넣기 성공!" />
+          <Toast message="아이콘 없는 토스트" icon="none" />
+          <Button
+            variant="secondary"
+            fullWidth
+            onPress={() => toast.show("관계 정보를 저장했어요")}
+          >
+            토스트 띄우기 (useToast)
+          </Button>
+
+          {/* ───────── BottomSheet ───────── */}
+          <SectionTitle>BottomSheet (나중에 답하기)</SectionTitle>
+          <Button
+            variant="secondary"
+            fullWidth
+            onPress={() => setDeferOpen(true)}
+          >
+            시트 열기
+          </Button>
+          <BottomSheet
+            visible={deferOpen}
+            onClose={() => setDeferOpen(false)}
+            title="언제 다시 알려드릴까요?"
+            description="선택한 시간에 이 연락을 다시 알려드릴게요"
+            footer={
+              <BottomSheetActions
+                confirmLabel={`${defer} 다시 알려주기`}
+                onConfirm={() => {
+                  setDeferOpen(false);
+                  toast.show(`${defer} 다시 알려드릴게요`);
+                }}
+                onCancel={() => setDeferOpen(false)}
+              />
+            }
+          >
+            <ChoiceGroup
+              options={DEFER_OPTIONS}
+              value={defer}
+              onChange={setDefer}
+            />
+            <Button
+              variant="text"
+              typo="bodyMedium"
+              onPress={() => {
+                setDeferOpen(false);
+                setRemindOpen(true);
+              }}
+            >
+              날짜와 시간 직접 선택
+            </Button>
+          </BottomSheet>
+
+          {/* ───────── Calendar ───────── */}
+          <SectionTitle>Calendar + TimeSelect</SectionTitle>
+          <Calendar value={calDay} onChange={setCalDay} />
+          <Row>
+            <TimeSelect value={time} onChange={setTime} />
+          </Row>
+          <CardMeta>
+            {calDay ? formatDate(calDay) : "날짜 없음"} ·{" "}
+            {time === undefined ? "시간 없음" : `${time}분`}
+          </CardMeta>
+
+          <SectionTitle>DateTimeSheet</SectionTitle>
+          <Button
+            variant="secondary"
+            fullWidth
+            onPress={() => setRemindOpen(true)}
+          >
+            시간 칩 (나중에 답하기 직접 선택)
+          </Button>
+          <Button
+            variant="secondary"
+            fullWidth
+            onPress={() => setEventOpen(true)}
+          >
+            드롭다운 (새 일정 추가)
+          </Button>
+          <CardMeta>
+            고른 값: {picked ? formatDateTime(picked) : "없음"}
+          </CardMeta>
+          <DateTimeSheet
+            visible={remindOpen}
+            onClose={() => setRemindOpen(false)}
+            initialValue={picked}
+            minDate={new Date()}
+            timePresets={[9 * 60, 18 * 60]}
+            confirmLabel={d => `${formatDateTime(d)}에 다시 알려주기`}
+            onConfirm={d => {
+              setPicked(d);
+              setRemindOpen(false);
+            }}
+          />
+          <DateTimeSheet
+            visible={eventOpen}
+            onClose={() => setEventOpen(false)}
+            initialValue={picked}
+            onConfirm={d => {
+              setPicked(d);
+              setEventOpen(false);
+            }}
+          />
+
+          {/* ───────── FooterLayout ───────── */}
+          <SectionTitle>FooterLayout (목록 + 아래 고정 버튼 2개)</SectionTitle>
+          <Button
+            variant="secondary"
+            fullWidth
+            onPress={() => setFooterDemo(true)}
+          >
+            예시 열기
+          </Button>
         </Section>
       </Content>
+
+      <BottomSheet
+        visible={footerDemo}
+        onClose={() => setFooterDemo(false)}
+        title="분석 대화방 관리"
+        scrollable={false}
+      >
+        <FooterDemoBox>
+          <FooterLayout
+            footer={
+              <>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onPress={() => setFooterDemo(false)}
+                >
+                  변경 사항 저장하기
+                </Button>
+                <Button variant="secondary" fullWidth>
+                  전체 선택
+                </Button>
+              </>
+            }
+          >
+            <Content>
+              <Section>
+                {REPLIES.concat(REPLIES, REPLIES).map((text, i) => (
+                  <Card key={i}>
+                    <CardDescription style={styles.noMarginTop}>
+                      {text}
+                    </CardDescription>
+                  </Card>
+                ))}
+              </Section>
+            </Content>
+          </FooterLayout>
+        </FooterDemoBox>
+      </BottomSheet>
     </Screen>
   );
 };
+
+const FooterDemoBox = styled.View`
+  height: 480px;
+`;
 
 const styles = StyleSheet.create({
   noMarginTop: { marginTop: 0 },
