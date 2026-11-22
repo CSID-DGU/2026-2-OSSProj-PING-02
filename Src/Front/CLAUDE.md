@@ -39,7 +39,7 @@
 
 - [src/services/index.ts](src/services/index.ts)가 교체 지점: 인터페이스 + mock. 실제 API·네이티브 모듈이 준비되면 여기만 바꿈
 - mock 테스트 계정: **아이디 `malssiat` / 비밀번호 `abcd1234`** (이메일 `demo@malssiat.app`), 인증 코드 `123456`
-- 인증 API: [src/services/config.ts](src/services/config.ts) 한 곳에서 설정. 실서버로 확인할 때는 `DEV_API_MODE`만 `"http"`로 (기본·커밋은 `"mock"`). `baseUrl`은 실서버 `https://malssiat-api.koreacentral.cloudapp.azure.com/v1`. `AUTH_FEATURES`(`emailVerification` false: 백엔드에 없음·화면 숨김 / `accountRecovery` true). 기준 문서는 백엔드 main의 `Doc/API_목록.md`
+- 인증 API: [src/services/config.ts](src/services/config.ts) 한 곳에서 설정. 모드는 빌드별: **release 빌드는 항상 `http`(실서버)**, 테스트(jest)는 항상 `mock`, debug 빌드는 `DEV_API_MODE`(기본·커밋은 `"mock"`, 실서버로 확인할 때만 `"http"`). 팀 테스트용 APK: `cd android && ./gradlew assembleRelease` → `android/app/build/outputs/apk/release/app-release.apk` (Metro 없이 실행, debug 키 서명). `baseUrl`은 실서버 `https://malssiat-api.koreacentral.cloudapp.azure.com/v1`. `AUTH_FEATURES`(`emailVerification` false: 백엔드에 없음·화면 숨김 / `accountRecovery` true). 기준 문서는 백엔드 main의 `Doc/API_목록.md`
 - **자동 로그인 (팀 확정)**: 토큰은 `services.tokens`(메모리 + react-native-keychain 암호화 저장소, 모드별 service `malssiat.auth.mock|http`). 앱 시작 때 `SessionProvider`가 "loading"으로 시작해 `auth.restoreSession()`(refresh → `GET /users/me`)으로 복구, 저장 토큰이 없거나 실패하면 로그인 화면. 세션 만료(401 등)면 저장 토큰도 지우고, 네트워크 오류면 남겨 다음 실행에서 다시 시도. 로그아웃·비밀번호 재설정 시 저장 토큰 삭제
 - 401이면 `httpClient`가 `/auth/refresh`를 한 곳에서 한 번만 보내 갱신 (자동 로그인도 같은 함수)
 - 테스트: keychain은 `__mocks__/react-native-keychain.js`(메모리), `test-utils`가 테스트마다 비움. 로그인 상태로 시작하려면 `services.tokens.set(login.tokens)` 후 `renderApp()`, 앱 재시작은 `closeApp()`
