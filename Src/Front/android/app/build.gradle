@@ -1,5 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.google.devtools.ksp"
 apply plugin: "com.facebook.react"
 
 /**
@@ -116,4 +117,15 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // 알림 수집 → 로컬 DB 저장
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.room:room-runtime:${rootProject.ext.roomVersion}")
+    implementation("androidx.room:room-ktx:${rootProject.ext.roomVersion}")
+    ksp("androidx.room:room-compiler:${rootProject.ext.roomVersion}")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${rootProject.ext.coroutinesVersion}")
+
+    // 알림 파서 단위 테스트 (실기기에서 받은 알림 형식을 재현해서 검증)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.18")
 }

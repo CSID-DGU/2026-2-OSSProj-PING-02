@@ -14,6 +14,7 @@ module.exports = {
           "@hooks": "./src/hooks",
           "@apis": "./src/apis",
           "@constants": "./src/constants",
+          "@native": "./src/native",
           "@assets": "./src/assets",
           "@services": "./src/services",
           "@stores": "./src/stores",
