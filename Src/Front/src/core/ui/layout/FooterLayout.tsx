@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import styled from "styled-components/native";
 
-// Figma: 05 연락 Screens(11.22) D02 "분석 대화방 관리" 등
+// Figma: 05 연락 Screens D02 "분석 대화방 관리" 등
 // 목록만 스크롤되고 아래 버튼 1~2개(예: "변경 사항 저장하기" + "전체 선택")는 고정
 // children: 목록(FlatList·ScrollView)을 그대로 넣음. 남은 높이를 채움
 // footer: 버튼들. 위에서 아래로 쌓이고 간격 8dp, 좌우 20dp

@@ -4,7 +4,7 @@ import styled from "styled-components/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../button";
 
-// Figma: 05 연락 Screens(11.22) D03 "날짜와 시간 직접 선택", "나중에 답하기 선택", "인원 설정",
+// Figma: 05 연락 Screens D03 "날짜와 시간 직접 선택", "나중에 답하기 선택", "인원 설정",
 //        "메신저 연결 관리" 시트 (720px 시안 → dp는 ÷2)
 // 위 모서리 28dp · 손잡이 44×4dp · 제목 18 Bold 가운데 · 좌우 20dp
 // 닫기: 딤 누르기, 안드로이드 뒤로가기(Modal onRequestClose), 취소 버튼

@@ -15,7 +15,7 @@ import FriendsTab from "./FriendsTab";
 import PlaceholderTab from "./PlaceholderTab";
 
 // 메인 화면: 하단 탭 5개 (@react-navigation/bottom-tabs + 기존 TabBar 디자인)
-// 탭마다 스택이 있어 상세 화면에서도 탭바가 보임 (Figma 05 연락·06 친구 Screens 11.22)
+// 탭마다 스택이 있어 상세 화면에서도 탭바가 보임 (Figma 05 연락·06 친구 Screens)
 // 뒤로가기: 탭 안 스택 → 홈이 아닌 탭이면 홈 탭으로(backBehavior) → 홈이면 앱 종료
 const tabConfig = (key: MainTabKey) => MAIN_TABS.find(t => t.key === key)!;
 

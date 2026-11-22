@@ -13,7 +13,7 @@ import {
   startOfMonth,
 } from "./dateUtils";
 
-// Figma: 05 연락 Screens(11.22) D03 "날짜와 시간 직접 선택", Local/Calendar Day(Default·Empty·Selected)
+// Figma: 05 연락 Screens D03 "날짜와 시간 직접 선택", Local/Calendar Day(Default·Empty·Selected)
 // 월 제목 18 Bold · 요일 13 보조색 · 날짜 15 · 선택은 지름 36dp 노란 원 + 굵은 글씨
 // 칸 높이: 시안은 약 40dp지만 터치 영역 48dp를 위해 48dp
 export interface CalendarProps {

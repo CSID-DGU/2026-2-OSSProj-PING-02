@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Select } from "../select";
 import { formatTime } from "./dateUtils";
 
-// Figma: 05 연락 Screens(11.22) D03 "새 일정 추가_날짜및시간선택"의 "시간 [오후 1시 ⌄]"
+// Figma: 05 연락 Screens D03 "새 일정 추가_날짜및시간선택"의 "시간 [오후 1시 ⌄]"
 // 기존 Select(누르면 목록 시트)를 그대로 쓰고 선택지만 시간으로 만듦
 export interface TimeSelectProps {
   // 하루 중 분 (예: 13:30 → 810)

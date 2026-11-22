@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import styled from "styled-components/native";
 
-// Figma: 05 연락 Screens(11.22) D01 연락 목록(전체/꼭 챙길 연락/미뤄둔 답장),
+// Figma: 05 연락 Screens D01 연락 목록(전체/꼭 챙길 연락/미뤄둔 답장),
 //        D03 연락 상세(최근 연락/관계/관련 일정), 06 친구(전체/NEW/친구/가족/직장/기타)
 // 칸 높이 48dp · 선택 밑줄 2dp(칸 폭의 70%) · 아래 바탕선 2dp
 // 선택: 굵은 글씨 + 진한 색 + 밑줄 (색만으로 구분하지 않음)

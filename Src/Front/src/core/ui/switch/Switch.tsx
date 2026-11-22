@@ -1,7 +1,7 @@
 import { Pressable } from "react-native";
 import styled from "styled-components/native";
 
-// Figma: 05 연락 Screens(11.22) "메신저 연결 관리" 시트의 "이 계정의 연락 분석" 토글
+// Figma: 05 연락 Screens "메신저 연결 관리" 시트의 "이 계정의 연락 분석" 토글
 // 트랙 46×28dp · 손잡이 24dp · 켜짐 노랑(brandSeed) / 꺼짐 회색(borderStrong)
 // 켜짐·꺼짐은 색뿐 아니라 손잡이 위치로도 구분, 스크린리더에는 switch 역할 + checked 상태
 export interface SwitchProps {

@@ -2,7 +2,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import styled from "styled-components/native";
 import { BellIcon } from "@core/ui/icon";
 
-// 앱바 오른쪽 🔔 (Figma 05 연락·06 친구 Screens 11.22): 누르면 알림 센터(지금은 자리만)
+// 앱바 오른쪽 🔔 (Figma 05 연락·06 친구 Screens): 누르면 알림 센터(지금은 자리만)
 // 알림 센터 화면 자신에서는 숨김
 // TODO(네이티브·API): 안 읽은 알림이 있으면 dot 표시 (시안의 작은 점)
 const NotificationBell = () => {

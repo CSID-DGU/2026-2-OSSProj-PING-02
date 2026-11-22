@@ -13,7 +13,7 @@ import styled from "styled-components/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CheckIcon } from "../icon";
 
-// Figma: 05 연락 Screens(11.22) Toast/토스트에셋, D04 "붙여넣기 성공!"
+// Figma: 05 연락 Screens Toast/토스트에셋, D04 "붙여넣기 성공!"
 // 높이 52dp · 모서리 10dp · 좌우 14dp · 체크 원 20dp · 진한 갈색 배경 + 흰 글씨
 // 시안 갈색(#4F3832)은 토큰에 없어 가장 가까운 actionPrimaryBg(brown700 #4D3932) 사용
 export type ToastIcon = "success" | "none";
