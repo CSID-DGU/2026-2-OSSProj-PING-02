@@ -82,6 +82,13 @@
 ## 남은 TODO
 
 디자이너 확인 필요
+- #44 토큰에 없는 시안 색 → 가까운 토큰으로 대체 (시안 PNG에서 읽은 근사값)
+  - 토스트 진한 갈색 #4F3832 → `actionPrimaryBg`(brown700 #4D3932), 체크 원 #7A6560 → `brandBrown`(brown600 #644B40)
+  - "연결됨" 연한 초록 칩 바탕 ≈#EEF5EA·글자 ≈#6B9A5B → `feedbackSuccessBg`(green50 #F5F9F2)·`feedbackSuccessText`(green600 #527A40) (화면 구현 때 적용)
+  - 원문 말풍선 영역 연한 파랑 ≈#EBF2F9 → `feedbackInfoBg`(info50 #EEF5FA) (화면 구현 때 적용)
+  - 스위치 켜짐 ≈#F5D66F → `brandSeed`(seed300), 꺼짐은 시안 없음 → `borderStrong`
+  - 밑줄 탭 바탕선 ≈#F3EEEB → `borderDefault`(neutral200), 선택 밑줄 ≈#3A2B27 → `textPrimary`, 시트 손잡이 → `borderDefault`
+- #44 Figma와 다르게 간 부분: 달력 칸 높이 40→48dp(터치 영역), 시간 드롭다운 폭 88→148dp("오전 10시 30분"), 시간 칩은 알약 대신 `ChoiceGroup` option 모양, 🔔 SVG 없음(임시 `BellIcon`), 상세 화면 앱바 제목은 지금처럼 왼쪽 정렬(시안은 가운데), 알림 센터 시안 없음
 - 연동 앱 아이콘 2x·3x (지금 60px 한 장), 탭바 아이콘 SVG 5개, 홈·탭바 시안
 - 07·08 설명 문구 (시안에서 제목과 겹침, 임시 문구)
 - 11 AI 메모리 상세 작성 시안 (입력창 + 예시 칩으로 임시)
@@ -107,6 +114,9 @@
 - 저장소: 온보딩 진행 상황·AI 답장 결과는 AsyncStorage/암호화 저장소(지금 메모리 `services.storage`), 친구 목록은 기기 안 암호화 DB (로그인 토큰은 keychain 완료)
 
 ## 다음 작업
+
+- 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (11.22 시안: `C:\Users\82104\Desktop\UI`의 "05 연락 Screens(11.22)", "06 친구 Sreens(11.22)", 초록 배경 프레임이 최종본). 다음은 새 컴포넌트로 11.22 연락·친구 화면 반영
+- 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)
 
 - 완료: **인증 API 연결 + 자동 로그인** `feat/#27-auth-api` (PR #38 리뷰 반영, #37까지 들어간 origin/main 위로 rebase). 실기기 확인: `DEV_API_MODE = "http"` → 앱 재빌드(keychain 네이티브 모듈) → 회원가입 → 앱 껐다 켜서 자동 로그인 → 로그아웃 → 로그인
 - 머지됨: **05 친구** 13 목록·14 상세·15 첫마디 + 16 시안을 잘린 메시지 화면에 적용 → `feat/#30-friends` (PR #37)
