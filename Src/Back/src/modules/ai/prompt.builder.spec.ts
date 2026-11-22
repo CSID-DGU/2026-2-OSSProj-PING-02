@@ -1,4 +1,4 @@
-import { Relation } from './dto/ai-reply.dto';
+import { Relation, Stance } from './dto/ai-reply.dto';
 import { buildMessages, DECISION_LABELS, GENERAL_LABELS, labelsFor } from './prompt.builder';
 
 describe('prompt.builder', () => {
@@ -23,6 +23,28 @@ describe('prompt.builder', () => {
     expect(labelsFor(false)).toEqual(GENERAL_LABELS);
     expect(buildMessages(base)[1].content).toContain('수락 → 보류 → 거절');
     expect(buildMessages({ ...base, needsDecision: false })[1].content).toContain('짧게 → 다정하게 → 공손하게');
+  });
+
+  it.each([
+    [Stance.ACCEPT, '수락'],
+    [Stance.HOLD, '보류'],
+    [Stance.DECLINE, '거절'],
+  ])('입장(%s)을 정해 두면 그 입장을 유지하고 말투만 짧게·다정하게·공손하게로 쓰게 한다', (stance, name) => {
+    expect(labelsFor(true, stance)).toEqual(GENERAL_LABELS);
+    const user = buildMessages({ ...base, stance })[1].content;
+    expect(user).toContain(`'${name}' 입장으로 정했다`);
+    expect(user).toContain('짧게 → 다정하게 → 공손하게');
+    expect(user).toContain('입장을 바꾸지 않는다');
+    expect(user).not.toContain('수락 → 보류 → 거절');
+  });
+
+  it('입장을 정해도 관계에 따른 말투 규칙은 그대로다', () => {
+    const user = buildMessages({ ...base, relation: Relation.SUPERIOR, stance: Stance.DECLINE })[1].content;
+    expect(user).toContain('존댓말');
+  });
+
+  it('입장 없이 보내면 기존과 똑같은 프롬프트다 (기존 앱 요청 호환)', () => {
+    expect(buildMessages({ ...base, stance: undefined })).toEqual(buildMessages(base));
   });
 
   it('사용자 입력은 <message> 구분자 안에만 들어간다', () => {

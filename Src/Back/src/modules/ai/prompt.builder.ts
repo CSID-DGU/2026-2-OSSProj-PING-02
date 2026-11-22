@@ -1,4 +1,4 @@
-import { Relation } from './dto/ai-reply.dto';
+import { Relation, Stance } from './dto/ai-reply.dto';
 
 export interface ChatMessage {
   role: 'system' | 'user';
@@ -9,9 +9,17 @@ export interface ChatMessage {
 export const DECISION_LABELS = ['수락', '보류', '거절'] as const;
 export const GENERAL_LABELS = ['짧게', '다정하게', '공손하게'] as const;
 
-export function labelsFor(needsDecision: boolean): readonly string[] {
-  return needsDecision ? DECISION_LABELS : GENERAL_LABELS;
+/** 입장을 정해 두면(stance) 답장 3개는 그 입장 안에서 말투만 달라지므로 말투 라벨을 쓴다. */
+export function labelsFor(needsDecision: boolean, stance?: Stance): readonly string[] {
+  return needsDecision && !stance ? DECISION_LABELS : GENERAL_LABELS;
 }
+
+/** 사용자가 고른 입장의 이름과 뜻. 모델이 입장을 바꾸지 않도록 무엇을 해야 하는지까지 적는다. */
+const STANCE: Record<Stance, { name: string; meaning: string }> = {
+  [Stance.ACCEPT]: { name: '수락', meaning: '제안이나 부탁을 받아들인다' },
+  [Stance.HOLD]: { name: '보류', meaning: '지금 바로 정하지 않고, 확인한 뒤 알려 주겠다고 한다' },
+  [Stance.DECLINE]: { name: '거절', meaning: '부드럽고 정중하게 거절한다' },
+};
 
 /** 관계에 따라 코드가 말투를 정한다. 모델이 고르게 두지 않는다. */
 const SPEECH: Record<Relation, { name: string; rule: string }> = {
@@ -65,12 +73,18 @@ export function buildMessages(input: {
   text: string;
   relation: Relation;
   needsDecision: boolean;
+  stance?: Stance;
 }): ChatMessage[] {
   const speech = SPEECH[input.relation];
-  const labels = labelsFor(input.needsDecision);
-  const task = input.needsDecision
-    ? `이 메시지는 수락 또는 거절을 정해야 하는 내용이다. 답장 3개를 ${labels.join(' → ')} 순서로 쓴다. 각 답장은 그 입장만 분명히 밝힌다.`
-    : `이 메시지는 정해야 할 답이 없는 내용이다. 답장 3개를 ${labels.join(' → ')} 순서로 쓴다.`;
+  const labels = labelsFor(input.needsDecision, input.stance);
+  const chosen = input.needsDecision && input.stance ? STANCE[input.stance] : undefined;
+  const task = chosen
+    ? `이 메시지는 수락 또는 거절을 정해야 하는 내용이고, 사용자는 '${chosen.name}' 입장으로 정했다(${chosen.meaning}). ` +
+      `답장 3개 모두 '${chosen.name}' 입장을 분명히 밝히고, 말투만 ${labels.join(' → ')} 순서로 다르게 쓴다. ` +
+      '다른 입장을 섞거나 입장을 바꾸지 않는다.'
+    : input.needsDecision
+      ? `이 메시지는 수락 또는 거절을 정해야 하는 내용이다. 답장 3개를 ${labels.join(' → ')} 순서로 쓴다. 각 답장은 그 입장만 분명히 밝힌다.`
+      : `이 메시지는 정해야 할 답이 없는 내용이다. 답장 3개를 ${labels.join(' → ')} 순서로 쓴다.`;
 
   const user = [
     `보낸 사람과의 관계: ${speech.name}`,

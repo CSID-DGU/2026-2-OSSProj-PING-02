@@ -1,11 +1,18 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 /** 메시지를 보낸 사람과 나의 관계. 답장 말투(친구 반말, 윗사람 존댓말, 기관 격식)를 정한다. */
 export enum Relation {
   FRIEND = 'FRIEND',
   SUPERIOR = 'SUPERIOR',
   INSTITUTION = 'INSTITUTION',
+}
+
+/** 사용자가 이미 고른 입장. 보내면 그 입장을 유지한 채 말투만 다른 답장 3개를 만든다. */
+export enum Stance {
+  ACCEPT = 'ACCEPT',
+  HOLD = 'HOLD',
+  DECLINE = 'DECLINE',
 }
 
 /**
@@ -26,4 +33,12 @@ export class AiReplyDto {
   /** 초대·부탁처럼 수락/보류/거절을 정해야 하는 메시지인지. 아니면 짧게/다정하게/공손하게 답장을 만든다. */
   @IsBoolean()
   needsDecision: boolean;
+
+  /**
+   * 선택. 입장(수락·보류·거절)을 고른 뒤 말투를 바꿀 때 보낸다. needsDecision 이 true 일 때만 쓸 수 있다.
+   * 보내면 답장 3개 모두 이 입장을 유지하고, 짧게/다정하게/공손하게 말투만 다르게 만든다.
+   */
+  @IsOptional()
+  @IsEnum(Stance)
+  stance?: Stance;
 }
