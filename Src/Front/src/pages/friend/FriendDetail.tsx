@@ -13,7 +13,7 @@ import { formatBirthday, formatSince } from "@constants/friend";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useFocusLoad } from "@hooks/useFocusLoad";
 import { services, type Account } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "../contact/Contact_styled";
 
 // 05 / 14 친구 상세 (Figma: 관계 메모 · 마지막 대화 · 생일 · 첫마디 함께 찾기)
@@ -41,7 +41,7 @@ const mergeDescription = (
 
 const FriendDetail = () => {
   const navigation = useAuthNavigation();
-  const { params } = useRoute<RouteProp<RootStackParamList, "FriendDetail">>();
+  const { params } = useRoute<RouteProp<AppParamList, "FriendDetail">>();
   const { personId } = params;
 
   const load = useCallback(async () => {

@@ -29,6 +29,17 @@
 - Figma에 없는 상태(권한 거부·설정 복귀·로딩·오류·빈 상태)는 **부드러운 안내 상자(Notice) + 텍스트 버튼**으로
 - Figma와 다르게 간 부분은 코드에 `TODO(디자이너 공유)` / `TODO(Figma 문구 확인)`으로 남김
 
+## 화면 이동 구조 (#44)
+
+- Root stack(`routes/router.tsx`): 인증 / 온보딩 / `Home`(하단 탭) / 개발용. 타입은 `routes/types.ts`
+- `Home` = `@react-navigation/bottom-tabs`(7.21, JS만이라 네이티브 재빌드 불필요) + 기존 `TabBar` 디자인(`tabBar` 옵션). 탭 이름 = `MainTabKey`
+- **탭마다 스택**(`routes/tabStacks.tsx`): 그 탭 첫 화면(`HomeMain` 등) + 공통 상세 화면(연락·친구·`Notifications`). 상세는 **지금 있는 탭 안에** 쌓여서 탭바가 계속 보임
+- 새 상세 화면은 `TabStackParamList` + `createTabStack`에 추가. `RouteProp<AppParamList, "...">`
+- 목록으로 돌아가기는 `navigation.popToTop()` (예전 `popTo("Home")` 대신). 다른 탭으로: `navigate("Home", { screen: "contacts" })`. 로그아웃처럼 앱 전체를 바꿀 때는 `getRootNavigation(navigation).reset(...)`
+- 뒤로가기: 탭 안 스택 → 홈이 아닌 탭이면 홈 탭(`backBehavior="initialRoute"`) → 앱 종료. 선택된 탭을 다시 누르면 그 탭 첫 화면으로. 키보드가 올라오면 탭바 숨김
+- 앱바 오른쪽 🔔(`NotificationBell`): 탭 첫 화면(`TabScreen`)과 탭 안 `AuthLayout` 화면에 자동으로 붙음. 알림 센터는 자리만
+- 탭 안 `AuthLayout`은 아래 안전 영역을 빼고(탭바가 맡음) 버튼 아래 여백 12dp
+
 ## UX 원칙
 
 - 압박하지 않는 문구 ("N일째 답장 안 함" 금지, 미뤄도 괜찮다는 톤, 선택권 강조)

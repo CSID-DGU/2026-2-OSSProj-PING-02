@@ -2,7 +2,10 @@ import styled from "styled-components/native";
 import { Button } from "@core/ui/button";
 import TabScreen from "@components/main/TabScreen";
 import Notice from "@components/onboarding/Notice";
-import { useAuthNavigation } from "@hooks/useAuthNavigation";
+import {
+  getRootNavigation,
+  useAuthNavigation,
+} from "@hooks/useAuthNavigation";
 import { useSession } from "@stores/SessionProvider";
 import type { MainTabConfig } from "@constants/tabs";
 
@@ -18,7 +21,11 @@ const PlaceholderTab = ({ tab }: { tab: MainTabConfig }) => {
 
   const handleSignOut = async () => {
     await signOut().catch(() => {});
-    navigation.reset({ index: 0, routes: [{ name: "Splash" }] });
+    // 탭 안 스택이 아니라 맨 바깥 스택을 초기화해야 로그인 흐름으로 돌아감
+    getRootNavigation(navigation).reset({
+      index: 0,
+      routes: [{ name: "Splash" }],
+    });
   };
 
   return (

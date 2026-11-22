@@ -20,83 +20,19 @@ import ContactsSelect from "@pages/onboarding/ContactsSelect";
 import FriendsReady from "@pages/onboarding/FriendsReady";
 import AiMemory from "@pages/onboarding/AiMemory";
 import AiMemoryEdit from "@pages/onboarding/AiMemoryEdit";
-import type { MemoryCategory } from "@constants/onboarding";
 import OnboardingDone from "@pages/onboarding/OnboardingDone";
 import MainTabs from "@pages/main/MainTabs";
-import ConversationDetail from "@pages/contact/ConversationDetail";
-import ReplyStance from "@pages/contact/ReplyStance";
-import ReplyTone from "@pages/contact/ReplyTone";
-import ReplyGroup from "@pages/contact/ReplyGroup";
-import ReplyEdit from "@pages/contact/ReplyEdit";
-import ReplyDefer from "@pages/contact/ReplyDefer";
-import TruncatedMessage from "@pages/contact/TruncatedMessage";
-import FriendDetail from "@pages/friend/FriendDetail";
-import FirstWords from "@pages/friend/FirstWords";
-import type { MainTabKey } from "@constants/tabs";
-import type { ReplyStance as Stance, ReplyTone as Tone } from "@services";
 import Playground from "@pages/dev/Playground";
 import NotificationDebug from "@pages/dev/NotificationDebug";
+import type { RootStackParamList } from "./types";
 
-export type RootStackParamList = {
-  Splash: undefined;
-  AccountStart: undefined;
-  Login: undefined;
-  Signup: undefined;
-  // resend: 인증 전 계정으로 로그인했을 때 화면을 열면서 코드를 새로 보냄
-  EmailVerify: { email: string; resend?: boolean };
-  FindId: undefined;
-  FindPassword: undefined;
-  ServiceIntro: undefined;
-  PrivacyNotice: undefined;
-  NotificationAccess: undefined;
-  LinkedApps: undefined;
-  ModelDownload: undefined;
-  NotificationTypes: undefined;
-  BatteryOptimization: undefined;
-  ContactsImport: undefined;
-  ContactsSelect: undefined;
-  FriendsReady: undefined;
-  AiMemory: undefined;
-  // 11의 상세 작성 화면 (온보딩 단계가 아니라 11에서 열고 닫는 화면)
-  AiMemoryEdit: { category: MemoryCategory };
-  OnboardingDone: undefined;
-  // 메인(하단 탭). tab을 주면 그 탭을 열어 줌
-  Home: { tab?: MainTabKey } | undefined;
-  // 04 연락
-  // 08 1:1 연락 상세
-  ConversationDetail: { conversationId: string };
-  // 09-A 입장 고르기 / 09-B 말투 고르기 / 09-C 단톡·정보 요약 (단톡 카드는 08 없이 바로)
-  ReplyStance: { conversationId: string };
-  ReplyTone: { conversationId: string };
-  ReplyGroup: { conversationId: string };
-  // 10 답장 다듬기. tone이 없으면 직접 쓰기(말투 조절 없음)
-  // personId: 05 / 15 첫마디에서 온 경우 (대화 없이 친구에게 먼저 보냄, 바로 보내기·나중에 답하기 없음)
-  ReplyEdit:
-    | {
-        conversationId: string;
-        text: string;
-        tone?: Tone;
-        stance?: Stance;
-      }
-    | { personId: string; text: string };
-  // 11 나중에 답하기
-  ReplyDefer: { conversationId: string };
-  // 08 "메시지가 잘린 상태 보기" (시안 없음)
-  TruncatedMessage: { conversationId: string };
-  // 05 친구
-  // 14 친구 상세 / 15 첫마디 제안
-  FriendDetail: { personId: string };
-  FirstWords: { personId: string };
-  Playground: undefined;
-  NotificationDebug: undefined;
-};
-
-// useNavigation()에서 화면 이름 자동완성
-declare global {
-  namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList {}
-  }
-}
+// 화면 이름·파라미터 타입은 ./types (탭 안 상세 화면 포함)
+export type {
+  AppParamList,
+  MainTabParamList,
+  RootStackParamList,
+  TabStackParamList,
+} from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -133,21 +69,8 @@ const Router = () => {
       <Stack.Screen name="AiMemoryEdit" component={AiMemoryEdit} />
       <Stack.Screen name="OnboardingDone" component={OnboardingDone} />
 
-      {/* Main */}
+      {/* Main: 하단 탭 + 탭마다 스택 (연락·친구 상세 화면은 routes/tabStacks) */}
       <Stack.Screen name="Home" component={MainTabs} />
-
-      {/* Contact (04 연락) */}
-      <Stack.Screen name="ConversationDetail" component={ConversationDetail} />
-      <Stack.Screen name="ReplyStance" component={ReplyStance} />
-      <Stack.Screen name="ReplyTone" component={ReplyTone} />
-      <Stack.Screen name="ReplyGroup" component={ReplyGroup} />
-      <Stack.Screen name="ReplyEdit" component={ReplyEdit} />
-      <Stack.Screen name="ReplyDefer" component={ReplyDefer} />
-      <Stack.Screen name="TruncatedMessage" component={TruncatedMessage} />
-
-      {/* Friend (05 친구) */}
-      <Stack.Screen name="FriendDetail" component={FriendDetail} />
-      <Stack.Screen name="FirstWords" component={FirstWords} />
 
       {/* Dev (개발용 테스트 화면) */}
       <Stack.Screen name="Playground" component={Playground} />

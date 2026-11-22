@@ -8,7 +8,7 @@ import RadioCard from "@components/contact/RadioCard";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useLoad } from "@hooks/useLoad";
 import { services } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "../contact/Contact_styled";
 
 // 05 / 15 첫마디 제안: 다시 연락할 때 부담 없는 안부 한마디
@@ -17,7 +17,7 @@ import * as s from "../contact/Contact_styled";
 // TODO(디자이너 공유): 시안에 없는 "직접 쓰기" 버튼 추가 (09와 같은 구성)
 const FirstWords = () => {
   const navigation = useAuthNavigation();
-  const { params } = useRoute<RouteProp<RootStackParamList, "FirstWords">>();
+  const { params } = useRoute<RouteProp<AppParamList, "FirstWords">>();
   const { personId } = params;
   const [selected, setSelected] = useState<string>();
 

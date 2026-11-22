@@ -21,7 +21,7 @@ import {
   type MessengerApp,
   type ReplyTone,
 } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 04 / 10 답장 수정·말투 조절 (05 / 15 첫마디도 이 화면에서 다듬음)
@@ -34,7 +34,7 @@ type SendState = "idle" | "copied" | "sending" | "unavailable" | "error";
 
 const ReplyEdit = () => {
   const navigation = useAuthNavigation();
-  const { params } = useRoute<RouteProp<RootStackParamList, "ReplyEdit">>();
+  const { params } = useRoute<RouteProp<AppParamList, "ReplyEdit">>();
   const conversationId =
     "conversationId" in params ? params.conversationId : undefined;
   const personId = "personId" in params ? params.personId : undefined;
@@ -130,7 +130,7 @@ const ReplyEdit = () => {
         navigation.popTo("FriendDetail", { personId });
       } else {
         await services.conversation.markReplied(conversationId!);
-        navigation.popTo("Home");
+        navigation.popToTop();
       }
     } catch {
       setSendState("error");
@@ -144,7 +144,7 @@ const ReplyEdit = () => {
     try {
       await services.messenger.sendReply(conversationId, text.trim());
       await services.conversation.markReplied(conversationId);
-      navigation.popTo("Home");
+      navigation.popToTop();
     } catch (error) {
       setSendState(
         getErrorCode(error) === CONVERSATION_ERROR_CODE.replyUnavailable
