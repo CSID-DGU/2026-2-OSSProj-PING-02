@@ -15,7 +15,7 @@ import {
 
 // Figma: 05 연락 Screens D03 "날짜와 시간 직접 선택", Local/Calendar Day(Default·Empty·Selected)
 // 월 제목 18 Bold · 요일 13 보조색 · 날짜 15 · 선택은 지름 36dp 노란 원 + 굵은 글씨
-// 칸 높이: 시안은 약 40dp지만 터치 영역 48dp를 위해 48dp
+// 날짜 칸: 높이 32→48dp (시안 가로 40 × 세로 32). 터치 영역 48dp를 위해 높이만 늘림, 가로는 7칸 균등(flex)
 export interface CalendarProps {
   value?: Date | null;
   onChange: (date: Date) => void;
