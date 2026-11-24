@@ -7,6 +7,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.malssiat.notification.data.MonitoredAppsStore
 import com.malssiat.notification.data.NotificationDatabase
+import com.malssiat.notification.data.NotificationRetention
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +27,7 @@ class MessageNotificationListener : NotificationListenerService() {
     private val appNameCache = ConcurrentHashMap<String, String>()
 
     private val monitoredApps by lazy { MonitoredAppsStore(this) }
+    private val retention by lazy { NotificationRetention(this) }
     private val dao by lazy { NotificationDatabase.get(this).notificationDao() }
 
     override fun onListenerConnected() {
@@ -49,13 +51,17 @@ class MessageNotificationListener : NotificationListenerService() {
         if (!monitoredApps.isMonitored(sbn.packageName)) return
 
         val shortcut = conversationShortcutOf(sbn)
+        // 보관 기간보다 오래된 메시지(알림창에 오래 남아 있던 알림 등)는 저장하지 않는다.
         val items = NotificationParser.parse(sbn, appNameOf(sbn.packageName), shortcut?.label)
+            .filterNot { retention.isExpired(it.messageTime) }
         if (items.isEmpty()) return
 
         scope.launch {
             runCatching { dao.insertAll(items).count { it != -1L } }
                 .onSuccess { saved -> if (saved > 0) Log.d(TAG, "${sbn.packageName}: ${saved}건 저장") }
                 .onFailure { Log.e(TAG, "알림 저장 실패", it) }
+            runCatching { retention.purgeIfDue(dao) }
+                .onFailure { Log.e(TAG, "보관 기간 정리 실패", it) }
         }
     }
 
