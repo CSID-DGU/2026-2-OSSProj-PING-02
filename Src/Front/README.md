@@ -195,7 +195,10 @@ Front/
 - **DB 암호화 (SQLCipher):** DB 파일 전체가 암호화돼 있어 앱 파일을 복사해도 읽을 수 없습니다.
   - 암호는 기기에서 만든 무작위 값이고, Android Keystore 키로 감싸서 보관합니다 (`data/DatabasePassphrase.kt`).
   - 암호화 전 빌드로 쌓인 평문 DB는 처음 열 때 암호화 DB로 옮깁니다. 메시지와 DB 버전은 그대로이고, 행 수를 비교해 같을 때만 원본을 지웁니다. 옮기다 실패하면 원본은 그대로 두고 다음에 다시 시도합니다 (`data/DatabaseEncryption.kt`).
-  - 암호를 풀 수 없거나 DB가 그 암호로 열리지 않으면, 읽을 수 없는 DB이므로 지우고 새로 시작합니다. 알림창에 남아 있는 알림은 다시 저장됩니다.
+  - **다시는 열 수 없는 것이 확실할 때만** DB를 지우고 새로 시작합니다. 알림창에 남아 있는 알림은 다시 저장됩니다.
+    - 암호: Keystore 키가 아예 없음, `KeyPermanentlyInvalidatedException`, `AEADBadTagException`, 저장된 암호 형식 손상
+    - DB: `SQLITE_NOTADB`(암호가 다름)·`SQLITE_CORRUPT`(손상)
+  - 그 밖의 실패(부팅 직후 Keystore 미준비, 일시적인 Keystore 오류, 메모리 부족, 파일 잠김 등)는 DB를 지우지 않습니다. 그때는 DB를 열지 않고(알림 저장 실패로 기록) 다음 알림이나 다음 조회 때 다시 시도합니다.
   - 에뮬레이터에서 DB 내용을 보려면 `NotificationDebug` 화면을 쓰세요. `adb`로 꺼낸 파일은 `sqlite3`로 열리지 않습니다.
 - **보관 기간:** 메시지 시각이 보관 기간(기본 30일)보다 오래되면 지웁니다 (`data/NotificationRetention.kt`).
   - 새 알림을 저장할 때와 JS에서 메시지를 읽을 때 정리하고, 실제 삭제는 1시간에 한 번만 합니다.
