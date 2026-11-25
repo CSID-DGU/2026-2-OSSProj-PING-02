@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -37,10 +38,21 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-const { auth, tokens } = services;
+const { auth, tokens, userStorage } = services;
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<SessionState>({ status: "loading" });
+  const [session, setSessionState] = useState<SessionState>({
+    status: "loading",
+  });
+  const sessionRef = useRef(session);
+
+  // 세션을 바꿀 때 사용자별 저장소(연락 상태·AI 답장)의 사용자도 같이 바꿈
+  // 화면보다 먼저 바꿔야 해서 effect가 아니라 여기서 바로 (자식 화면의 effect가 먼저 돌기 때문)
+  const setSession = useCallback((next: SessionState) => {
+    sessionRef.current = next;
+    userStorage.setUserId(next.status === "signedIn" ? next.user.id : null);
+    setSessionState(next);
+  }, []);
 
   // 토큰이 지워지면 로그인 화면으로 (로그아웃·갱신 실패 모두)
   useEffect(
@@ -48,7 +60,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       tokens.subscribe(next => {
         if (!next) setSession({ status: "signedOut" });
       }),
-    []
+    [setSession]
   );
 
   // 앱 시작: 저장된 토큰으로 세션 복구
@@ -56,8 +68,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     let alive = true;
     // 복구 중에 직접 로그인하면(지금 화면 구성에선 없음) 그 결과를 덮어쓰지 않음
     const settle = (next: SessionState) => {
-      if (alive) {
-        setSession(cur => (cur.status === "loading" ? next : cur));
+      if (alive && sessionRef.current.status === "loading") {
+        setSession(next);
       }
     };
     (async () => {
@@ -77,12 +89,15 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [setSession]);
 
-  const signIn = useCallback(async (result: AuthResult) => {
-    tokens.set(result.tokens);
-    setSession({ status: "signedIn", user: result.user });
-  }, []);
+  const signIn = useCallback(
+    async (result: AuthResult) => {
+      tokens.set(result.tokens);
+      setSession({ status: "signedIn", user: result.user });
+    },
+    [setSession]
+  );
 
   const signOut = useCallback(async () => {
     const current = tokens.get();
@@ -95,7 +110,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       tokens.set(null);
     }
-  }, []);
+  }, [setSession]);
 
   const value = useMemo(
     () => ({ session, signIn, signOut }),

@@ -2,7 +2,7 @@ import type { KeyValueStorage } from "../storage/KeyValueStorage";
 import type { AiReplyCandidate, Relation } from "./AiReplyService";
 
 // AI 답장 결과를 기기에만 저장 (서버는 저장하지 않음)
-// TODO(네이티브 연결): 지금은 KeyValueStorage(mock은 메모리)에 대화방별 JSON으로 둠.
+// TODO(네이티브 연결): 지금은 KeyValueStorage(services.userStorage: 사용자별 암호화 저장소)에 대화방별 JSON으로 둠.
 //   암호화된 로컬 DB(Room + SQLCipher)가 준비되면 같은 인터페이스로 바꿔 끼움
 
 /** 원래 값으로 되돌린 결과. 마스킹 대응표(mapping)는 저장하지 않음 */

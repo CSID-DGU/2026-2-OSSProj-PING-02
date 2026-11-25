@@ -20,7 +20,8 @@ import {
   type MockPermissionScenario,
 } from "./permission/mockPermissionService";
 import { createKeychainStorage } from "./storage/keychainStorage";
-import { createMemoryStorage } from "./storage/memoryStorage";
+import { createSecureKeyValueStorage } from "./storage/secureKeyValueStorage";
+import { createUserScopedStorage } from "./storage/userScopedStorage";
 import { createMockAiReplyService } from "./ai/AiReplyService";
 import { createKeyValueAiReplyStore } from "./ai/AiReplyStore";
 import { createDeviceConversationService } from "./conversation/deviceConversationService";
@@ -44,18 +45,21 @@ const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 // 화면만 작업하면서 예시 대화를 보고 싶으면 false로 바꿈 (커밋 전에 되돌리기)
 const USE_DEVICE_CONVERSATIONS = true;
 
-// 기기 저장소 (mock은 메모리). AI 답장 결과도 같은 저장소에 둠
-const storage = createMemoryStorage();
+// 기기 저장소: 암호화 저장소라 앱을 껐다 켜도 남음. mock과 실서버 데이터가 섞이지 않게 모드별로 따로
+// - storage: 온보딩 진행 상황 (키에 사용자 id를 직접 붙여 씀, OnboardingProvider)
+// - userStorage: 연락 상태·AI 답장 결과 (로그인한 사용자별로 자동으로 나눔, SessionProvider가 사용자 지정)
+const storage = createSecureKeyValueStorage(`malssiat.kv.${API_CONFIG.mode}`);
+const userStorage = createUserScopedStorage(storage);
 const network = createMockNetworkService();
 // AI 답장 (백엔드 PR #36 POST /v1/ai/reply). 서버 연결 시 createHttpAiReplyService로 교체
 const ai = createMockAiReplyService();
-const aiReplies = createKeyValueAiReplyStore(storage);
+const aiReplies = createKeyValueAiReplyStore(userStorage);
 
 const conversation =
   USE_DEVICE_CONVERSATIONS && isNotificationStoreAvailable()
     ? createDeviceConversationService({
         source: NotificationStore,
-        storage,
+        storage: userStorage,
         ai,
         aiReplies,
         network,
@@ -93,6 +97,7 @@ export const services = {
   // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
   friends: createMockFriendService(),
   storage,
+  userStorage,
   ai,
   aiReplies,
 };
@@ -126,6 +131,7 @@ export * from "./conversation/types";
 export * from "./conversation/ConversationService";
 export * from "./friend/FriendService";
 export * from "./storage/KeyValueStorage";
+export * from "./storage/userScopedStorage";
 export * from "./ai/AiReplyService";
 export * from "./ai/AiReplyStore";
 export * from "./ai/classifyMessage";

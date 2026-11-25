@@ -48,7 +48,11 @@
   - 목록 분석(질문·멘션·답장 필요)은 기기 안 규칙만. **AI는 대화방을 열 때 그 방 하나만 한 번** 부르고 결과를 저장해 답장 화면에서 다시 씀. 기관·번호 발신자, 안내 문구(`isPlaceholder`)만 있는 대화는 보내지 않음
   - 기기에 데이터를 쌓으려면 개발용 `NotificationDebug` 화면에서 알림 접근 허용 + 수집 앱 선택
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
-- mock 저장소는 메모리라 앱을 완전히 끄면 진행 상황·mock 회원이 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
+- **기기 저장소 (앱을 껐다 켜도 남음)**: `services.storage`는 keychain 암호화 저장소(`storage/secureKeyValueStorage.ts`, 키마다 한 칸, 모드별 `malssiat.kv.mock|http.<키>`). 새 패키지·네이티브 빌드 없음
+  - 온보딩 진행 상황·선택 값(연동 앱·받을 알림·친구·AI 메모리): `services.storage`에 사용자 id를 붙인 키 (`OnboardingProvider`)
+  - 연락 상태(답장함·확인함·나중에 답하기)·AI 답장 결과: `services.userStorage`(사용자별로 나눔). `SessionProvider`가 세션을 바꿀 때 `setUserId`로 사용자를 지정, 로그인 전·로그아웃 뒤에는 읽어도 없고 쓰기는 버림
+  - 로그아웃해도 지우지 않음 (같은 계정으로 다시 로그인하면 이어서 씀)
+- mock 회원·친구 편집 등 mock 서비스 안의 데이터는 여전히 메모리라 앱을 완전히 끄면 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
 - AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계·결정 여부 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. 지금 `services.ai`는 mock
 
@@ -91,7 +95,7 @@
 - 권한·연락처·모델 다운로드·클립보드·메신저 열기·바로 답장: Kotlin 모듈로 교체
 - 연락: `MessengerService`(복사·앱 열기·`canReplyDirectly`·`sendReply`), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
 - 친구: `services.friends`(`FriendService`)를 기기 안 암호화 DB의 person·account로 교체, 15 첫마디 후보는 가린 메모로 외부 AI
-- 저장소: 온보딩 진행 상황·AI 답장 결과는 AsyncStorage/암호화 저장소(지금 메모리 `services.storage`), 친구 목록은 기기 안 암호화 DB (로그인 토큰은 keychain 완료)
+- 저장소: 친구 목록·대화 상태가 커지면 기기 안 암호화 DB로 (로그인 토큰·온보딩·연락 상태·AI 답장은 keychain 완료)
 
 ## 다음 작업
 
