@@ -10,4 +10,7 @@ export {
   FriendsIcon,
   CalendarIcon,
   SettingsIcon,
+  GroupChatIcon,
+  ClipboardIcon,
+  PersonAddIcon,
 } from "./Icon";

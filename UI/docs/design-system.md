@@ -180,6 +180,15 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 | `Caption/Small` | Pretendard Regular | `11/16` | 약관·주의·하단 안내 |
 | `Caption/XSmall` | Pretendard Regular | `10/14` | 상태·아주 작은 보조 정보 |
 
+#53 홈 시안에서 추가한 스타일 (코드 토큰 이름, `src/core/styles/fonts.ts`)
+
+| 코드 토큰 | 서체·굵기 | 크기/행간 | 사용처 |
+|---|---|---:|---|
+| `brandHomeLogo` | 조선굴림체 Regular | `20/20` | 홈 앱바 "말씨앗" (Figma: Brand/Accent를 20/20으로 사용) |
+| `titleCardSmall` | Pretendard Bold | `13/19` | 홈 빠른 기능 카드 제목 |
+| `labelTab` | Pretendard Medium | `11/16` | 하단 탭 글자 (선택·기본 같은 굵기) |
+| `captionCard` | Pretendard Regular | `10/16` | 홈 연락 카드 요약 |
+
 - 화면에서는 `__Source/*`가 아니라 위의 역할 기반 스타일을 적용합니다.
 - `__Source/*`는 로컬 폰트 연결을 확인하기 위한 내부 소스 스타일이므로 실제 UI에 사용하지 않습니다.
 - `01-4-1 / 아이디 찾기`의 기존 폰트 표기는 이번 정리 범위에서 제외합니다.

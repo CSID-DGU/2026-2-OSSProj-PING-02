@@ -3,7 +3,7 @@ import { MAIN_TABS, type MainTabKey } from "@constants/tabs";
 
 // 하단 탭바 (Figma 00 하단탭바 / 04 홈 C01 화면 기준, 2x PNG ÷ 2)
 // 360×80: 위 선 1 · 위 여백 15 · 아이콘 알약 40×28 · 간격 4 · 글자 16 · 아래 여백 16
-// 선택: 아이콘 뒤 노란 알약 + 진한 아이콘(_active) + 굵은 진한 글자 (색만으로 구분하지 않음)
+// 선택: 아이콘 뒤 노란 알약 + 진한 아이콘(_active) + 진한 글자 (색만으로 구분하지 않음)
 interface TabBarProps {
   current: MainTabKey;
   onChange: (key: MainTabKey) => void;
@@ -69,11 +69,11 @@ const Pill = styled.View<{ $selected: boolean }>`
     $selected ? theme.colors.stateSelectedBg : "transparent"};
 `;
 
-// 글자 11 (선택 SemiBold·stateSelectedContent / 기본 Regular·textTertiary)
+// 글자 Medium 11/16 (굵기는 같고 색만 다름: 선택 stateSelectedContent / 기본 textTertiary)
+// 선택 상태는 알약 배경 + 아이콘 색 + 글자 색으로 함께 표시
 const Label = styled.Text<{ $selected: boolean }>`
   margin-top: 4px;
-  ${({ theme, $selected }) =>
-    $selected ? theme.fonts.labelCompact : theme.fonts.captionSmall};
+  ${({ theme }) => theme.fonts.labelTab};
   color: ${({ theme, $selected }) =>
     $selected ? theme.colors.stateSelectedContent : theme.colors.textTertiary};
 `;
