@@ -144,6 +144,32 @@ describe("UnderlineTabs", () => {
 });
 
 describe("Calendar", () => {
+  // 실제 오늘이 시험 날짜와 겹치면 라벨에 ", 오늘"이 붙으므로 오늘을 고정 (Date만 가짜로)
+  beforeEach(() => {
+    jest.useFakeTimers({
+      now: new Date(2026, 0, 15),
+      doNotFake: [
+        "hrtime",
+        "nextTick",
+        "performance",
+        "queueMicrotask",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "requestIdleCallback",
+        "cancelIdleCallback",
+        "setImmediate",
+        "clearImmediate",
+        "setInterval",
+        "clearInterval",
+        "setTimeout",
+        "clearTimeout",
+      ],
+    });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   test("날짜를 고르고 달을 넘기며, 범위 밖 날짜는 누를 수 없다", async () => {
     const onChange = jest.fn();
     const { root, unmount } = await render(

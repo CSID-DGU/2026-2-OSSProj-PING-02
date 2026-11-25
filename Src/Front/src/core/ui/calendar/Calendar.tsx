@@ -14,8 +14,9 @@ import {
 } from "./dateUtils";
 
 // Figma: 05 연락 Screens D03 "날짜와 시간 직접 선택", Local/Calendar Day(Default·Empty·Selected)
-// 월 제목 18 Bold · 요일 13 보조색 · 날짜 15 · 선택은 지름 36dp 노란 원 + 굵은 글씨
-// 날짜 칸: 높이 32→48dp (시안 가로 40 × 세로 32). 터치 영역 48dp를 위해 높이만 늘림, 가로는 7칸 균등(flex)
+// 월 제목 18 Bold · 요일 13 보조색 · 날짜 15 · 선택은 지름 32dp 노란 원 + 굵은 글씨
+// 날짜 칸: 시안대로 세로 32 (시안 가로 40, 여기선 7칸 균등 flex)
+// 터치 영역은 옆 칸과 겹치지 않는 만큼만: 가로는 칸 폭 전체, 세로는 줄 간격 절반씩(hitSlop) → 약 36dp
 export interface CalendarProps {
   value?: Date | null;
   onChange: (date: Date) => void;
@@ -85,7 +86,7 @@ export const Calendar = ({
       {weeks.map((week, i) => (
         <Week key={i}>
           {week.map((day, j) => {
-            if (!day) return <Cell key={`empty-${j}`} $height={48} />;
+            if (!day) return <Cell key={`empty-${j}`} $height={DAY_HEIGHT} />;
             const selected = isSameDay(day, value);
             const isToday = isSameDay(day, today);
             const disabled = (!!min && day < min) || (!!max && day > max);
@@ -93,6 +94,7 @@ export const Calendar = ({
               <DayButton
                 key={day.getDate()}
                 onPress={() => onChange(day)}
+                hitSlop={DAY_HIT_SLOP}
                 disabled={disabled}
                 accessibilityRole="button"
                 accessibilityLabel={`${formatDate(day, { withYear: true })}${
@@ -118,8 +120,13 @@ export const Calendar = ({
   );
 };
 
+const ROW_GAP = 4;
+const DAY_HEIGHT = 32;
+// 위아래 줄과 겹치지 않게 줄 간격의 절반씩만
+const DAY_HIT_SLOP = { top: ROW_GAP / 2, bottom: ROW_GAP / 2 };
+
 const Wrapper = styled.View`
-  gap: 4px;
+  gap: ${ROW_GAP}px;
 `;
 
 const MonthRow = styled.View`
@@ -160,15 +167,15 @@ const WeekdayLabel = styled.Text`
 
 const DayButton = styled.Pressable`
   flex: 1;
-  height: 48px;
+  height: ${DAY_HEIGHT}px;
   justify-content: center;
   align-items: center;
 `;
 
 const DayCircle = styled.View<{ $selected: boolean }>`
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
+  width: ${DAY_HEIGHT}px;
+  height: ${DAY_HEIGHT}px;
+  border-radius: ${DAY_HEIGHT / 2}px;
   justify-content: center;
   align-items: center;
   background-color: ${({ theme, $selected }) =>
