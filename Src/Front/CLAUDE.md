@@ -35,7 +35,7 @@
 - **기존** `src/core` 컴포넌트는 최소한으로만 수정. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 아이콘 등록
 - #44에서 추가: `BottomSheet`·`BottomSheetActions`(sheet), `Toast`·`ToastProvider`·`useToast`(toast, App에 Provider 있음), `Switch`·`SwitchRow`(switch), `UnderlineTabs`(tabs, `scrollable`), `Calendar`·`TimeSelect`·`DateTimeSheet`·날짜 도우미(calendar, 패키지 없이 구현), `FooterLayout`(layout, 목록 + 아래 고정 버튼), 아이콘 `ChevronRightIcon`·`BellIcon`
 - 아이콘: `UI/assets/icons/ui` SVG를 `@core/ui/icon`에 등록해서 사용
-- 토큰에 없는 Figma 색은 가장 가까운 기존 토큰을 쓰고 차이를 보고 (새 토큰 추가 금지)
+- 토큰에 없는 Figma 색은 쓰기 전에 "시안 색 / 가장 가까운 토큰" 후보를 보여주고 물어봄 (새 토큰 추가 금지)
 
 ## Figma 사용법
 
@@ -46,8 +46,8 @@
 - Figma 시안은 각자 PC에서 내보내서 `docs/figma/<영역>/*.png`(gitignore)에 넣어 사용. 이름은 `번호_이름.png`
 - 한 페이지에 여러 버전이 있으면 **초록 배경 프레임이 최종본**
 - PNG는 2x(720×1600) → **수치를 2로 나눠** dp로 읽기
-- Figma에 없는 상태(권한 거부·설정 복귀·로딩·오류·빈 상태)는 **부드러운 안내 상자(Notice) + 텍스트 버튼**으로
-- Figma와 다르게 간 부분은 코드에 `TODO(디자이너 공유)` / `TODO(Figma 문구 확인)`으로 남김
+- Figma에 없는 상태(권한 거부·설정 복귀·로딩·오류·빈 상태)는 먼저 제안하고 물어본 뒤, 확인받으면 **부드러운 안내 상자(Notice) + 텍스트 버튼**으로
+- Figma와 다르게 가야 하면 만들기 전에 먼저 물어봄. 확인받고 다르게 만든 곳만 코드에 `TODO(디자이너 공유)` / `TODO(Figma 문구 확인)`으로 남김
 
 ## 화면 이동 구조 (#44)
 
@@ -66,7 +66,7 @@
 - **자동 전송 없음**. 바로 보내기는 **확인 팝업 필수**
 - 터치 영역 48dp 이상, 접근성 라벨, 선택·오류 상태는 색만으로 구분하지 않음
 - 보이는 뒤로가기(온보딩도 왼쪽 위 화살표) + 안드로이드 뒤로가기가 같은 동작
-- 상태는 화면마다: 로딩 / 빈 상태 / 오류 / 정상 (+ AI 분석 중·모델 미준비·분석 실패)
+- 상태(로딩 / 빈 상태 / 오류 / AI 분석 중·모델 미준비·분석 실패)는 시안에 있으면 그대로, 없으면 필요한지 먼저 물어봄
 
 ## 데이터
 
