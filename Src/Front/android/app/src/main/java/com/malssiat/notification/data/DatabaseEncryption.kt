@@ -1,7 +1,10 @@
 package com.malssiat.notification.data
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabaseCorruptException
+import android.database.sqlite.SQLiteException
 import android.util.Log
+import net.zetetic.database.DatabaseErrorHandler
 import net.zetetic.database.sqlcipher.SQLiteDatabase
 import java.io.File
 
@@ -12,8 +15,12 @@ import java.io.File
  * - SQLCipher 네이티브 라이브러리를 불러온다.
  * - 암호화 전에 만든 평문 DB(v6까지)가 있으면 같은 내용으로 암호화한 DB로 바꾼다 (메시지 유지).
  *   바꾸다 실패하면 원본을 지우지 않고 예외를 던진다 (다음에 DB를 열 때 다시 시도).
- * - 암호를 풀 수 없거나 DB가 이 암호로 열리지 않으면, 읽을 수 없는 DB이므로 지우고 새로 시작한다.
- *   (대화 원문은 기기에만 있으므로 복구할 곳이 없다. 알림은 앞으로 오는 것부터 다시 쌓인다)
+ * - **다시는 열 수 없는 것이 확실할 때만** DB를 지우고 새로 시작한다.
+ *   - 저장된 암호를 다시는 풀 수 없음 ([DatabasePassphrase.KeyLostException]: 키 없음·영구 무효·AEADBadTag·저장값 손상)
+ *   - DB가 이 암호의 DB가 아니거나 손상됨 ([isUnreadableDatabase]: SQLITE_NOTADB, SQLITE_CORRUPT)
+ *   (대화 원문은 기기에만 있으므로 복구할 곳이 없다. 알림창에 남은 알림부터 다시 쌓인다)
+ * - 그 밖의 실패(부팅 직후 Keystore 미준비, 메모리 부족, 파일 잠김 등)는 일시적일 수 있으므로 DB를 지우지 않고 예외를 던진다.
+ *   NotificationDatabase.get이 실패하고, 다음에 DB를 열 때(다음 알림, 다음 화면 조회) 다시 시도한다.
  */
 object DatabaseEncryption {
 
@@ -42,10 +49,11 @@ object DatabaseEncryption {
 
         val passphrase = try {
             passphraseStore.getOrCreate()
-        } catch (e: DatabasePassphrase.KeyUnavailableException) {
-            Log.w(TAG, "DB 암호를 풀 수 없어 저장된 메시지를 지우고 새로 시작합니다.", e)
-            deleteDatabaseFiles(file)
+        } catch (e: DatabasePassphrase.KeyLostException) {
+            // 옛 암호로 잠긴 DB는 읽을 수 없으므로 지운다. 아직 평문 DB면 새 암호로 암호화하면 되므로 남긴다.
+            Log.w(TAG, "DB 암호를 다시 풀 수 없어 새 암호를 만듭니다.", e)
             passphraseStore.reset()
+            if (file.exists() && !isPlaintext(file)) deleteDatabaseFiles(file)
             passphraseStore.getOrCreate()
         }
 
@@ -54,7 +62,7 @@ object DatabaseEncryption {
             file.length() == 0L -> deleteDatabaseFiles(file)
             isPlaintext(file) -> encryptPlaintext(file, passphrase)
             !canOpen(file, passphrase) -> {
-                Log.w(TAG, "DB가 지금 암호로 열리지 않아 지우고 새로 시작합니다.")
+                Log.w(TAG, "DB가 지금 암호로 열리지 않아(SQLITE_NOTADB/CORRUPT) 지우고 새로 시작합니다.")
                 deleteDatabaseFiles(file)
             }
         }
@@ -155,16 +163,39 @@ object DatabaseEncryption {
         if (!file.exists()) encrypted.renameTo(file) else encrypted.delete()
     }
 
-    private fun canOpen(file: File, passphrase: ByteArray): Boolean = runCatching {
+    /**
+     * 이 암호로 열리면 true, 이 암호의 DB가 아니거나 손상됐으면 false.
+     * 그 밖의 실패(메모리 부족, 파일 잠김·권한 등)는 일시적일 수 있으므로 그대로 던진다.
+     */
+    private fun canOpen(file: File, passphrase: ByteArray): Boolean = try {
+        // 손상으로 판단될 때 라이브러리 기본 처리(파일 삭제)가 먼저 돌지 않게 아무것도 하지 않는 처리기를 넘긴다
         val db = SQLiteDatabase.openDatabase(
-            file.path, passphrase, null, SQLiteDatabase.OPEN_READONLY, null, null,
+            file.path, passphrase, null, SQLiteDatabase.OPEN_READONLY, KEEP_FILE_ON_CORRUPTION, null,
         )
         try {
             db.version // 첫 페이지를 복호화해야 읽히므로 암호가 틀리면 여기서 실패한다
         } finally {
             db.close()
         }
-    }.isSuccess
+        true
+    } catch (e: SQLiteException) {
+        if (isUnreadableDatabase(e)) false else throw e
+    }
+
+    /**
+     * 다시 열어도 읽을 수 없는 DB인지: SQLITE_NOTADB(26, 암호가 다르거나 DB 파일이 아님)와 SQLITE_CORRUPT(11)만.
+     * 보통 SQLiteDatabaseCorruptException으로 오지만, 일반 SQLiteException에 코드만 담겨 올 때도 있어 메시지도 본다.
+     */
+    fun isUnreadableDatabase(e: SQLiteException): Boolean {
+        if (e is SQLiteDatabaseCorruptException) return true
+        val message = e.message ?: return false
+        return UNREADABLE_MESSAGE.containsMatchIn(message)
+    }
+
+    private val KEEP_FILE_ON_CORRUPTION = DatabaseErrorHandler { _, _ -> }
+
+    private val UNREADABLE_MESSAGE =
+        Regex("""\(code (11|26)\b|SQLITE_NOTADB|SQLITE_CORRUPT|file is not a database|database disk image is malformed""")
 
     private fun encryptingFileOf(file: File) = File(file.path + ENCRYPTING_SUFFIX)
 
