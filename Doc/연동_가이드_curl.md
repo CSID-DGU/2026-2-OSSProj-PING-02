@@ -128,6 +128,31 @@ curl -s "$BASE/users/me" -H "Authorization: Bearer $ACCESS"
 응답 200 `{ id, username, name, email, birthdate, gender, provider, createdAt, termsAgreements }`
 토큰이 없거나 만료되었으면 401 `UNAUTHORIZED`.
 
+### 2.7-1 내 정보 수정·비밀번호 변경 (#62, 자세한 규칙은 `API_목록.md` 4.8-1 ~ 4.8-3)
+
+```bash
+# 비밀번호 확인 (화면 흐름용) → 204
+curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/users/me/password/verify" \
+  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d "{\"password\":\"$PW\"}"
+
+# 내 정보 수정 (보낸 항목만) → 200, GET /users/me 와 같은 형태
+curl -s -X PATCH "$BASE/users/me" \
+  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d "{\"password\":\"$PW\",\"gender\":\"FEMALE\"}"
+
+# 비밀번호 변경 → 204. 지금 기기는 유지, 다른 기기는 로그아웃
+curl -s -o /dev/null -w "%{http_code}\n" -X PATCH "$BASE/users/me/password" \
+  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d "{\"currentPassword\":\"$PW\",\"newPassword\":\"efgh5678\"}"
+```
+
+| 응답 | 의미 |
+|---|---|
+| 401 `INVALID_CREDENTIALS` | 비밀번호 틀림. **토큰 갱신하지 말고** 화면에 알림 |
+| 429 `RATE_LIMITED` | 로그인과 합쳐 5번 틀려서 5분 잠김 |
+| 400 `VALIDATION_FAILED` | 값 규칙 위반, 비밀번호 누락, 같은 비밀번호(`same_as_current`), 카카오 계정(`no_password`) |
+
 ### 2.8 토큰 갱신
 
 액세스 토큰은 30분입니다. 401이 나면 갱신합니다.
