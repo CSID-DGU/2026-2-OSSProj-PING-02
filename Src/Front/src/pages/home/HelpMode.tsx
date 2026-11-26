@@ -10,7 +10,11 @@ import { MODE_SCREENS } from "@constants/homeHelp";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useConversations } from "@hooks/useConversations";
 import type { AppParamList } from "@routes/types";
-import { selectDeferredToday, selectMustCheck } from "../../utils/home";
+import {
+  mustCheckNames,
+  selectDeferredToday,
+  selectMustCheck,
+} from "../../utils/home";
 import * as s from "./Help_styled";
 
 // 04 홈 C03 추천 선택 · C04 추천 수정 · C05 직접 쓰기 (같은 구성, 문구만 다름)
@@ -39,9 +43,7 @@ const HelpMode = () => {
           {
             key: "mustCheck" as const,
             title: `꼭 챙길 연락 ${mustCheck.length}개`,
-            description: mustCheck
-              .map(i => i.analysis.highlight ?? i.conversation.title)
-              .join(", "),
+            description: mustCheckNames(mustCheck),
           },
         ]
       : []),

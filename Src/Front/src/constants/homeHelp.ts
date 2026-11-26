@@ -19,7 +19,8 @@ export interface HeroCopy {
 export const HERO: Record<HelpMode | "unset", HeroCopy> = {
   unset: {
     title: "오늘은 어떻게 도와드릴까요?",
-    description: "지금 답장할 수 있는 정도에 맞춰 도움을 준비할게요",
+    // 폭 214에 다 안 들어가서, 안드로이드가 글자 단위로 끊으면 "요"만 넘어감 → 낱말 사이에서 직접 나눔
+    description: "지금 답장할 수 있는 정도에 맞춰\n도움을 준비할게요",
     image: heroImage,
   },
   pick: {

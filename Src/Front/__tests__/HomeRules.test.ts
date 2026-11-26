@@ -1,5 +1,6 @@
 import type { ConversationSummary } from "../src/services";
 import {
+  mustCheckNames,
   selectDeferredToday,
   selectMustCheck,
   selectUpcomingEvent,
@@ -58,6 +59,20 @@ test("꼭 챙길 연락: 광고 제외, 기관 연락은 남김, 최신순 최�
     "welfare",
     "mid",
   ]);
+});
+
+test("꼭 챙길 연락 짧은 설명: 이름만, 앞 두 명 + 외 N명", () => {
+  expect(mustCheckNames([item("박지빈", 1, "")])).toBe("박지빈");
+  expect(mustCheckNames([item("박지빈", 1, ""), item("복지관", 2, "")])).toBe(
+    "박지빈, 복지관"
+  );
+  expect(
+    mustCheckNames([
+      item("박지빈", 1, ""),
+      item("복지관", 2, ""),
+      item("하늘", 3, ""),
+    ])
+  ).toBe("박지빈, 복지관 외 1명");
 });
 
 test("미뤄둔 답장: 오늘(또는 지난) 다시 보기로 한 것만", () => {

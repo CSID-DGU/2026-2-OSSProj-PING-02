@@ -24,6 +24,14 @@ export const selectMustCheck = (items: ConversationSummary[]) =>
     )
     .slice(0, MUST_CHECK_MAX);
 
+// C03~C05 "꼭 챙길 연락 N개" 아래 짧은 설명: 이름만, 앞 두 명 + "외 N명" (팀 확정)
+// 예: "박지빈, 복지관" / "마음숲 상담센터, 김서연 선배 외 1명"
+export const mustCheckNames = (items: ConversationSummary[]) => {
+  const names = items.map(i => i.conversation.title);
+  const head = names.slice(0, 2).join(", ");
+  return names.length > 2 ? `${head} 외 ${names.length - 2}명` : head;
+};
+
 // 카드에 보여 줄 요약: 저장된 요약이 있으면 요약, 없으면 마지막 메시지
 // (AI는 대화방을 열 때만 부르므로 목록에서는 요약이 없을 수 있음)
 export const summaryOf = (item: ConversationSummary) =>
