@@ -34,6 +34,7 @@
 - 컴포넌트: `@core/ui` 공통 컴포넌트만. 비슷한 컴포넌트를 화면 폴더에 새로 만들지 말고 **조합**으로 해결
 - `@core/ui`에 **새 공통 컴포넌트 추가는 가능** (공통 컴포넌트 담당 팀원 허락, #44). 여러 화면에서 쓰는 것만, 폴더 하나 + `index.ts` + `core/index.ts` export + Playground 예시 + `__tests__/CommonUi.test.tsx`
 - **기존** `src/core` 컴포넌트는 최소한으로만 수정. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 아이콘 등록
+- #60에서 추가: `Button` `variant="danger"`(되돌릴 수 없는 행동, 연한 빨강), `Toast` `icon: "error"`(저장 실패 등), `Dialog` `showCloseIcon`·`onDismiss`(오른쪽 위 X, 아래 글자 버튼이 닫기가 아닐 때), `TextField` `success`(초록 확인 문구), `BottomSheet` 키보드 높이만큼 올림, 아이콘 `PersonCircleIcon`·`IdCardIcon`·`BirthdayHatIcon`·`CloseIcon`·`ErrorCircleIcon`
 - #44에서 추가: `BottomSheet`·`BottomSheetActions`(sheet), `Toast`·`ToastProvider`·`useToast`(toast, App에 Provider 있음), `Switch`·`SwitchRow`(switch), `UnderlineTabs`(tabs, `scrollable`), `Calendar`·`TimeSelect`·`DateTimeSheet`·날짜 도우미(calendar, 패키지 없이 구현), `FooterLayout`(layout, 목록 + 아래 고정 버튼), 아이콘 `ChevronRightIcon`·`BellIcon`
 - 아이콘: `UI/assets/icons/ui` SVG를 `@core/ui/icon`에 등록해서 사용
 - 토큰에 없는 Figma 색은 쓰기 전에 "시안 색 / 가장 가까운 토큰" 후보를 보여주고 물어봄 (새 토큰 추가 금지)
@@ -159,7 +160,10 @@
 - 완료: **인증 API 연결 + 자동 로그인** `feat/#27-auth-api` (PR #38 리뷰 반영, #37까지 들어간 origin/main 위로 rebase). 실기기 확인: `DEV_API_MODE = "http"` → 앱 재빌드(keychain 네이티브 모듈) → 회원가입 → 앱 껐다 켜서 자동 로그인 → 로그아웃 → 로그인
 - 머지됨: **05 친구** 13 목록·14 상세·15 첫마디 + 16 시안을 잘린 메시지 화면에 적용 → `feat/#30-friends` (PR #37)
 - 머지됨: 하단 탭바·홈(임시)·04 연락 전체(07·08·09-A·B·C·10·11·12·잘린 메시지) → `feat/#29-contacts` (PR #31)
-- 다음 후보: 캘린더·설정 탭 (시안·이슈 확인부터. 이슈 초안을 쓰고 번호를 받은 뒤 브랜치 생성)
+- 진행: **08 설정** `feat/#60-settings` (Figma "08 설정 · 개인정보 · 계정", 연두 배경 = 완료 시안). H01 설정 메인·H08 로그아웃·회원 탈퇴 완료(`pages/settings`, `components/settings`, 메뉴 `constants/settings.ts`). 화면이 없는 메뉴는 누를 수 없음(`NOT_READY`)
+  - 다음: H07 저장된 데이터(원문 전체 삭제는 **가입일 기준 30일마다**로 바꿔야 함, #47의 메시지별 30일과 다름) → #59 머지 후 H03·H05·H06(온보딩 화면을 가져와 설정용 앱바·저장 버튼만 덧붙임) → H02 내 정보(백엔드 `PATCH /users/me`·비밀번호 확인·변경 API 생긴 뒤)
+  - 회원 탈퇴: `services.auth.deleteAccount(password)` → `clearLocalAccountData`(온보딩·도움 수준·알림 DB) → 스플래시
+- 다음 후보: 캘린더 탭, 알림 센터 C09(#61)
 - 머지 순서 주의: CLAUDE.md는 브랜치마다 고치므로 뒤에 머지하는 쪽에서 충돌이 날 수 있음 (두 쪽 내용을 합치면 됨)
 - 시안: `docs/figma/home` (04 연락은 와이어프레임 → 구조·문구만 따르고 색·컴포넌트는 design-system), `docs/figma/friends` (05 친구 Screens 13~16, 디자인 화면이 기준), `docs/figma/auth` (01 인증)
 - 친구 mock: `createMockFriendService({ empty: true })` / `({ failList: true })`. 민지는 카카오톡+인스타그램이 합쳐진 상태, 문자 "김민지"는 합치기 후보, 지연은 얼려둔 관계
