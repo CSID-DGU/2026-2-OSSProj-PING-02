@@ -297,8 +297,9 @@ const ReconnectCard = ({ top, onPress }: { top: number; onPress: () => void }) =
       <ChatIcon size={21} color={theme.colors.brandBrown} />
       <s.ReconnectTexts>
         <s.RowTitle>오랜만에 안부 전하기</s.RowTitle>
+        {/* 안드로이드는 한글을 글자 단위로 줄바꿈해서 시안(낱말 단위) 위치에 직접 줄을 나눔 */}
         <s.RowDescription $top={3} $compact>
-          오래 연락하지 못한 친구에게 보낼 첫 문장을 준비해드려요
+          {"오래 연락하지 못한 친구에게 보낼 첫 문장을\n준비해드려요"}
         </s.RowDescription>
       </s.ReconnectTexts>
       <RowChevron />

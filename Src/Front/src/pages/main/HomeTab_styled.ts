@@ -187,11 +187,12 @@ export const DateDay = styled.Text<{ $today: boolean }>`
     $today ? theme.colors.textOnDark : theme.colors.textPrimary};
 `;
 
-// ── 빠른 기능 카드 (2열, 높이 96, 모서리 20, 연노랑 바탕)
+// ── 빠른 기능 카드 (2열, 높이 96, 모서리 20, 연노랑 바탕, 안쪽 왼쪽 14)
+// 오른쪽: 시안 12지만 안드로이드 글자 폭이 Figma보다 약 4% 넓어 설명이 두 줄이 됨 → 8 (시안처럼 한 줄)
 export const QuickCard = styled.Pressable`
   flex: 1;
   height: 96px;
-  padding: 12px 14px 0px;
+  padding: 12px 8px 0px 14px;
   border-radius: 20px;
   background-color: ${({ theme }) => theme.colors.surfaceSeed};
 `;
