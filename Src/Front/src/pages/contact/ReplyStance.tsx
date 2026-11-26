@@ -10,14 +10,14 @@ import { DEFAULT_TONE, STANCE_OPTIONS } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useLoad } from "@hooks/useLoad";
 import { services, type ReplyStance as Stance } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 04 / 09-A 의도별 답장 후보: 수락·거절·보류 중 입장을 먼저 고름
 // 미리 골라 두지 않음 (어느 쪽도 권하지 않음). 고른 뒤 10에서 말투를 다듬음
 const ReplyStance = () => {
   const navigation = useAuthNavigation();
-  const { params } = useRoute<RouteProp<RootStackParamList, "ReplyStance">>();
+  const { params } = useRoute<RouteProp<AppParamList, "ReplyStance">>();
   const { conversationId } = params;
   const [selected, setSelected] = useState<Stance>();
 

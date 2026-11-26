@@ -12,7 +12,7 @@ import { APP_LABEL, replyStepFor } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useLoad } from "@hooks/useLoad";
 import { services } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 08 "메시지가 잘린 상태 보기" (Figma 05 친구 Screens / 16 긴 메시지 붙여넣기)
@@ -30,7 +30,7 @@ type SummaryState =
 const TruncatedMessage = () => {
   const navigation = useAuthNavigation();
   const { params } =
-    useRoute<RouteProp<RootStackParamList, "TruncatedMessage">>();
+    useRoute<RouteProp<AppParamList, "TruncatedMessage">>();
   const { conversationId } = params;
   const [pasted, setPasted] = useState("");
   const [summary, setSummary] = useState<SummaryState>({ status: "idle" });

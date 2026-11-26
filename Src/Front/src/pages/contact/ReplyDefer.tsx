@@ -13,7 +13,7 @@ import {
 } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { services } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 04 / 11 나중에 답하기: 다시 볼 때를 정하면 그때 조용히 한 번만 알림
@@ -21,7 +21,7 @@ import * as s from "./Contact_styled";
 // TODO(네이티브): 다시 볼 때 로컬 알림 예약 (지금은 mock 저장만)
 const ReplyDefer = () => {
   const navigation = useAuthNavigation();
-  const { params } = useRoute<RouteProp<RootStackParamList, "ReplyDefer">>();
+  const { params } = useRoute<RouteProp<AppParamList, "ReplyDefer">>();
   const [option, setOption] = useState<DeferOption>("in3days");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -38,7 +38,7 @@ const ReplyDefer = () => {
         deferToDate(option)
       );
       // 목록으로 돌아가면 카드에 "N일 뒤 다시 보기"가 붙고 "나중에"에 모임
-      navigation.popTo("Home");
+      navigation.popToTop();
     } catch {
       setError(true);
       setSaving(false);

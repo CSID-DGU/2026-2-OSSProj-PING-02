@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useContext, useState, type ReactNode } from "react";
+import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
+import NotificationBell from "@components/main/NotificationBell";
 import type {
   LayoutChangeEvent,
   NativeScrollEvent,
@@ -47,6 +49,9 @@ const AuthLayout = ({
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const handleBack = onBack === undefined ? navigation.goBack : onBack;
+  // 하단 탭 안의 상세 화면: 아래는 탭바가 안전 영역을 맡고, 앱바 오른쪽에 🔔
+  const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
+  const bottomInset = inTabs ? 0 : insets.bottom;
 
   // 아래에 더 볼 내용이 있으면 버튼 영역 위에 구분선 (목록이 뚝 잘려 보이지 않게)
   const [viewport, setViewport] = useState(0);
@@ -59,7 +64,11 @@ const AuthLayout = ({
   return (
     <Wrapper $top={insets.top}>
       {(title !== undefined || backOnly) && (
-        <Header title={title} onBack={handleBack ?? undefined} />
+        <Header
+          title={title}
+          onBack={handleBack ?? undefined}
+          right={inTabs && title !== undefined ? <NotificationBell /> : undefined}
+        />
       )}
       {/* edge-to-edge라 adjustResize만으로는 안 밀려서 padding으로 처리 */}
       <KeyboardAvoiding behavior="padding">
@@ -67,7 +76,7 @@ const AuthLayout = ({
           <Scroll
             keyboardShouldPersistTaps="handled"
             $gap={gap}
-            $bottom={paddingBottom + (footer ? 0 : insets.bottom)}
+            $bottom={paddingBottom + (footer ? 0 : bottomInset)}
             $centered={centered}
             onLayout={(e: LayoutChangeEvent) =>
               setViewport(e.nativeEvent.layout.height)
@@ -84,7 +93,10 @@ const AuthLayout = ({
           <Fill>{children}</Fill>
         )}
         {footer && (
-          <Footer $bottom={insets.bottom} $divider={showDivider}>
+          <Footer
+            $bottom={inTabs ? FOOTER_GAP_IN_TABS : insets.bottom + 24}
+            $divider={showDivider}
+          >
             {footer}
           </Footer>
         )}
@@ -123,10 +135,13 @@ const Fill = styled.View`
 `;
 
 // Figma 온보딩: 버튼 아래 여백 약 49dp(제스처 영역 포함) → 안전 영역 + 24
+// 탭 안 화면은 바로 아래가 탭바라 12dp (Figma 05 연락 D02)
 // 구분선은 그라데이션 라이브러리 없이 border/default 1px로
+const FOOTER_GAP_IN_TABS = 12;
+
 const Footer = styled.View<{ $bottom: number; $divider: boolean }>`
   gap: 8px;
-  padding: 12px 20px ${({ $bottom }) => $bottom + 24}px;
+  padding: 12px 20px ${({ $bottom }) => $bottom}px;
   background-color: ${({ theme }) => theme.colors.surfaceDefault};
   border-top-width: 1px;
   ${({ theme, $divider }) => css`

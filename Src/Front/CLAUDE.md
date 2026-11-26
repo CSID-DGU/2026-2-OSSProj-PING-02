@@ -2,6 +2,25 @@
 
 새 대화(Claude)와 팀원이 같이 보는 요약입니다. 실행 방법은 [README.md](README.md)를 보세요.
 
+## 작업 규칙
+
+### [Figma 일치 최우선] (다른 모든 규칙보다 우선)
+
+- 화면은 Figma 초록 배경 프레임과 똑같이 만드는 게 1순위. 배치·문구·크기·색·간격을 시안 그대로.
+- 아래 경우엔 만들지 말고 멈춘 뒤 먼저 물어볼 것:
+  - 시안에 없는 화면·버튼·문구·상태(빈 상태, 오류 등)를 새로 넣어야 할 때
+  - 시안과 다르게 만들어야 할 때(48dp, 글자 잘림, 토큰에 없는 색 등 이유가 있어도)
+  - 시안이 미완성이거나 서로 다른 버전이 있어 어느 쪽인지 애매할 때
+  - 기능·흐름을 정해야 할 때(버튼 누르면 어디로 가는지 등)
+- 물어볼 때는 한 번에 모아서, 각 항목마다 "시안 상태 / 내 제안 / 선택지"로.
+- 덩어리(화면 1~2개) 끝날 때마다 시안과 나란히 비교한 결과를 보고하고 확인받은 뒤 다음으로.
+- 시안에 없는 걸 임의로 만들어 둔 곳은 없어야 함. 이미 있는 건 보고만 하고 지우지 말 것.
+
+### 그 밖의 작업 규칙
+
+- 덩어리마다 `yarn typecheck && yarn lint && yarn test` 통과 후 커밋
+- 테스트: `test-utils/app.tsx` 공통 도구, jest는 안드로이드 플랫폼(`jest.config.js`)이라 하드웨어 뒤로가기 테스트 가능
+
 ## 프로젝트
 
 - **말씨앗**: 고립·은둔 청년의 연락 부담을 덜어 주는 안드로이드 앱. 알림으로 받은 메시지를 정리하고 답장 후보를 제안합니다.
@@ -11,10 +30,12 @@
 ## 디자인 규칙
 
 - 색·글자: [UI/docs/design-system.md](../../UI/docs/design-system.md) 토큰(`theme.colors`, `theme.fonts`)만. hex·폰트 크기 직접 입력 금지
-- 컴포넌트: `@core/ui` 공통 컴포넌트만. 비슷한 컴포넌트를 새로 만들지 말고 **조합**으로 해결
-- `src/core`는 수정하지 않음. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 디자이너가 준 아이콘 SVG 등록
+- 컴포넌트: `@core/ui` 공통 컴포넌트만. 비슷한 컴포넌트를 화면 폴더에 새로 만들지 말고 **조합**으로 해결
+- `@core/ui`에 **새 공통 컴포넌트 추가는 가능** (공통 컴포넌트 담당 팀원 허락, #44). 여러 화면에서 쓰는 것만, 폴더 하나 + `index.ts` + `core/index.ts` export + Playground 예시 + `__tests__/CommonUi.test.tsx`
+- **기존** `src/core` 컴포넌트는 최소한으로만 수정. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 아이콘 등록
+- #44에서 추가: `BottomSheet`·`BottomSheetActions`(sheet), `Toast`·`ToastProvider`·`useToast`(toast, App에 Provider 있음), `Switch`·`SwitchRow`(switch), `UnderlineTabs`(tabs, `scrollable`), `Calendar`·`TimeSelect`·`DateTimeSheet`·날짜 도우미(calendar, 패키지 없이 구현), `FooterLayout`(layout, 목록 + 아래 고정 버튼), 아이콘 `ChevronRightIcon`·`BellIcon`
 - 아이콘: `UI/assets/icons/ui` SVG를 `@core/ui/icon`에 등록해서 사용
-- 토큰에 없는 Figma 색은 가장 가까운 기존 토큰을 쓰고 차이를 보고 (새 토큰 추가 금지)
+- 토큰에 없는 Figma 색은 쓰기 전에 "시안 색 / 가장 가까운 토큰" 후보를 보여주고 물어봄 (새 토큰 추가 금지)
 
 ## Figma 사용법
 
@@ -22,10 +43,22 @@
 - 디자인 화면이 없는 기능(홈, 설정, 캘린더 등)만 통합본을 흐름·구성 참고용으로 쓰고, 스타일은 design-system 기준
 - 통합본과 백엔드가 다르면 **백엔드 기준**
 - 온보딩은 현재 구현 유지. 디자이너 수정본이 나오면 마지막에 반영
-- 기준은 `docs/figma/<영역>/*.png` (gitignore, 각자 로컬에 둠). 이름은 `번호_이름.png`
+- Figma 시안은 각자 PC에서 내보내서 `docs/figma/<영역>/*.png`(gitignore)에 넣어 사용. 이름은 `번호_이름.png`
+- 한 페이지에 여러 버전이 있으면 **초록 배경 프레임이 최종본**
 - PNG는 2x(720×1600) → **수치를 2로 나눠** dp로 읽기
-- Figma에 없는 상태(권한 거부·설정 복귀·로딩·오류·빈 상태)는 **부드러운 안내 상자(Notice) + 텍스트 버튼**으로
-- Figma와 다르게 간 부분은 코드에 `TODO(디자이너 공유)` / `TODO(Figma 문구 확인)`으로 남김
+- Figma에 없는 상태(권한 거부·설정 복귀·로딩·오류·빈 상태)는 먼저 제안하고 물어본 뒤, 확인받으면 **부드러운 안내 상자(Notice) + 텍스트 버튼**으로
+- Figma와 다르게 가야 하면 만들기 전에 먼저 물어봄. 확인받고 다르게 만든 곳만 코드에 `TODO(디자이너 공유)` / `TODO(Figma 문구 확인)`으로 남김
+
+## 화면 이동 구조 (#44)
+
+- Root stack(`routes/router.tsx`): 인증 / 온보딩 / `Home`(하단 탭) / 개발용. 타입은 `routes/types.ts`
+- `Home` = `@react-navigation/bottom-tabs`(7.21, JS만이라 네이티브 재빌드 불필요) + 기존 `TabBar` 디자인(`tabBar` 옵션). 탭 이름 = `MainTabKey`
+- **탭마다 스택**(`routes/tabStacks.tsx`): 그 탭 첫 화면(`HomeMain` 등) + 공통 상세 화면(연락·친구·`Notifications`). 상세는 **지금 있는 탭 안에** 쌓여서 탭바가 계속 보임
+- 새 상세 화면은 `TabStackParamList` + `createTabStack`에 추가. `RouteProp<AppParamList, "...">`
+- 목록으로 돌아가기는 `navigation.popToTop()` (예전 `popTo("Home")` 대신). 다른 탭으로: `navigate("Home", { screen: "contacts" })`. 로그아웃처럼 앱 전체를 바꿀 때는 `getRootNavigation(navigation).reset(...)`
+- 뒤로가기: 탭 안 스택 → 홈이 아닌 탭이면 홈 탭(`backBehavior="initialRoute"`) → 앱 종료. 선택된 탭을 다시 누르면 그 탭 첫 화면으로. 키보드가 올라오면 탭바 숨김
+- 앱바 오른쪽 🔔(`NotificationBell`): 탭 첫 화면(`TabScreen`)과 탭 안 `AuthLayout` 화면에 자동으로 붙음. 알림 센터는 자리만
+- 탭 안 `AuthLayout`은 아래 안전 영역을 빼고(탭바가 맡음) 버튼 아래 여백 12dp
 
 ## UX 원칙
 
@@ -33,7 +66,7 @@
 - **자동 전송 없음**. 바로 보내기는 **확인 팝업 필수**
 - 터치 영역 48dp 이상, 접근성 라벨, 선택·오류 상태는 색만으로 구분하지 않음
 - 보이는 뒤로가기(온보딩도 왼쪽 위 화살표) + 안드로이드 뒤로가기가 같은 동작
-- 상태는 화면마다: 로딩 / 빈 상태 / 오류 / 정상 (+ AI 분석 중·모델 미준비·분석 실패)
+- 상태(로딩 / 빈 상태 / 오류 / AI 분석 중·모델 미준비·분석 실패)는 시안에 있으면 그대로, 없으면 필요한지 먼저 물어봄
 
 ## 데이터
 
@@ -60,15 +93,18 @@
 - PR: 제목 `[feat] #이슈번호 내용`, 본문은 `.github/PULL_REQUEST_TEMPLATE.md` 형식, "관련 이슈"에 `#이슈번호`. 팀원이 GitHub에서 직접 만들 수 있게 Claude가 제목과 본문을 써 줌
 - push는 **현재 브랜치만**. main에 push·머지 금지. PR은 팀원 리뷰 후 머지
 
-## 작업 규칙
-
-- 덩어리마다 `yarn typecheck && yarn lint && yarn test` 통과 후 커밋
-- 사소한 결정은 원칙대로 정하고 TODO로 남김. 중요한 결정만 모아서 질문
-- 테스트: `test-utils/app.tsx` 공통 도구, jest는 안드로이드 플랫폼(`jest.config.js`)이라 하드웨어 뒤로가기 테스트 가능
 
 ## 남은 TODO
 
 디자이너 확인 필요
+- #44 토큰에 없는 시안 색 → 가까운 토큰으로 대체 (시안 PNG에서 읽은 근사값)
+  - 토스트 진한 갈색 #4F3832 → `actionPrimaryBg`(brown700 #4D3932), 체크 원 #7A6560 → `brandBrown`(brown600 #644B40)
+  - "연결됨" 연한 초록 칩 바탕 ≈#EEF5EA·글자 ≈#6B9A5B → `feedbackSuccessBg`(green50 #F5F9F2)·`feedbackSuccessText`(green600 #527A40) (화면 구현 때 적용)
+  - 원문 말풍선 영역 연한 파랑 ≈#EBF2F9 → `feedbackInfoBg`(info50 #EEF5FA) (화면 구현 때 적용)
+  - 스위치 켜짐 ≈#F5D66F → `brandSeed`(seed300), 꺼짐은 시안 없음 → `borderStrong`
+  - 밑줄 탭 바탕선 ≈#F3EEEB → `borderDefault`(neutral200), 선택 밑줄 ≈#3A2B27 → `textPrimary`, 시트 손잡이 → `borderDefault`
+- #44 달력 날짜 칸은 시안대로 세로 32(선택 원 지름 32). 줄이 붙어 있어 터치 영역은 세로 약 36dp(줄 간격 절반씩 `hitSlop`)로 48dp 미만, 디자이너 요청으로 시안 우선
+- #44 Figma와 다르게 간 부분: 시간 드롭다운 폭 88→148dp("오전 10시 30분"), 시간 칩은 알약 대신 `ChoiceGroup` option 모양, 🔔 SVG 없음(임시 `BellIcon`), 상세 화면 앱바 제목은 지금처럼 왼쪽 정렬(시안은 가운데), 알림 센터 시안 없음
 - 연동 앱 아이콘 2x·3x (지금 60px 한 장), 탭바 아이콘 SVG 5개, 홈·탭바 시안
 - 07·08 설명 문구 (시안에서 제목과 겹침, 임시 문구)
 - 11 AI 메모리 상세 작성 시안 (입력창 + 예시 칩으로 임시)
@@ -94,6 +130,9 @@
 - 저장소: 온보딩 진행 상황·AI 답장 결과는 AsyncStorage/암호화 저장소(지금 메모리 `services.storage`), 친구 목록은 기기 안 암호화 DB (로그인 토큰은 keychain 완료)
 
 ## 다음 작업
+
+- 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영
+- 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)
 
 - 완료: **인증 API 연결 + 자동 로그인** `feat/#27-auth-api` (PR #38 리뷰 반영, #37까지 들어간 origin/main 위로 rebase). 실기기 확인: `DEV_API_MODE = "http"` → 앱 재빌드(keychain 네이티브 모듈) → 회원가입 → 앱 껐다 켜서 자동 로그인 → 로그아웃 → 로그인
 - 머지됨: **05 친구** 13 목록·14 상세·15 첫마디 + 16 시안을 잘린 메시지 화면에 적용 → `feat/#30-friends` (PR #37)

@@ -10,7 +10,7 @@ import { formatRemind, replyStepFor, withWa } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useConversationDetail } from "@hooks/useConversationDetail";
 import { services } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 04 / 08 1:1 연락 상세 (와이어프레임 구조·문구, 색·컴포넌트는 design-system)
@@ -20,7 +20,7 @@ import * as s from "./Contact_styled";
 const ConversationDetail = () => {
   const navigation = useAuthNavigation();
   const { params } =
-    useRoute<RouteProp<RootStackParamList, "ConversationDetail">>();
+    useRoute<RouteProp<AppParamList, "ConversationDetail">>();
   const { conversationId } = params;
   const { state, modelReady, retry, reload } =
     useConversationDetail(conversationId);

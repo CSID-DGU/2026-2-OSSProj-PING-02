@@ -3,9 +3,14 @@ import { createMockModelService } from "../src/services/model/mockModelService";
 import { services, STORAGE_KEYS } from "../src/services";
 import {
   findText,
+  press,
+  pressBack,
   pressByRole,
   renderApp,
+  waitForNoText,
   waitForText,
+  waitUntil,
+  type Instance,
 } from "../test-utils/app";
 
 // 홈·연락 화면 테스트: 로그인 + 온보딩 완료 상태에서 시작
@@ -75,5 +80,60 @@ describe("모델이 준비된 경우", () => {
       )
       .at(-1);
     expect(settings?.props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  // 탭 안 스택 (#44): 상세 화면에서도 탭바가 보이고 🔔가 있음
+  const selectedTab = (root: Instance) =>
+    root
+      .findAll(
+        n =>
+          typeof n.type === "string" &&
+          n.props.accessibilityRole === "tab" &&
+          n.props.accessibilityState?.selected
+      )
+      .map(n => n.props.accessibilityLabel);
+
+  test("연락 상세에서도 탭바가 보이고, 탭 다시 누르기·뒤로가기로 돌아온다", async () => {
+    const root = await renderApp();
+    await waitForText(root, "오늘의 연락");
+    await pressByRole(root, "tab", "연락");
+    await waitForText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.");
+    await waitForText(root, "민지");
+    await pressByRole(root, "button", "민지");
+    await waitForText(root, "민지와의 연락");
+    expect(selectedTab(root)).toEqual(["연락"]);
+
+    // 앱바 🔔 → 알림 센터(자리만), 뒤로가기로 상세에 돌아옴
+    await pressByRole(root, "button", "알림");
+    await waitForText(root, "알림 센터를 준비하고 있어요");
+    expect(selectedTab(root)).toEqual(["연락"]);
+    await pressBack();
+    await waitForNoText(root, "알림 센터를 준비하고 있어요");
+    expect(findText(root, "민지와의 연락").length).toBe(1);
+
+    // 선택된 탭을 다시 누르면 그 탭 첫 화면(목록)으로
+    await pressByRole(root, "tab", "연락");
+    await waitForNoText(root, "민지와의 연락");
+    expect(selectedTab(root)).toEqual(["연락"]);
+
+    // 홈이 아닌 탭에서 뒤로가기 → 홈 탭
+    await pressBack();
+    expect(selectedTab(root)).toEqual(["홈"]);
+  });
+
+  test("홈에서 연 연락 상세는 홈 탭 안에 쌓이고, 뒤로가기로 홈에 돌아온다", async () => {
+    const root = await renderApp();
+    await waitForText(root, "한마디 건네 볼게요");
+    await press(root, "한마디 건네 볼게요");
+    await waitUntil(
+      () => findText(root, "답장 후보 살펴보기").length > 0 ||
+        findText(root, "직접 답장 쓰기").length > 0,
+      "연락 상세 표시"
+    );
+    expect(selectedTab(root)).toEqual(["홈"]);
+    await pressBack();
+    await waitForNoText(root, "직접 답장 쓰기");
+    expect(selectedTab(root)).toEqual(["홈"]);
+    expect(findText(root, "오늘의 연락").length).toBe(1);
   });
 });

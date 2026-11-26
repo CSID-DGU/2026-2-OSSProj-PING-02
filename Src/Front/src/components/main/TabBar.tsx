@@ -21,7 +21,10 @@ const TabBar = ({ current, onChange, bottomInset }: TabBarProps) => (
           accessibilityState={{ selected }}
           accessibilityLabel={tab.label}
         >
-          <Pill $selected={selected}>
+          {/* collapsable={false}: 선택 안 된 Pill(투명 배경)은 안드로이드에서 생략됐다가
+              선택될 때 새로 만들어지는데, 이때 둥글기가 빠져 네모로 보임 (#44 bottom-tabs 이후).
+              항상 같은 뷰를 유지해 배경색만 바꿈 */}
+          <Pill $selected={selected} collapsable={false}>
             <Label $selected={selected} numberOfLines={1}>
               {tab.label}
             </Label>
