@@ -205,7 +205,7 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
     press(root, "지금은 건너뛰기")
   );
   await press(root, "말씨앗 시작하기");
-  await waitForText(root, "오늘의 연락");
+  await waitForText(root, "오늘의 도움 수준");
 }, 90000);
 
 test("거부(개발 옵션): 거부 안내 → 다시 요청 → 설정 열기, 상태 화면에서 뒤로가면 그 단계는 처음 상태로", async () => {

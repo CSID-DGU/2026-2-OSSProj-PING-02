@@ -2356,6 +2356,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-navigation/bottom-tabs@npm:^7.21.0":
+  version: 7.22.0
+  resolution: "@react-navigation/bottom-tabs@npm:7.22.0"
+  dependencies:
+    "@react-navigation/elements": "npm:^2.9.46"
+    color: "npm:^4.2.3"
+    sf-symbols-typescript: "npm:^2.1.0"
+  peerDependencies:
+    "@react-navigation/native": ^7.5.2
+    react: ">= 18.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 4.0.0"
+    react-native-screens: ">= 4.0.0"
+  checksum: 10c0/35eb11f5d6660e938e52b21d309ced2b5a4f5030bdd69b9a952a8b7abeb4c2af4b700b3a22574f496d830fad44f46e04cfa6237d222d5426b2218cc4c0fc3967
+  languageName: node
+  linkType: hard
+
 "@react-navigation/core@npm:^7.24.0":
   version: 7.24.0
   resolution: "@react-navigation/core@npm:7.24.0"
@@ -2389,6 +2406,26 @@ __metadata:
     "@react-native-masked-view/masked-view":
       optional: true
   checksum: 10c0/12da9c5b3fc95c67578391e2dd7074ae4d222d1693907945382be16062f611e08290f6f2d36a1017b86e2f545d319b104c86c62e39ea337109ad9d36f54f368b
+  languageName: node
+  linkType: hard
+
+"@react-navigation/elements@npm:^2.9.46":
+  version: 2.9.46
+  resolution: "@react-navigation/elements@npm:2.9.46"
+  dependencies:
+    color: "npm:^4.2.3"
+    use-latest-callback: "npm:^0.2.4"
+    use-sync-external-store: "npm:^1.7.0"
+  peerDependencies:
+    "@react-native-masked-view/masked-view": ">= 0.2.0"
+    "@react-navigation/native": ^7.5.2
+    react: ">= 18.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 4.0.0"
+  peerDependenciesMeta:
+    "@react-native-masked-view/masked-view":
+      optional: true
+  checksum: 10c0/a43f48b92c9bf540d28c579c8f6e6926828428deb6cb71886613bb30a471cb8583a2ecb1efb70bfe56b4c97236fac1d9c78a052f5d9c1ad60150223a24346db2
   languageName: node
   linkType: hard
 
@@ -6496,6 +6533,7 @@ __metadata:
     "@react-native/jest-preset": "npm:0.88.1"
     "@react-native/metro-config": "npm:0.88.1"
     "@react-native/typescript-config": "npm:0.88.1"
+    "@react-navigation/bottom-tabs": "npm:^7.21.0"
     "@react-navigation/native": "npm:^7.5.1"
     "@react-navigation/native-stack": "npm:^7.21.0"
     "@types/jest": "npm:^29.5.13"
@@ -8849,7 +8887,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"use-sync-external-store@npm:^1.5.0":
+"use-sync-external-store@npm:^1.5.0, use-sync-external-store@npm:^1.7.0":
   version: 1.7.0
   resolution: "use-sync-external-store@npm:1.7.0"
   peerDependencies:

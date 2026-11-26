@@ -124,6 +124,8 @@ dependencies {
     implementation("androidx.room:room-ktx:${rootProject.ext.roomVersion}")
     ksp("androidx.room:room-compiler:${rootProject.ext.roomVersion}")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${rootProject.ext.coroutinesVersion}")
+    // 알림 DB 암호화 (Room openHelperFactory). androidx.sqlite는 Room이 가져오는 버전을 그대로 씀
+    implementation("net.zetetic:sqlcipher-android:${rootProject.ext.sqlcipherVersion}@aar")
 
     // 알림 파서 단위 테스트 (실기기에서 받은 알림 형식을 재현해서 검증)
     testImplementation("junit:junit:4.13.2")

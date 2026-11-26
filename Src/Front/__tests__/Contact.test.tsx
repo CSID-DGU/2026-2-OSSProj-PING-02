@@ -51,7 +51,7 @@ const waitForTabs = (root: Instance) =>
 
 const openContacts = async () => {
   const root = await renderApp();
-  await waitForText(root, "오늘의 연락");
+  await waitForText(root, "오늘의 도움 수준");
   await pressByRole(root, "tab", "연락");
   await waitForText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.");
   return root;
@@ -127,7 +127,8 @@ describe("가리기 모델이 준비된 경우", () => {
     await press(root, "보내기");
     // 보내면 목록으로 돌아가고 "답장함" 표시
     await waitForText(root, "답장함");
-  });
+    // 화면 6개를 거치는 긴 흐름이라 단독으로도 약 5초 → 전체 실행 때 기본 5초 제한에 걸려서 늘림
+  }, 15000);
 
   test("바로 답장이 안 되면 보내기 버튼 없이 안내하고, 복사하고 메신저 열기로 보낸다 (09-B)", async () => {
     const root = await openContacts();

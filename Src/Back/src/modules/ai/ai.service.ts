@@ -1,28 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-codes';
-import { AiReplyDto } from './dto/ai-reply.dto';
-import { OpenRouterClient, UpstreamError } from './openrouter.client';
-import { buildMessages, labelsFor } from './prompt.builder';
+import { AI_COMPLETION_CLIENT, AiCompletionClient } from './ai-completion.client';
+import { AiReplyDto, Stance, STANCE_ORDER, Tone, TONE_ORDER } from './dto/ai-reply.dto';
+import { UpstreamError } from './openrouter.client';
+import { buildMessages } from './prompt.builder';
 import { findUnmaskedKinds } from './unmasked-content.util';
+
+/** 결정이 필요하면 입장 × 말투 9개({stance, tone, text}), 아니면 말투 3개({tone, text}) (#65). */
+export interface AiReplyCandidate {
+  stance?: Stance;
+  tone: Tone;
+  text: string;
+}
 
 export interface AiReplyResult {
   summary: string;
-  replies: Array<{ label: string; text: string }>;
+  needsDecision: boolean;
+  replies: AiReplyCandidate[];
 }
 
 const MAX_SUMMARY = 200;
 const MAX_REPLY = 300;
 
 /**
- * AI 답장 통로. 받은 문장을 검사하고 OpenRouter 에 넘긴 뒤 결과를 그대로 돌려준다.
+ * AI 답장 통로. 받은 문장을 검사하고 외부 AI(주: OpenRouter, 보조: Claude API)에 넘긴 뒤 결과를 그대로 돌려준다.
  * 본문·요약·답장은 어디에도 저장하거나 기록하지 않는다(메모리에서만 다룬다).
  */
 @Injectable()
 export class AiService {
   constructor(
-    private readonly client: OpenRouterClient,
+    @Inject(AI_COMPLETION_CLIENT) private readonly client: AiCompletionClient,
     private readonly config: ConfigService,
   ) {}
 
@@ -37,16 +46,6 @@ export class AiService {
       );
     }
 
-    // 입장은 수락/보류/거절을 정해야 하는 메시지에만 있다
-    if (dto.stance && !dto.needsDecision) {
-      throw new AppException(
-        ErrorCode.VALIDATION_FAILED,
-        '입장(stance)은 needsDecision 이 true 일 때만 보낼 수 있습니다.',
-        400,
-        [{ field: 'stance', reason: 'requiresNeedsDecision' }],
-      );
-    }
-
     // 마스킹 누락이 있으면 외부로 보내지 않는다. 어떤 종류인지만 알려 주고 값은 응답에 담지 않는다.
     const kinds = findUnmaskedKinds(dto.text);
     if (kinds.length > 0) {
@@ -58,14 +57,17 @@ export class AiService {
       );
     }
 
+    // null 은 보내지 않은 것과 같게 본다 (AI 가 판단)
+    const needsDecision = dto.needsDecision ?? undefined;
+
     let content: string;
     try {
-      ({ content } = await this.client.complete(buildMessages(dto)));
+      ({ content } = await this.client.complete(buildMessages({ ...dto, needsDecision })));
     } catch (error) {
       throw toAppException(error);
     }
 
-    return parseReply(content, labelsFor(dto.needsDecision, dto.stance));
+    return restorePlaceholders(parseReply(content, needsDecision), dto.text);
   }
 }
 
@@ -90,10 +92,13 @@ function toAppException(error: unknown): AppException {
 }
 
 /**
- * 모델 출력(JSON 문자열)을 검사해 라벨을 붙인다. 형식이 틀리면 자동으로 다시 생성하지 않고 에러로 응답한다
- * (다시 만들기는 사용자가 앱에서 누를 때만).
+ * 모델 출력(JSON 문자열)을 검사해 앱에 줄 모양으로 바꾼다 (#65).
+ * - 결정이 필요하면 입장 × 말투 9개가 하나씩 있어야 하고, 아니면 말투 3개가 하나씩 있어야 한다.
+ * - 순서가 섞여 있으면 정해진 순서(ACCEPT→HOLD→DECLINE × SHORT→WARM→POLITE)로 정렬한다.
+ * - 앱이 needsDecision 을 보냈는데 모델이 다르게 판단했으면 받지 않는다.
+ * 형식이 틀리면 자동으로 다시 생성하지 않고 에러로 응답한다 (다시 만들기는 사용자가 앱에서 누를 때만).
  */
-export function parseReply(content: string, labels: readonly string[]): AiReplyResult {
+export function parseReply(content: string, requestedNeedsDecision?: boolean): AiReplyResult {
   const invalid = () =>
     new AppException(ErrorCode.AI_RESPONSE_INVALID, 'AI 답장을 만들지 못했습니다. 다시 시도해 주세요.', 502);
 
@@ -109,13 +114,65 @@ export function parseReply(content: string, labels: readonly string[]): AiReplyR
     throw invalid();
   }
 
-  const value = parsed as { summary?: unknown; replies?: unknown };
+  const value = parsed as { summary?: unknown; needsDecision?: unknown; replies?: unknown };
   const summary = typeof value?.summary === 'string' ? value.summary.trim() : '';
-  const replies = Array.isArray(value?.replies) ? value.replies : [];
-  if (!summary || summary.length > MAX_SUMMARY || replies.length !== labels.length) throw invalid();
+  if (!summary || summary.length > MAX_SUMMARY) throw invalid();
 
-  const texts = replies.map((r) => (typeof r === 'string' ? r.trim() : ''));
-  if (texts.some((t) => !t || t.length > MAX_REPLY)) throw invalid();
+  if (typeof value.needsDecision !== 'boolean') throw invalid();
+  const needsDecision = value.needsDecision;
+  if (requestedNeedsDecision !== undefined && needsDecision !== requestedNeedsDecision) throw invalid();
 
-  return { summary, replies: texts.map((text, i) => ({ label: labels[i], text })) };
+  const items = Array.isArray(value.replies) ? value.replies : [];
+  // 입장(결정이 필요할 때만)과 말투 조합마다 답장 하나
+  const slots = needsDecision
+    ? STANCE_ORDER.flatMap((stance) => TONE_ORDER.map((tone) => ({ stance, tone })))
+    : TONE_ORDER.map((tone) => ({ stance: undefined, tone }));
+  if (items.length !== slots.length) throw invalid();
+
+  const byKey = new Map<string, string>();
+  for (const item of items) {
+    const r = item as { stance?: unknown; tone?: unknown; text?: unknown };
+    const text = typeof r?.text === 'string' ? r.text.trim() : '';
+    if (!text || text.length > MAX_REPLY) throw invalid();
+    // 결정이 필요 없으면 입장 값은 보지 않는다 (모델은 "NONE" 을 쓴다)
+    const key = `${needsDecision ? String(r.stance) : ''}:${String(r.tone)}`;
+    if (byKey.has(key)) throw invalid(); // 같은 조합이 두 번
+    byKey.set(key, text);
+  }
+
+  const replies = slots.map(({ stance, tone }) => {
+    const text = byKey.get(`${stance ?? ''}:${tone}`);
+    if (text === undefined) throw invalid(); // 빠진 조합 (또는 정해진 값이 아닌 입장·말투)
+    return stance ? { stance, tone, text } : { tone, text };
+  });
+
+  return { summary, needsDecision, replies };
+}
+
+/**
+ * 가린 이름 자리표시([이름1], [친구A] 등)의 대괄호를 되살린다 (#65).
+ * 앱은 응답에서 대괄호 자리표시를 찾아 원래 이름으로 되돌리는데, 모델이 가끔 대괄호를 빼고 "이름1이"처럼 쓴다.
+ * 요청 문장에 실제로 있던 자리표시만, 대괄호 없이 나온 곳에 다시 붙인다(다른 글자는 바꾸지 않는다).
+ * - "이름1" 이 "이름10" 의 앞부분을 잘못 고치지 않도록 긴 것부터, 뒤에 숫자가 이어지면 건너뛴다.
+ * - 한국어 조사("선배A가")는 바로 붙으므로 뒤 글자는 막지 않는다.
+ */
+export function restorePlaceholders(result: AiReplyResult, inputText: string): AiReplyResult {
+  const labels = [...new Set([...inputText.matchAll(/\[([^[\]\n]{1,30})\]/g)].map((m) => m[1].trim()))]
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+  if (labels.length === 0) return result;
+
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const patterns = labels.map((label) => ({
+    label,
+    // 앞에 "[" 가 없고, 뒤에 "]" 나 숫자가 이어지지 않는 곳만
+    re: new RegExp(`(?<!\\[)${escape(label)}(?![\\]\\d])`, 'gu'),
+  }));
+  const fix = (text: string) => patterns.reduce((acc, { label, re }) => acc.replace(re, `[${label}]`), text);
+
+  return {
+    ...result,
+    summary: fix(result.summary),
+    replies: result.replies.map((r) => ({ ...r, text: fix(r.text) })),
+  };
 }

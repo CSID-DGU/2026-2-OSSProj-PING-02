@@ -11,4 +11,6 @@ export interface KeyValueStorage {
 
 export const STORAGE_KEYS = {
   onboarding: "malssiat.onboarding",
+  // 04 홈 오늘의 도움 수준 (사용자 id를 붙여 씀)
+  homeHelp: "malssiat.homeHelp",
 } as const;

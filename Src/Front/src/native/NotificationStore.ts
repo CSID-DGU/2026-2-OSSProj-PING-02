@@ -52,6 +52,8 @@ interface NotificationStoreNative {
     limit: number
   ): Promise<StoredNotification[]>;
   clearNotifications(packageName: string | null): Promise<number>;
+  getRetentionDays(): Promise<number>;
+  setRetentionDays(days: number): Promise<number>;
 }
 
 const native = NativeModules.NotificationStore as
@@ -104,6 +106,13 @@ const NotificationStore = {
   /** 저장된 알림 삭제. packageName을 빼면 전체. 지운 개수를 돌려줌 */
   clearNotifications: (packageName?: string) =>
     getNative().clearNotifications(packageName ?? null),
+  /**
+   * 메시지 보관 기간(일, 기본 30). 메시지 시각이 이보다 오래되면 기기에서 지움
+   * (새 알림 저장·메시지 조회 때 1시간에 한 번 정리)
+   */
+  getRetentionDays: () => getNative().getRetentionDays(),
+  /** 보관 기간 변경 (1~365일로 맞춤). 기간이 지난 메시지를 바로 지우고 지운 개수를 돌려줌 */
+  setRetentionDays: (days: number) => getNative().setRetentionDays(days),
 };
 
 export default NotificationStore;

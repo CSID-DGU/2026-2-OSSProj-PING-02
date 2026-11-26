@@ -8,3 +8,7 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+# SQLCipher (알림 DB 암호화): 네이티브 코드가 자바 클래스를 이름으로 찾으므로 유지
+-keep class net.zetetic.database.** { *; }
+-keep class androidx.sqlite.** { *; }

@@ -467,6 +467,11 @@ export const createDeviceConversationService = ({
         text: `${pick.conversation.title}에게 "고마워" 한마디만 건네 볼까요?`,
       };
     },
+
+    // TODO(캘린더): 메시지에서 일정 뽑기 (get()의 events와 같이). 지금은 없음
+    async listEvents() {
+      return [];
+    },
   };
   return service;
 };

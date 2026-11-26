@@ -17,17 +17,15 @@ import { User } from '../../database/entities/user.entity';
 import { MailService } from '../mail/mail.service';
 import { TermsService } from '../terms/terms.service';
 import { ForgotPasswordDto, LoginDto, ResetPasswordDto, SignupDto } from './dto/auth.dto';
+import { BCRYPT_ROUNDS, PasswordVerifier } from './password-verifier';
 
-const BCRYPT_ROUNDS = 12;
 const CODE_TTL_MINUTES = 10;
 const CODE_MAX_ATTEMPTS = 5;
 // 이메일 주소 기준 메일 제한(메일 폭탄 방지). IP 를 바꿔 가며 보내도 한 주소로 나가는 메일은 이 한도를 넘지 못한다.
 // 같은 종류의 메일은 이 시간 안에 다시 보내지 않고, 모든 종류를 합쳐 하루 한도를 둔다.
 const MAIL_COOLDOWN_SECONDS = 60;
 const MAIL_DAILY_LIMIT = 10;
-// 비밀번호를 연속으로 이만큼 틀리면 계정을 잠시 잠근다(IP 를 바꿔 가며 한 계정을 두드리는 공격 방지).
-const LOGIN_MAX_FAILURES = 5;
-const LOGIN_LOCK_MINUTES = 5;
+// 비밀번호 연속 실패 잠금 기준(LOGIN_MAX_FAILURES, LOGIN_LOCK_MINUTES)은 password-verifier.ts 에 있다.
 
 export interface TokenPair {
   accessToken: string;
@@ -61,6 +59,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly terms: TermsService,
     private readonly mail: MailService,
+    private readonly passwords: PasswordVerifier,
   ) {}
 
   // ── 아이디 중복 확인 ─────────────────────────────────────
@@ -106,10 +105,10 @@ export class AuthService {
     const user = await this.users.findOne({ where: { username: dto.username } });
 
     const matched = await bcrypt.compare(dto.password, user?.passwordHash ?? this.dummyHash);
-    const locked = !!user?.lockedUntil && user.lockedUntil.getTime() > Date.now();
+    const locked = !!user && this.passwords.isLocked(user);
     if (!user || !user.passwordHash || !matched || locked) {
       // 잠긴 계정은 비밀번호가 맞아도 같은 응답이다. 잠겨 있는 동안의 시도는 횟수에 더하지 않는다.
-      if (user?.passwordHash && !locked) await this.recordLoginFailure(user.id);
+      if (user?.passwordHash && !locked) await this.passwords.recordFailure(user.id);
       // 아이디 없음, 비밀번호 틀림, 잠김을 구분하지 않는다 (명세 4-4)
       throw new AppException(
         ErrorCode.INVALID_CREDENTIALS,
@@ -117,9 +116,7 @@ export class AuthService {
         401,
       );
     }
-    if (user.failedLoginCount > 0 || user.lockedUntil) {
-      await this.users.update({ id: user.id }, { failedLoginCount: 0, lockedUntil: null });
-    }
+    await this.passwords.clearFailures(user);
 
     const { tokens } = await this.issueTokens(this.dataSource.manager, user.id, dto.deviceId ?? null);
     return { user: toUserSummary(user), tokens };
@@ -308,24 +305,6 @@ export class AuthService {
   private hashCode(userId: string, code: string): string {
     const key = this.config.get<string>('jwt.secret') ?? '';
     return createHmac('sha256', key).update(`password-reset:${userId}:${code}`).digest('hex');
-  }
-
-  /** 비밀번호 실패를 센다. 동시에 여러 요청이 와도 횟수가 어긋나지 않도록 DB 에서 더하고, 한도에 닿으면 잠근다. */
-  private async recordLoginFailure(userId: string): Promise<void> {
-    const result = await this.users
-      .createQueryBuilder()
-      .update(User)
-      .set({ failedLoginCount: () => '"failed_login_count" + 1' })
-      .where('id = :id', { id: userId })
-      .returning('failed_login_count')
-      .execute();
-    const count = Number(result.raw?.[0]?.failed_login_count ?? 0);
-    if (count >= LOGIN_MAX_FAILURES) {
-      await this.users.update(
-        { id: userId },
-        { failedLoginCount: 0, lockedUntil: new Date(Date.now() + LOGIN_LOCK_MINUTES * 60_000) },
-      );
-    }
   }
 
   /**

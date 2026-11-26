@@ -1,1 +1,16 @@
-export { BackIcon, ChevronDownIcon, CheckIcon, SuccessIcon } from "./Icon";
+export {
+  BackIcon,
+  ChevronRightIcon,
+  BellIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  SuccessIcon,
+  HomeIcon,
+  ChatIcon,
+  FriendsIcon,
+  CalendarIcon,
+  SettingsIcon,
+  GroupChatIcon,
+  ClipboardIcon,
+  PersonAddIcon,
+} from "./Icon";

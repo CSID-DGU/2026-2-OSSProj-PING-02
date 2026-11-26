@@ -38,7 +38,7 @@ export class JwtAuthGuard implements CanActivate {
       if (!payload.sid || !(await this.isSessionActive(payload.sub, payload.sid))) {
         throw unauthorized();
       }
-      req.user = { id: payload.sub };
+      req.user = { id: payload.sub, sessionId: payload.sid };
       return true;
     } catch {
       throw unauthorized();

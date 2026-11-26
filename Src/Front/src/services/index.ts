@@ -32,8 +32,8 @@ import NotificationStore, {
 // 서비스 교체 지점
 // API·네이티브 모듈이 준비되면 여기서 mock 대신 실제 구현을 넣으면 됨. 화면 코드는 바꿀 필요 없음
 //
-// 인증: services/config.ts의 DEV_API_MODE
-//   "mock" → 메모리 mock (기본, 테스트 기준) / "http" → API_CONFIG.baseUrl의 실제 백엔드
+// 인증: services/config.ts의 API_CONFIG.mode (테스트 mock / release http / debug DEV_API_MODE)
+//   "mock" → 메모리 mock / "http" → API_CONFIG.baseUrl의 실제 백엔드
 //
 // 실패 화면을 확인하고 싶을 때:
 //   model: createMockModelService({ failFirstAttemptAt: 0.4 })

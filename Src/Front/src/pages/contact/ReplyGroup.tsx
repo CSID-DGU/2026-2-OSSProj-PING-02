@@ -12,7 +12,7 @@ import { replyStepFor } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useConversationDetail } from "@hooks/useConversationDetail";
 import { services } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 04 / 09-C 요약만·답장 선택: 단톡·정보 전달 (단톡 카드는 08 없이 바로 여기로)
@@ -24,7 +24,7 @@ type Choice = "check" | "reply";
 
 const ReplyGroup = () => {
   const navigation = useAuthNavigation();
-  const { params } = useRoute<RouteProp<RootStackParamList, "ReplyGroup">>();
+  const { params } = useRoute<RouteProp<AppParamList, "ReplyGroup">>();
   const { conversationId } = params;
   const { state, modelReady, retry } = useConversationDetail(conversationId);
   const [choice, setChoice] = useState<Choice>();

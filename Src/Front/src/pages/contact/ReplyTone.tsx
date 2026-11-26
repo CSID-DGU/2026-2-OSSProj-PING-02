@@ -10,14 +10,14 @@ import { DEFAULT_TONE, TONE_OPTIONS, toneCardTitle } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useLoad } from "@hooks/useLoad";
 import { services, type ReplyTone as Tone } from "@services";
-import type { RootStackParamList } from "@routes/router";
+import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 04 / 09-B 톤별 답장 후보: 축하·안부처럼 입장이 필요 없는 메시지는 말투만 고름
 // 미리 골라 두지 않음. 고른 뒤 10에서 더 다듬을 수 있음
 const ReplyTone = () => {
   const navigation = useAuthNavigation();
-  const { params } = useRoute<RouteProp<RootStackParamList, "ReplyTone">>();
+  const { params } = useRoute<RouteProp<AppParamList, "ReplyTone">>();
   const { conversationId } = params;
   const [selected, setSelected] = useState<Tone>();
 

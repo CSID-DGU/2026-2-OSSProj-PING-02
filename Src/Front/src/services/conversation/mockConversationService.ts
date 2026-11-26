@@ -192,6 +192,13 @@ export const createMockConversationService = ({
         text: `${greeting.conversation.title}에게 "고마워" 한마디만 건네 볼까요?`,
       };
     },
+
+    async listEvents() {
+      await delay(latency);
+      return seeds
+        .flatMap(s => s.events ?? [])
+        .sort((a, b) => a.date.localeCompare(b.date));
+    },
   };
 };
 
