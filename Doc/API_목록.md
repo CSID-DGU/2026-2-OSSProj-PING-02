@@ -66,7 +66,7 @@
 | 9 | DELETE | `/users/me` | 필요 | 204 | 회원 탈퇴 | 4-9 |
 | 10 | POST | `/users/me/terms-agreements` | 필요 | 204 | 약관 재동의 | 4-10 |
 | 11 | GET | `/models/latest` | 필요 | 200 | 최신 AI 모델 정보와 다운로드 URL | 4-11 |
-| 12 | POST | `/ai/reply` | 필요 | 200 | 마스킹된 메시지로 요약 1줄과 답장 3개 생성 (서버 저장 없음) | 확인 필요 (명세 외 추가) |
+| 12 | POST | `/ai/reply` | 필요 | 200 | 마스킹된 메시지로 요약 1줄, 결정 여부, 답장 후보(9개 또는 3개) 생성 (서버 저장 없음) | 확인 필요 (명세 외 추가) |
 
 > 명세 번호는 코드 주석에 적힌 것만 옮겼습니다. 나머지는 명세서 원문과 대조가 필요합니다.
 
@@ -462,39 +462,41 @@
 
 > 자세한 내용(에러 처리, 마스킹 누락 종류, OpenRouter 연동 방식, 앱이 해야 할 일)은 **`Doc/AI_답장_API_명세.md`**를 봅니다.
 
-요청
+요청 (#65: `needsDecision`은 선택, `stance`는 없음)
 ```json
-{ "text": "[이름1]: 이번 주 금요일에 저녁 먹을래?", "relation": "FRIEND", "needsDecision": true }
+{ "text": "[이름1]: 이번 주 금요일에 저녁 먹을래?", "relation": "FRIEND" }
 ```
 
 | 필드 | 규칙 |
 |---|---|
 | `text` | **마스킹을 끝낸** 메시지, 최대 1,000자. 앱 마스킹 모듈이 개인정보를 `[이름1]`, `[전화번호1]` 같은 자리표시로 바꿔서 보냅니다 |
 | `relation` | `FRIEND` / `SUPERIOR` / `INSTITUTION` (답장 말투: 반말 / 존댓말 / 격식체) |
-| `needsDecision` | 수락·거절을 정해야 하는 메시지면 `true` |
-| `stance` | 선택. `ACCEPT` / `HOLD` / `DECLINE`. 고른 입장을 유지한 채 말투만 다른 답장 3개를 받을 때 보냄. `needsDecision: true`일 때만 가능 |
+| `needsDecision` | 선택. 수락·보류·거절을 정해야 하는 메시지인지. **보내지 않으면 AI가 판단**(제안·초대·부탁·질문 → `true`, 안부·인사·축하·정보 전달 → `false`). 보내면 그 값을 씀 |
 
-응답 200
+응답 200 (결정이 필요할 때: 입장 × 말투 9개)
 ```json
 {
-  "summary": "상대가 금요일 저녁 식사를 제안했어요.",
+  "summary": "[이름1]이 금요일 저녁 식사를 제안했어요.",
+  "needsDecision": true,
   "replies": [
-    { "label": "수락", "text": "좋아! 금요일에 보자" },
-    { "label": "보류", "text": "일정 확인하고 알려줄게" },
-    { "label": "거절", "text": "이번 주는 어려울 것 같아" }
+    { "stance": "ACCEPT", "tone": "SHORT", "text": "좋아! 금요일에 보자" },
+    { "stance": "ACCEPT", "tone": "WARM", "text": "…" },
+    "… 9개: ACCEPT → HOLD → DECLINE 각각 SHORT → WARM → POLITE"
   ]
 }
 ```
-- 라벨은 `needsDecision`이 `true`면 수락 → 보류 → 거절, `false`면 짧게 → 다정하게 → 공손하게 순서입니다. `stance`를 보내면 짧게 → 다정하게 → 공손하게이고, 3개 모두 그 입장을 유지합니다.
+결정이 필요 없을 때는 `"needsDecision": false`와 `{ "tone", "text" }` 3개(`SHORT → WARM → POLITE`, `stance` 없음)입니다.
+- 순서는 서버가 맞춰서 줍니다. 입장·말투를 바꿀 때는 받은 후보에서 고르기만 하고 다시 부르지 않습니다.
+- 모델이 자리표시자의 대괄호를 빼먹으면(`이름1이`) 서버가 다시 붙입니다(`[이름1]이`). 요청에 있던 자리표시자만 고칩니다.
 - **서버는 메시지와 결과를 저장하지 않습니다.** 결과는 앱이 로컬 DB에만 저장합니다.
 - `model`, `messages`, `prompt` 같은 필드는 보낼 수 없습니다(400). 프롬프트와 모델은 서버가 정합니다.
 - 서버는 자동으로 다시 생성하지 않습니다. 사용자가 "다시"를 누를 때만 다시 보냅니다.
 
 에러
-- 400 `VALIDATION_FAILED`: 입력 오류, 1,000자 초과, `needsDecision: false`인데 `stance`를 보냄
+- 400 `VALIDATION_FAILED`: 입력 오류, 1,000자 초과, `stance`를 보냄(#65부터 받지 않음)
 - 400 `UNMASKED_CONTENT`: 앱 마스킹이 놓친 개인정보가 있음(외부로 보내지 않음). 실제 국번의 전화번호, 이메일, 은행·입금 단서가 있는 계좌번호, 주민번호만 막고(링크는 막지 않음) 주문번호·운송장·날짜 같은 숫자는 막지 않음
 - 429 `RATE_LIMITED`: 사용자별 분당 10회, 하루 300회 초과
-- 502 `AI_RESPONSE_INVALID`, 503 `UPSTREAM_UNAVAILABLE`, 504 `UPSTREAM_TIMEOUT`: AI 서버 문제. "다시 시도" 버튼
+- 502 `AI_RESPONSE_INVALID`(답장 개수·조합이 맞지 않는 등 AI 응답 이상), 503 `UPSTREAM_UNAVAILABLE`, 504 `UPSTREAM_TIMEOUT`(30초): AI 서버 문제. "다시 시도" 버튼
 - 서버에 AI 키·모델이 설정되지 않았으면 503입니다.
 
 ---

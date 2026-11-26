@@ -8,12 +8,23 @@ export enum Relation {
   INSTITUTION = 'INSTITUTION',
 }
 
-/** 사용자가 이미 고른 입장. 보내면 그 입장을 유지한 채 말투만 다른 답장 3개를 만든다. */
+/** 답장의 입장. 결정이 필요한 메시지(needsDecision=true)의 답장에만 붙는다. */
 export enum Stance {
   ACCEPT = 'ACCEPT',
   HOLD = 'HOLD',
   DECLINE = 'DECLINE',
 }
+
+/** 답장의 말투. 모든 답장에 붙는다. */
+export enum Tone {
+  SHORT = 'SHORT',
+  WARM = 'WARM',
+  POLITE = 'POLITE',
+}
+
+/** 응답의 답장 순서. 결정이 필요하면 입장 × 말투 9개, 아니면 말투 3개 (#65). */
+export const STANCE_ORDER: readonly Stance[] = [Stance.ACCEPT, Stance.HOLD, Stance.DECLINE];
+export const TONE_ORDER: readonly Tone[] = [Tone.SHORT, Tone.WARM, Tone.POLITE];
 
 /**
  * AI 답장 요청. 앱이 마스킹을 끝낸 문장과 구조화된 칸만 보낸다(프롬프트는 서버가 만든다).
@@ -30,15 +41,12 @@ export class AiReplyDto {
   @IsEnum(Relation)
   relation: Relation;
 
-  /** 초대·부탁처럼 수락/보류/거절을 정해야 하는 메시지인지. 아니면 짧게/다정하게/공손하게 답장을 만든다. */
-  @IsBoolean()
-  needsDecision: boolean;
-
   /**
-   * 선택. 입장(수락·보류·거절)을 고른 뒤 말투를 바꿀 때 보낸다. needsDecision 이 true 일 때만 쓸 수 있다.
-   * 보내면 답장 3개 모두 이 입장을 유지하고, 짧게/다정하게/공손하게 말투만 다르게 만든다.
+   * 선택. 수락/보류/거절을 정해야 하는 메시지인지 (#65).
+   * 보내지 않으면 AI 가 요약하면서 판단한다(제안·초대·부탁·질문 → true, 안부·인사·축하·정보 전달 → false).
+   * 보내면 AI 가 뒤집지 않고 그 값을 쓴다.
    */
   @IsOptional()
-  @IsEnum(Stance)
-  stance?: Stance;
+  @IsBoolean()
+  needsDecision?: boolean;
 }

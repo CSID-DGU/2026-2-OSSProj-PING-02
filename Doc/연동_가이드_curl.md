@@ -261,34 +261,29 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$BASE/auth/password/reset" \
 ```bash
 curl -s -X POST "$BASE/ai/reply" \
   -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
-  -d '{"text":"[이름1]: 이번 주 금요일에 저녁 먹을래?","relation":"FRIEND","needsDecision":true}'
+  -d '{"text":"[이름1]: 이번 주 금요일에 저녁 먹을래?","relation":"FRIEND"}'
 ```
 
-응답 200
+`needsDecision`을 보내지 않으면 AI가 판단합니다(#65). 응답 200 (결정이 필요할 때: 입장 × 말투 9개)
 ```json
 {
-  "summary": "상대가 금요일 저녁 식사를 제안했어요.",
+  "summary": "[이름1]이 금요일 저녁 식사를 제안했어요.",
+  "needsDecision": true,
   "replies": [
-    { "label": "수락", "text": "좋아! 금요일에 보자" },
-    { "label": "보류", "text": "일정 확인하고 알려줄게" },
-    { "label": "거절", "text": "이번 주는 어려울 것 같아" }
+    { "stance": "ACCEPT", "tone": "SHORT", "text": "좋아! 금요일에 보자" },
+    { "stance": "ACCEPT", "tone": "WARM", "text": "…" },
+    "… 9개: ACCEPT → HOLD → DECLINE 각각 SHORT → WARM → POLITE"
   ]
 }
 ```
 
-입장을 고른 뒤 말투만 바꿀 때는 `stance`를 같이 보냅니다(`ACCEPT` / `HOLD` / `DECLINE`, `needsDecision: true`일 때만). 라벨이 짧게·다정하게·공손하게로 오고, 3개 모두 고른 입장을 유지합니다.
-
-```bash
-curl -s -X POST "$BASE/ai/reply" \
-  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
-  -d '{"text":"[이름1]: 이번 주 금요일에 저녁 먹을래?","relation":"FRIEND","needsDecision":true,"stance":"DECLINE"}'
-```
+결정이 필요 없는 메시지(안부·축하 등)는 `"needsDecision": false`와 `{ "tone", "text" }` 3개입니다. 입장·말투를 바꿀 때는 받은 후보에서 고르기만 하고 다시 부르지 않습니다(`stance`는 더 받지 않음).
 
 | 응답 | 의미 |
 |---|---|
 | 200 | 결과의 자리표시자를 `unmaskPii`로 되돌려 로컬 DB에 저장 |
 | 400 `UNMASKED_CONTENT` | 마스킹 누락(`details.reason`: `phone`, `email`, `account`, `national_id`). 앱 버그로 기록 |
-| 400 `VALIDATION_FAILED` | 입력 오류, 1,000자 초과, `model`·`messages` 같은 필드를 보냄, `needsDecision: false`인데 `stance`를 보냄 |
+| 400 `VALIDATION_FAILED` | 입력 오류, 1,000자 초과, `model`·`messages`·`stance` 같은 필드를 보냄 |
 | 429 `RATE_LIMITED` | 사용자별 분당 10회, 하루 300회 초과 |
 | 502 / 503 / 504 | AI 서버 문제. 자동 재시도하지 말고 "다시 시도" 버튼 |
 
