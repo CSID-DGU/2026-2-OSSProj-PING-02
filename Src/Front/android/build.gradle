@@ -7,6 +7,7 @@ buildscript {
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.2.0"
         roomVersion = "2.8.4"
+        sqlcipherVersion = "4.20.0"
         coroutinesVersion = "1.10.2"
     }
     repositories {

@@ -6,13 +6,15 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 /**
  * 알림 메시지를 담는 로컬 DB.
  *
- * TODO: 대화 원문이라 SQLCipher(net.zetetic:sqlcipher-android)로 암호화해야 한다.
- *       Room.databaseBuilder(...).openHelperFactory(SupportOpenHelperFactory(passphrase))만 붙이면 되고,
- *       passphrase는 Android Keystore로 감싸서 보관한다.
+ * 대화 원문이라 SQLCipher(net.zetetic:sqlcipher-android)로 암호화한다.
+ * 암호는 기기에서 만든 무작위 값을 Android Keystore로 감싸 보관한다 ([DatabasePassphrase]).
+ * 암호화 전에 만든 평문 DB는 처음 열 때 암호화 DB로 옮긴다 ([DatabaseEncryption]).
+ * 오래된 메시지는 보관 기간이 지나면 지운다 ([NotificationRetention]).
  */
 @Database(
     entities = [NotificationEntity::class],
@@ -128,11 +130,16 @@ abstract class NotificationDatabase : RoomDatabase() {
 
         fun get(context: Context): NotificationDatabase =
             instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    NotificationDatabase::class.java,
-                    DB_NAME,
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build().also { instance = it }
+                instance ?: build(context.applicationContext).also { instance = it }
             }
+
+        /** Keystore·파일 작업이 있으므로 메인 스레드가 아닌 곳에서 처음 불러야 한다 */
+        private fun build(context: Context): NotificationDatabase {
+            val passphrase = DatabaseEncryption.prepare(context, DB_NAME, DatabasePassphrase(context))
+            return Room.databaseBuilder(context, NotificationDatabase::class.java, DB_NAME)
+                .openHelperFactory(SupportOpenHelperFactory(passphrase))
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .build()
+        }
     }
 }

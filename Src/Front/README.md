@@ -175,7 +175,7 @@ Front/
 |---|---|
 | `MessageNotificationListener.kt` | `NotificationListenerService`. 알림을 받아 선택한 앱이면 DB에 저장 (앱이 꺼져 있어도 동작) |
 | `NotificationParser.kt` | 알림 → 메시지 변환. 메신저 알림(MessagingStyle)은 메시지마다 한 행으로 나누고, 단톡 여부와 대화방 이름을 뽑음 |
-| `data/` | Room DB (`notification_messages` 테이블)와 선택한 앱 목록(SharedPreferences) |
+| `data/` | Room DB (`notification_messages` 테이블, SQLCipher 암호화)와 선택한 앱 목록·보관 기간(SharedPreferences) |
 | `bridge/` | JS에서 부르는 `NotificationStore` 모듈 |
 
 - 메신저 알림은 새 메시지가 올 때마다 이전 메시지까지 다시 담아 오기 때문에 같은 메시지는 한 번만 저장합니다.
@@ -192,7 +192,18 @@ Front/
 - 문자 앱이 이름·번호 앞뒤에 붙이는 보이지 않는 문자(U+2068·U+2069 등)는 지우고 저장합니다.
 - 실기기에서 확인한 알림 형식은 `NotificationParser.kt` 상단 주석과 단위 테스트(`android/app/src/test/.../NotificationParser*Test.kt`)에 정리돼 있습니다. 파서를 고친 뒤에는 `cd android && ./gradlew :app:testDebugUnitTest`로 확인하세요.
 - 묶음 요약 알림("새 메시지 3개")과 상시 알림(음악 재생 등)은 저장하지 않습니다.
-- ⚠️ 아직 DB가 암호화되어 있지 않습니다. SQLCipher 적용 예정입니다 (`NotificationDatabase.kt`의 TODO 참고).
+- **DB 암호화 (SQLCipher):** DB 파일 전체가 암호화돼 있어 앱 파일을 복사해도 읽을 수 없습니다.
+  - 암호는 기기에서 만든 무작위 값이고, Android Keystore 키로 감싸서 보관합니다 (`data/DatabasePassphrase.kt`).
+  - 암호화 전 빌드로 쌓인 평문 DB는 처음 열 때 암호화 DB로 옮깁니다. 메시지와 DB 버전은 그대로이고, 행 수를 비교해 같을 때만 원본을 지웁니다. 옮기다 실패하면 원본은 그대로 두고 다음에 다시 시도합니다 (`data/DatabaseEncryption.kt`).
+  - **다시는 열 수 없는 것이 확실할 때만** DB를 지우고 새로 시작합니다. 알림창에 남아 있는 알림은 다시 저장됩니다.
+    - 암호: Keystore 키가 아예 없음, `KeyPermanentlyInvalidatedException`, `AEADBadTagException`, 저장된 암호 형식 손상
+    - DB: `SQLITE_NOTADB`(암호가 다름)·`SQLITE_CORRUPT`(손상)
+  - 그 밖의 실패(부팅 직후 Keystore 미준비, 일시적인 Keystore 오류, 메모리 부족, 파일 잠김 등)는 DB를 지우지 않습니다. 그때는 DB를 열지 않고(알림 저장 실패로 기록) 다음 알림이나 다음 조회 때 다시 시도합니다.
+  - 에뮬레이터에서 DB 내용을 보려면 `NotificationDebug` 화면을 쓰세요. `adb`로 꺼낸 파일은 `sqlite3`로 열리지 않습니다.
+- **보관 기간:** 메시지 시각이 보관 기간(기본 30일)보다 오래되면 지웁니다 (`data/NotificationRetention.kt`).
+  - 새 알림을 저장할 때와 JS에서 메시지를 읽을 때 정리하고, 실제 삭제는 1시간에 한 번만 합니다.
+  - 보관 기간보다 이미 오래된 알림은 처음부터 저장하지 않습니다.
+  - `setRetentionDays(일)`로 바꿀 수 있고(1~365일), 기간을 줄이면 바로 지웁니다. 기본 기간은 팀 결정이 필요합니다.
 
 ```ts
 import NotificationStore from "@native/NotificationStore";
@@ -201,6 +212,8 @@ await NotificationStore.isPermissionGranted();       // 알림 접근 허용 여
 await NotificationStore.openPermissionSettings();    // 허용 설정 화면 열기
 await NotificationStore.setMonitoredApps(["com.kakao.talk"]);
 const list = await NotificationStore.getNotifications({ packageName: "com.kakao.talk", limit: 50 });
+await NotificationStore.getRetentionDays();          // 메시지 보관 기간 (기본 30일)
+await NotificationStore.setRetentionDays(14);        // 바꾸면 기간이 지난 메시지를 바로 지움 (지운 개수 반환)
 ```
 
 개발용 확인 화면은 `src/pages/dev/NotificationDebug.tsx`입니다. `initialRouteName`을 잠시 `"NotificationDebug"`로 바꾸면 권한 허용 → 앱 선택 → 저장된 알림 확인을 한 화면에서 할 수 있습니다.

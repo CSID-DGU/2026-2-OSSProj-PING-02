@@ -16,6 +16,7 @@ import com.malssiat.notification.MessageNotificationListener
 import com.malssiat.notification.data.MonitoredAppsStore
 import com.malssiat.notification.data.NotificationDatabase
 import com.malssiat.notification.data.NotificationEntity
+import com.malssiat.notification.data.NotificationRetention
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +33,7 @@ class NotificationStoreModule(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val monitoredApps = MonitoredAppsStore(reactContext)
+    private val retention = NotificationRetention(reactContext)
     private val dao by lazy { NotificationDatabase.get(reactContext).notificationDao() }
 
     override fun getName(): String = NAME
@@ -115,6 +117,7 @@ class NotificationStoreModule(
     fun getNotifications(packageName: String?, limit: Double, promise: Promise) {
         scope.launch {
             runCatching {
+                retention.purgeIfDue(dao)
                 val n = limit.toInt().coerceIn(1, MAX_LIMIT)
                 val rows = if (packageName == null) dao.getRecent(n)
                 else dao.getRecentByPackage(packageName, n)
@@ -129,6 +132,7 @@ class NotificationStoreModule(
     fun getConversationMessages(packageName: String, conversationId: String, limit: Double, promise: Promise) {
         scope.launch {
             runCatching {
+                retention.purgeIfDue(dao)
                 val rows = dao.getRecentByConversation(packageName, conversationId, limit.toInt().coerceIn(1, MAX_LIMIT))
                 Arguments.createArray().apply { rows.forEach { pushMap(it.toWritableMap()) } }
             }.onSuccess(promise::resolve)
@@ -143,6 +147,22 @@ class NotificationStoreModule(
             runCatching {
                 if (packageName == null) dao.deleteAll() else dao.deleteByPackage(packageName)
             }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_DB", it) }
+        }
+    }
+
+    /** 메시지 보관 기간(일) */
+    @ReactMethod
+    fun getRetentionDays(promise: Promise) {
+        promise.resolve(retention.getDays())
+    }
+
+    /** 보관 기간을 바꾸고 기간이 지난 메시지를 바로 지운다. 지운 개수를 돌려준다 */
+    @ReactMethod
+    fun setRetentionDays(days: Double, promise: Promise) {
+        scope.launch {
+            runCatching { retention.setDays(days.toInt(), dao) }
+                .onSuccess(promise::resolve)
                 .onFailure { promise.reject("E_DB", it) }
         }
     }
