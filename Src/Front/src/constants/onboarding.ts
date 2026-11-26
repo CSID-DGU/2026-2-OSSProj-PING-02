@@ -69,8 +69,15 @@ export const LINKED_APP_OPTIONS: {
   },
 ];
 
-// 06 / 받을 알림 선택 (전체 선택이 기본값)
-export type NotificationPref = "MORNING" | "EVENING" | "NEW_FRIEND";
+// 06 / 받을 알림 선택: 줄마다 스위치, 모두 켜짐이 기본값 (Figma 03 온보딩 06 최종)
+// 값 이름은 예전 3개(MORNING·EVENING·NEW_FRIEND)를 그대로 두고 새 3개를 더함
+export type NotificationPref =
+  | "MORNING"
+  | "EVENING"
+  | "NEW_FRIEND"
+  | "REPLY"
+  | "ORIGINAL"
+  | "SCHEDULE";
 
 export const NOTIFICATION_PREF_OPTIONS: {
   value: NotificationPref;
@@ -79,18 +86,33 @@ export const NOTIFICATION_PREF_OPTIONS: {
 }[] = [
   {
     value: "MORNING",
-    title: "아침 확인 알림",
-    description: "오전 9시에 오늘의 컨디션과 연락을 확인해요",
+    title: "오늘의 상태 확인",
+    description: "오전 9시에 오늘 필요한 도움 수준과 연락을 확인해요",
   },
   {
     value: "EVENING",
-    title: "저녁 확인 알림",
-    description: "오후 7시에 미뤄둔 답장을 다시 확인해요",
+    title: "저녁 연락 정리",
+    description: "오후 7시에 남은 연락을 모아 알려드려요",
   },
   {
     value: "NEW_FRIEND",
-    title: "새 친구 발견 알림",
-    description: "새로운 메신저 발신자를 발견하면 바로 알려드려요",
+    title: "새 친구·계정 발견 알림",
+    description: "처음 보는 발신자와 연결할 계정을 알려드려요",
+  },
+  {
+    value: "REPLY",
+    title: "답장 알림",
+    description: "준비된 답장과 미뤄둔 연락을 알려드려요",
+  },
+  {
+    value: "ORIGINAL",
+    title: "원문 확인 필요",
+    description: "메시지 내용 전체를 확인하지 못했을 때 알려드려요",
+  },
+  {
+    value: "SCHEDULE",
+    title: "일정 알림",
+    description: "생일·경조사와 저장된 일정을 알려드려요",
   },
 ];
 

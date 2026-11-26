@@ -42,12 +42,23 @@ const TITLE = {
   access: "알림에 온 연락을\n함께 살펴볼게요",
   apps: "도움을 받을 앱을 선택해요",
   types: "받을 알림을\n선택해 주세요",
-  contacts: "연락처로 친구 목록을\n먼저 만들어볼까요?",
+  contacts: "연락처로 친구 목록을\n만들어볼까요?",
   select: "친구로 추가할 연락처를\n선택해요",
   friends: "친구 목록을\n준비했어요",
   memory: "내 상황을 조금\n알려주실래요?",
   done: "이제 준비가\n모두 끝났어요",
 };
+
+// 06 스위치 줄의 켜짐 상태 (스택 아래 화면 것 말고 맨 위 화면 것)
+const switchOn = (root: Instance, title: string) =>
+  root
+    .findAll(
+      n =>
+        typeof n.type === "string" &&
+        n.props.accessibilityRole === "switch" &&
+        String(n.props.accessibilityLabel).startsWith(title)
+    )
+    .at(-1)?.props.accessibilityState?.checked;
 
 // 지금 단계에서 안드로이드 뒤로가기 → 이전 단계로 돌아가고(지금 단계는 사라짐),
 // 이전 단계의 버튼으로 다시 지금 단계에 옴
@@ -82,6 +93,23 @@ test("이어서 하기: AI 모델 단계에서 멈췄던 사용자는 06 받을 
   const root = await renderApp();
   await login(root);
   await waitForText(root, TITLE.types);
+});
+
+test("06: 알림을 모두 끄면 권한을 묻지 않고 07로 간다", async () => {
+  await reset("deny");
+  await services.storage.setItem(
+    `${STORAGE_KEYS.onboarding}.${USER_ID}`,
+    JSON.stringify({ completed: false, lastStep: "NotificationTypes" })
+  );
+  const request = jest.spyOn(services.permission, "request");
+  const root = await renderApp();
+  await login(root);
+  await waitForText(root, TITLE.types);
+  await pressByRole(root, "switch", "전체 알림");
+  await press(root, "확인했어요");
+  await waitForText(root, TITLE.contacts);
+  expect(request).not.toHaveBeenCalledWith("postNotifications");
+  request.mockRestore();
 });
 
 test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기는 이전 단계로 간다", async () => {
@@ -156,26 +184,27 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
   expect(kakao?.props.accessibilityState).toMatchObject({ checked: true });
   await press(root, "다음");
 
-  // 06 받을 알림: 하나 빼고 다음(허용) → 07, 뒤로가면 06 선택이 그대로
+  // 06 받을 알림: 모두 켜짐이 기본, 전체 알림으로 모두 끄고 켜기
   await waitForText(root, TITLE.types);
-  await toggle(root, "새 친구 발견 알림");
+  expect(switchOn(root, "전체 알림")).toBe(true);
+  await pressByRole(root, "switch", "전체 알림");
+  expect(switchOn(root, "오늘의 상태 확인")).toBe(false);
+  expect(switchOn(root, "일정 알림")).toBe(false);
+  await pressByRole(root, "switch", "전체 알림");
+  expect(switchOn(root, "일정 알림")).toBe(true);
+
+  // 하나 끄면 전체 알림도 꺼짐 → 확인했어요(허용) → 07, 뒤로가면 06 선택이 그대로
+  await pressByRole(root, "switch", "새 친구·계정 발견 알림");
+  expect(switchOn(root, "전체 알림")).toBe(false);
   await waitForRequestDone(root);
-  await press(root, "다음");
+  await press(root, "확인했어요");
 
   // 07 연락처 → 뒤로가기면 06
   await waitForText(root, TITLE.contacts);
   await pressBack();
   await waitForNoText(root, TITLE.contacts);
-  const newFriend = root
-    .findAll(
-      n =>
-        typeof n.type === "string" &&
-        n.props.accessibilityRole === "checkbox" &&
-        String(n.props.accessibilityLabel).startsWith("새 친구 발견 알림")
-    )
-    .at(-1);
-  expect(newFriend?.props.accessibilityState).toMatchObject({ checked: false });
-  await press(root, "다음"); // 앱 알림은 이미 허용 → 바로 07
+  expect(switchOn(root, "새 친구·계정 발견 알림")).toBe(false);
+  await press(root, "확인했어요"); // 앱 알림은 이미 허용 → 바로 07
 
   // 07 연락처 (허용) → 09
   await waitForText(root, TITLE.contacts);
@@ -231,9 +260,10 @@ test("거부(개발 옵션): 거부 안내 → 다시 요청 → 설정 열기, 
   await toggle(root, "카카오톡");
   await press(root, "다음");
 
-  // 06: 다음 → 시스템 팝업 거절 → 부드러운 안내
-  await waitForText(root, "다음 단계에서 기기 권한을 요청해요");
-  await press(root, "다음");
+  // 06: 확인했어요 → 06-1 시스템 팝업 거절 → 부드러운 안내 (팝업 전에는 안내 없음)
+  await waitForText(root, TITLE.types);
+  expect(findText(root, "괜찮아요, 나중에 켜도 돼요").length).toBe(0);
+  await press(root, "확인했어요");
   await waitForText(root, "괜찮아요, 나중에 켜도 돼요");
   await waitForRequestDone(root);
   expect(findText(root, "이대로 넘어갈게요").length).toBe(1);
@@ -245,10 +275,9 @@ test("거부(개발 옵션): 거부 안내 → 다시 요청 → 설정 열기, 
   await waitForText(root, TITLE.types);
   expect(findText(root, "괜찮아요, 나중에 켜도 돼요").length).toBe(0);
   expect(findText(root, "이대로 넘어갈게요").length).toBe(0);
-  await waitForText(root, "다음 단계에서 기기 권한을 요청해요");
 
   // 다시 요청 → "다시 묻지 않음" → 설정 열기 → 허용되면 07
-  await press(root, "다음"); // 두 번째 요청: 다시 묻지 않음
+  await press(root, "확인했어요"); // 두 번째 요청: 다시 묻지 않음
   await waitForText(
     root,
     "이제는 휴대폰 설정에서만 켤 수 있어요. 꺼 두면 선택한 알림을 받을 수 없고, 앱을 열었을 때만 확인할 수 있어요."
@@ -256,10 +285,11 @@ test("거부(개발 옵션): 거부 안내 → 다시 요청 → 설정 열기, 
   await waitForRequestDone(root);
   await press(root, "설정 열기");
   await waitForRequestDone(root);
-  await press(root, "다음");
+  await press(root, "확인했어요");
 
   // 07 연락처: 거절 → 다시 요청(다시 묻지 않음) → 설정 열기 → 09
-  await waitForText(root, "나중에도 가능해요");
+  await waitForText(root, TITLE.contacts);
+  expect(findText(root, "건너뛰기").length).toBeGreaterThan(0);
   await press(root, "연락처 가져오기");
   await waitForText(root, "괜찮아요, 나중에 켜도 돼요");
   await waitForRequestDone(root);

@@ -128,11 +128,6 @@ const ContactsSelect = () => {
       scrollable={false}
       footer={
         <>
-          {showSkip && load !== "loading" && (
-            <SkipButton onPress={handleSkip}>
-              {contacts.length === 0 ? "다음" : "나중에 할게요"}
-            </SkipButton>
-          )}
           <Button
             variant="primary"
             fullWidth
@@ -144,6 +139,11 @@ const ContactsSelect = () => {
           >
             {`선택한 ${count}명 추가`}
           </Button>
+          {showSkip && load !== "loading" && (
+            <SkipButton onPress={handleSkip}>
+              {contacts.length === 0 ? "다음" : "나중에 할게요"}
+            </SkipButton>
+          )}
         </>
       }
     >

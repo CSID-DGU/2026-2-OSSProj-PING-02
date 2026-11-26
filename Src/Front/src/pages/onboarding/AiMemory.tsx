@@ -32,7 +32,6 @@ const AiMemory = () => {
   // TODO(Figma 문구 확인): 시안은 "내용 작성하기"인데 어느 항목인지 모호해 항목 이름을 넣음
   const footer = !anyWritten ? (
     <>
-      <SkipButton onPress={goNext}>지금은 건너뛰기</SkipButton>
       <Button
         variant="primary"
         fullWidth
@@ -40,17 +39,18 @@ const AiMemory = () => {
       >
         {`‘${MEMORY_CATEGORIES[0].title}’부터 쓰기`}
       </Button>
+      <SkipButton onPress={goNext}>지금은 건너뛰기</SkipButton>
     </>
   ) : (
     <>
+      <Button variant="primary" fullWidth onPress={goNext}>
+        다음
+      </Button>
       {firstUnwritten && (
         <SkipButton onPress={() => openEdit(firstUnwritten.value)}>
           {`‘${firstUnwritten.title}’도 쓰기`}
         </SkipButton>
       )}
-      <Button variant="primary" fullWidth onPress={goNext}>
-        다음
-      </Button>
     </>
   );
 

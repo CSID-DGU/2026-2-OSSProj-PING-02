@@ -30,9 +30,6 @@ const NotificationAccess = () => {
       gap={32}
       footer={
         <>
-          {!state.granted && (
-            <SkipButton onPress={goNext}>나중에 할게요</SkipButton>
-          )}
           <Button
             variant="primary"
             fullWidth
@@ -47,6 +44,10 @@ const NotificationAccess = () => {
               ? "다음"
               : permissionActionLabel(state, "알림 접근 허용하기")}
           </Button>
+          {/* Figma 04에는 없지만 유지하기로 확인함 (#59 Q5). 텍스트 버튼은 주 버튼 아래 */}
+          {!state.granted && (
+            <SkipButton onPress={goNext}>나중에 할게요</SkipButton>
+          )}
         </>
       }
     >

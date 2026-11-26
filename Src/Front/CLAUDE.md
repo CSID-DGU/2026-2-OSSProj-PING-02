@@ -103,7 +103,7 @@
   - 토스트 진한 갈색 #4F3832 → `actionPrimaryBg`(brown700 #4D3932), 체크 원 #7A6560 → `brandBrown`(brown600 #644B40)
   - "연결됨" 연한 초록 칩 바탕 ≈#EEF5EA·글자 ≈#6B9A5B → `feedbackSuccessBg`(green50 #F5F9F2)·`feedbackSuccessText`(green600 #527A40) (화면 구현 때 적용)
   - 원문 말풍선 영역 연한 파랑 ≈#EBF2F9 → `feedbackInfoBg`(info50 #EEF5FA) (화면 구현 때 적용)
-  - 스위치 켜짐 ≈#F5D66F → `brandSeed`(seed300), 꺼짐은 시안 없음 → `borderStrong`
+  - 스위치 켜짐 #F7D876 = `brandSeed`(seed300), 꺼짐 #644B40 = `brandBrown`(brown600) (#59에서 시안이 생겨 회색 → 갈색, core 수정)
   - 밑줄 탭 바탕선 ≈#F3EEEB → `borderDefault`(neutral200), 선택 밑줄 ≈#3A2B27 → `textPrimary`, 시트 손잡이 → `borderDefault`
 - #44 달력 날짜 칸은 시안대로 세로 32(선택 원 지름 32). 줄이 붙어 있어 터치 영역은 세로 약 36dp(줄 간격 절반씩 `hitSlop`)로 48dp 미만, 디자이너 요청으로 시안 우선
 - #44 Figma와 다르게 간 부분: 시간 드롭다운 폭 88→148dp("오전 10시 30분"), 시간 칩은 알약 대신 `ChoiceGroup` option 모양, 🔔 SVG 없음(임시 `BellIcon`), 상세 화면 앱바 제목은 지금처럼 왼쪽 정렬(시안은 가운데), 알림 센터 시안 없음
@@ -134,7 +134,7 @@
 
 ## 다음 작업
 
-- 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 덩어리 1(모델·배터리 제거, 03·12) 끝, 다음은 06·06-1·07(텍스트 버튼 위치 포함) → 08·09·10 → 11·11-1
+- 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 덩어리 1(모델·배터리 제거, 03·12)·2(06 스위치 6개·06-1·07, 텍스트 버튼은 주 버튼 아래) 끝, 다음은 08·09·10 → 11·11-1. 에셋(연락처 책 PNG·아바타·돋보기 SVG)은 바탕화면 `UI\온보딩 추가`에 들어오면 교체 (지금은 같은 크기 자리만)
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영
 - 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)
 
