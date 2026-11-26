@@ -1,6 +1,7 @@
 import ReactTestRenderer from "react-test-renderer";
 import { createMockPermissionService } from "../src/services/permission/mockPermissionService";
 import { services, STORAGE_KEYS } from "../src/services";
+import { resolveSavedStep } from "../src/constants/onboarding";
 import {
   findText,
   press,
@@ -40,9 +41,7 @@ const TITLE = {
   privacy: "원문은 기기에,\nAI에는 가린 내용만",
   access: "알림에 온 연락을\n함께 살펴볼게요",
   apps: "도움을 받을 앱을 선택해요",
-  model: "민감한 내용을 먼저 가려 줄\n작은 AI를 받아요",
   types: "받을 알림을\n선택해 주세요",
-  battery: "연락 수집이\n끊기지 않도록 도와주세요",
   contacts: "연락처로 친구 목록을\n먼저 만들어볼까요?",
   select: "친구로 추가할 연락처를\n선택해요",
   friends: "친구 목록을\n준비했어요",
@@ -66,6 +65,24 @@ const checkBack = async (
 };
 
 beforeEach(() => reset("allow"));
+
+test("없어진 단계(AI 모델·배터리)가 저장돼 있으면 그다음 단계부터 이어서 한다", () => {
+  expect(resolveSavedStep("ModelDownload")).toBe("NotificationTypes");
+  expect(resolveSavedStep("BatteryOptimization")).toBe("ContactsImport");
+  expect(resolveSavedStep("AiMemory")).toBe("AiMemory");
+  expect(resolveSavedStep("없는단계")).toBe("ServiceIntro");
+  expect(resolveSavedStep(undefined)).toBe("ServiceIntro");
+});
+
+test("이어서 하기: AI 모델 단계에서 멈췄던 사용자는 06 받을 알림부터", async () => {
+  await services.storage.setItem(
+    `${STORAGE_KEYS.onboarding}.${USER_ID}`,
+    JSON.stringify({ completed: false, lastStep: "ModelDownload" })
+  );
+  const root = await renderApp();
+  await login(root);
+  await waitForText(root, TITLE.types);
+});
 
 test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기는 이전 단계로 간다", async () => {
   const root = await renderApp();
@@ -124,10 +141,10 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
   await toggle(root, "카카오톡");
   await press(root, "다음");
 
-  // AI 모델 → 뒤로가기면 05, 카카오톡 선택이 그대로
-  await waitForText(root, TITLE.model);
+  // 06 받을 알림 → 뒤로가기면 05, 카카오톡 선택이 그대로
+  await waitForText(root, TITLE.types);
   await pressBack();
-  await waitForNoText(root, TITLE.model);
+  await waitForNoText(root, TITLE.types);
   const kakao = root
     .findAll(
       n =>
@@ -138,22 +155,17 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
     .at(-1);
   expect(kakao?.props.accessibilityState).toMatchObject({ checked: true });
   await press(root, "다음");
-  await waitForText(root, "나중에 받을게요");
-  await press(root, "나중에 받을게요");
 
   // 06 받을 알림: 하나 빼고 다음(허용) → 07, 뒤로가면 06 선택이 그대로
   await waitForText(root, TITLE.types);
-  await checkBack(root, TITLE.types, TITLE.model, () =>
-    press(root, "나중에 받을게요")
-  );
   await toggle(root, "새 친구 발견 알림");
   await waitForRequestDone(root);
   await press(root, "다음");
 
-  // 07 배터리
-  await waitForText(root, TITLE.battery);
+  // 07 연락처 → 뒤로가기면 06
+  await waitForText(root, TITLE.contacts);
   await pressBack();
-  await waitForNoText(root, TITLE.battery);
+  await waitForNoText(root, TITLE.contacts);
   const newFriend = root
     .findAll(
       n =>
@@ -164,15 +176,9 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
     .at(-1);
   expect(newFriend?.props.accessibilityState).toMatchObject({ checked: false });
   await press(root, "다음"); // 앱 알림은 이미 허용 → 바로 07
-  await waitForText(root, TITLE.battery);
-  await waitForText(root, "나중에 할게요");
-  await press(root, "나중에 할게요");
 
-  // 08 연락처 (허용) → 09
+  // 07 연락처 (허용) → 09
   await waitForText(root, TITLE.contacts);
-  await checkBack(root, TITLE.contacts, TITLE.battery, () =>
-    press(root, "나중에 할게요")
-  );
   await waitForText(root, "연락처 가져오기");
   await press(root, "연락처 가져오기");
 
@@ -198,9 +204,9 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
   expect(findText(root, "‘요즘 나의 상태’부터 쓰기").length).toBe(1);
   await press(root, "지금은 건너뛰기");
 
-  // 12 완료: 가리기 모델 상태를 보여 줌, 뒤로가기면 11
+  // 12 완료: 말씨앗의 약속, 뒤로가기면 11
   await waitForText(root, TITLE.done);
-  await waitForText(root, "가리기 모델을 아직 받지 않았어요");
+  expect(findText(root, "말씨앗의 약속").length).toBe(1);
   await checkBack(root, TITLE.done, TITLE.memory, () =>
     press(root, "지금은 건너뛰기")
   );
@@ -224,8 +230,6 @@ test("거부(개발 옵션): 거부 안내 → 다시 요청 → 설정 열기, 
   await waitForText(root, TITLE.apps);
   await toggle(root, "카카오톡");
   await press(root, "다음");
-  await waitForText(root, "나중에 받을게요");
-  await press(root, "나중에 받을게요");
 
   // 06: 다음 → 시스템 팝업 거절 → 부드러운 안내
   await waitForText(root, "다음 단계에서 기기 권한을 요청해요");
@@ -234,10 +238,10 @@ test("거부(개발 옵션): 거부 안내 → 다시 요청 → 설정 열기, 
   await waitForRequestDone(root);
   expect(findText(root, "이대로 넘어갈게요").length).toBe(1);
 
-  // 상태 화면에서 뒤로가기 → AI 모델로, 다시 오면 06은 처음 상태
+  // 상태 화면에서 뒤로가기 → 05로, 다시 오면 06은 처음 상태
   await pressBack();
   await waitForNoText(root, TITLE.types);
-  await press(root, "나중에 받을게요");
+  await press(root, "다음");
   await waitForText(root, TITLE.types);
   expect(findText(root, "괜찮아요, 나중에 켜도 돼요").length).toBe(0);
   expect(findText(root, "이대로 넘어갈게요").length).toBe(0);
@@ -253,10 +257,8 @@ test("거부(개발 옵션): 거부 안내 → 다시 요청 → 설정 열기, 
   await press(root, "설정 열기");
   await waitForRequestDone(root);
   await press(root, "다음");
-  await waitForText(root, TITLE.battery);
-  await press(root, "나중에 할게요");
 
-  // 08 연락처: 거절 → 다시 요청(다시 묻지 않음) → 설정 열기 → 09
+  // 07 연락처: 거절 → 다시 요청(다시 묻지 않음) → 설정 열기 → 09
   await waitForText(root, "나중에도 가능해요");
   await press(root, "연락처 가져오기");
   await waitForText(root, "괜찮아요, 나중에 켜도 돼요");

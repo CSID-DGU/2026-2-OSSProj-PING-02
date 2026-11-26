@@ -12,9 +12,7 @@ import ServiceIntro from "@pages/onboarding/ServiceIntro";
 import PrivacyNotice from "@pages/onboarding/PrivacyNotice";
 import NotificationAccess from "@pages/onboarding/NotificationAccess";
 import LinkedApps from "@pages/onboarding/LinkedApps";
-import ModelDownload from "@pages/onboarding/ModelDownload";
 import NotificationTypes from "@pages/onboarding/NotificationTypes";
-import BatteryOptimization from "@pages/onboarding/BatteryOptimization";
 import ContactsImport from "@pages/onboarding/ContactsImport";
 import ContactsSelect from "@pages/onboarding/ContactsSelect";
 import FriendsReady from "@pages/onboarding/FriendsReady";
@@ -56,12 +54,7 @@ const Router = () => {
       <Stack.Screen name="PrivacyNotice" component={PrivacyNotice} />
       <Stack.Screen name="NotificationAccess" component={NotificationAccess} />
       <Stack.Screen name="LinkedApps" component={LinkedApps} />
-      <Stack.Screen name="ModelDownload" component={ModelDownload} />
       <Stack.Screen name="NotificationTypes" component={NotificationTypes} />
-      <Stack.Screen
-        name="BatteryOptimization"
-        component={BatteryOptimization}
-      />
       <Stack.Screen name="ContactsImport" component={ContactsImport} />
       <Stack.Screen name="ContactsSelect" component={ContactsSelect} />
       <Stack.Screen name="FriendsReady" component={FriendsReady} />

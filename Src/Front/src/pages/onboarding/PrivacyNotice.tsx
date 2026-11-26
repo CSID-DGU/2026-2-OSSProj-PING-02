@@ -37,7 +37,7 @@ const PrivacyNotice = () => {
   return (
     <AuthLayout backOnly
       centered
-      gap={40}
+      gap={32}
       footer={
         <Button variant="primary" fullWidth onPress={goNext}>
           확인했어요
@@ -59,7 +59,9 @@ const PrivacyNotice = () => {
               point.description
             }`}
           >
-            {/* 실기기 확인 후 아이콘 → 제목 → 설명 순서로 (Figma 03은 아이콘이 아래, TODO(디자이너 공유)) */}
+            {/* Figma 03: 제목 → 설명 → 아이콘 */}
+            <s.PointTitle>{point.title}</s.PointTitle>
+            <s.PointDescription>{point.description}</s.PointDescription>
             <Image
               source={point.icon.source}
               style={[
@@ -67,8 +69,6 @@ const PrivacyNotice = () => {
                 { width: point.icon.width, height: point.icon.height },
               ]}
             />
-            <s.PointTitle>{point.title}</s.PointTitle>
-            <s.PointDescription>{point.description}</s.PointDescription>
           </s.Point>
         ))}
       </s.Points>

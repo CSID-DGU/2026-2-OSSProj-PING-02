@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { services, type ConversationSummary } from "@services";
-import { useOnboarding } from "@stores/OnboardingProvider";
 
 export type ConversationsState =
   | { status: "loading" }
@@ -9,10 +8,8 @@ export type ConversationsState =
   | { status: "ready"; items: ConversationSummary[] };
 
 // 홈·연락 목록 공통: 화면에 올 때마다 다시 불러오고(답장·미루기 반영),
-// 가리기 모델이 준비돼 있으면 분석 중(pending)인 대화를 분석함
+// 분석 중(pending)인 대화를 분석함 (민감한 내용 가리기는 기기 안 규칙이라 기다릴 준비물이 없음)
 export const useConversations = () => {
-  const { model } = useOnboarding();
-  const modelReady = model.status === "done";
   const [state, setState] = useState<ConversationsState>({ status: "loading" });
   const loadedOnce = useRef(false);
   const analyzing = useRef(new Set<string>());
@@ -40,9 +37,9 @@ export const useConversations = () => {
     load();
   }, [load]);
 
-  // 분석 중인 대화 → 모델이 있으면 분석 요청, 끝나면 그 카드만 바꿈
+  // 분석 중인 대화 → 분석 요청, 끝나면 그 카드만 바꿈
   useEffect(() => {
-    if (!modelReady || state.status !== "ready") return;
+    if (state.status !== "ready") return;
     state.items
       .filter(
         item =>
@@ -69,7 +66,7 @@ export const useConversations = () => {
           .catch(() => {})
           .finally(() => analyzing.current.delete(id));
       });
-  }, [modelReady, state]);
+  }, [state]);
 
-  return { state, modelReady, retry, reload: load };
+  return { state, retry, reload: load };
 };

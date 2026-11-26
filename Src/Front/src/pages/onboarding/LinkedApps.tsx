@@ -33,7 +33,7 @@ const LinkedApps = () => {
     <AuthLayout backOnly
       centered
       gap={32}
-      // TODO(Figma 문구 확인): 시안은 "말씨앗 시작하기"지만 흐름 중간이라 "다음"으로 둠
+      // 시안은 "말씨앗 시작하기"지만 흐름 중간이라 "다음" (디자이너 확인 완료, #59)
       footer={
         <Button
           variant="primary"

@@ -28,8 +28,10 @@ const img = (
 ): OnboardingImage => ({ source, width, height });
 
 export const ONBOARDING_IMAGES = {
-  // 04·08·12: 씨앗을 안고 앉은 말씨 (remembering-messages)
+  // 04: 씨앗을 안고 앉은 말씨 (remembering-messages)
   sittingSeeds: img(sittingSeeds, 116, 110),
+  // 12: 같은 그림을 04의 0.88배로 (Figma 12 그림 85×97.5dp, 04는 96.5×110.5dp)
+  sittingSeedsDone: img(sittingSeeds, 102, 97),
   // 02-1: 씨앗 덩굴을 건네는 말씨
   introConnection: img(introConnection, 252, 126),
   // 02-3: 씨앗을 심으며 걷는 말씨 (Figma 방향에 맞춰 좌우 반전)

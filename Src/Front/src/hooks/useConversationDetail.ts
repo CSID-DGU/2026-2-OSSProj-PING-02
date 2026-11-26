@@ -5,7 +5,6 @@ import {
   type Conversation,
   type ConversationDetail,
 } from "@services";
-import { useOnboarding } from "@stores/OnboardingProvider";
 import { useAuthNavigation } from "./useAuthNavigation";
 
 export type ConversationDetailState =
@@ -14,10 +13,8 @@ export type ConversationDetailState =
   | { status: "ready"; detail: ConversationDetail };
 
 // 08 연락 상세·09 답장 후보 화면 공통: 대화 하나를 불러오고,
-// 가리기 모델이 있는데 분석 중(pending)이면 분석을 요청함
+// 분석 중(pending)이면 분석을 요청함
 export const useConversationDetail = (conversationId: string) => {
-  const { model } = useOnboarding();
-  const modelReady = model.status === "done";
   const [state, setState] = useState<ConversationDetailState>({
     status: "loading",
   });
@@ -51,7 +48,7 @@ export const useConversationDetail = (conversationId: string) => {
     state.status === "ready" && state.detail.analysis.status === "pending";
 
   useEffect(() => {
-    if (!modelReady || !pending || analyzing.current) return;
+    if (!pending || analyzing.current) return;
     analyzing.current = true;
     services.conversation
       .analyze(conversationId)
@@ -66,9 +63,9 @@ export const useConversationDetail = (conversationId: string) => {
       .finally(() => {
         analyzing.current = false;
       });
-  }, [modelReady, pending, conversationId]);
+  }, [pending, conversationId]);
 
-  return { state, modelReady, retry, reload: load };
+  return { state, retry, reload: load };
 };
 
 // 연락 카드를 눌렀을 때: 단톡은 08을 건너뛰고 09-C로, 1:1은 08 연락 상세로

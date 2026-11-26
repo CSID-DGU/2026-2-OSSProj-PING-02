@@ -10,20 +10,19 @@ import {
 import type { ConversationSummary } from "@services";
 
 // 연락 카드 (홈 1:1·단톡 요약, 연락 목록 공통)
-// - 분석 완료 + 모델 있음: 요약
+// - 분석 완료: 요약
 // - 분석 중: "정리하는 중"
-// - 모델 없음·분석 실패: 요약 없이 받은 메시지 그대로 (기본 카드)
+// - 분석 실패: 요약 없이 받은 메시지 그대로 (기본 카드)
 interface ConversationCardProps {
   item: ConversationSummary;
-  modelReady: boolean;
   onPress: () => void;
 }
 
-const ConversationCard = ({ item, modelReady, onPress }: ConversationCardProps) => {
+const ConversationCard = ({ item, onPress }: ConversationCardProps) => {
   const theme = useTheme();
   const { conversation, lastMessage, analysis, deferred, replied } = item;
-  const showSummary = modelReady && analysis.status === "done" && !!analysis.summary;
-  const analyzing = modelReady && analysis.status === "pending";
+  const showSummary = analysis.status === "done" && !!analysis.summary;
+  const analyzing = analysis.status === "pending";
 
   const body = showSummary
     ? analysis.summary!
@@ -34,7 +33,7 @@ const ConversationCard = ({ item, modelReady, onPress }: ConversationCardProps) 
   const badges = [
     APP_LABEL[conversation.app],
     KIND_LABEL[conversation.kind],
-    analysis.mentionsMe && modelReady ? "나를 언급" : null,
+    analysis.mentionsMe ? "나를 언급" : null,
     deferred ? formatRemind(deferred.remindAt) : null,
     replied ? "답장함" : null,
   ].filter(Boolean) as string[];

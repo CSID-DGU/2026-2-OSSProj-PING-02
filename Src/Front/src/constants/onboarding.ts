@@ -10,17 +10,30 @@ export const ONBOARDING_STEPS = [
   "PrivacyNotice", // 03 개인정보 처리 안내
   "NotificationAccess", // 04 알림 접근 권한
   "LinkedApps", // 05 연동 앱 선택
-  "ModelDownload", // (Figma 없음) 05 다음: 기기 안 모델 다운로드 (모델을 안 쓰기로 해서 뺄지 팀 결정)
-  "NotificationTypes", // 06 받을 알림 선택 (+ 시스템 알림 권한)
-  "BatteryOptimization", // 07 배터리 최적화 예외
-  "ContactsImport", // 08 연락처 가져오기
+  "NotificationTypes", // 06 받을 알림 선택 (+ 06-1 시스템 알림 권한)
+  "ContactsImport", // 07 연락처 가져오기 (+ 08 불러오는 중)
   "ContactsSelect", // 09 연락처 친구 선택
   "FriendsReady", // 10 친구 목록 초기 설정 완료
-  "AiMemory", // 11 AI 메모리 작성
+  "AiMemory", // 11 AI 메모리 작성 (+ 11-1 건너뛰기 확인)
   "OnboardingDone", // 12 온보딩 완료
 ] as const;
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+// 없어진 단계(#59: AI 모델 다운로드·배터리 최적화)가 저장돼 있으면 그다음 단계부터 이어서
+const REMOVED_STEP_NEXT: Record<string, OnboardingStep> = {
+  ModelDownload: "NotificationTypes",
+  BatteryOptimization: "ContactsImport",
+};
+
+// 저장된 단계 이름을 지금 단계 구성에 맞춤 (모르는 값이면 처음부터)
+export const resolveSavedStep = (saved: unknown): OnboardingStep => {
+  if (typeof saved !== "string") return ONBOARDING_STEPS[0];
+  if ((ONBOARDING_STEPS as readonly string[]).includes(saved)) {
+    return saved as OnboardingStep;
+  }
+  return REMOVED_STEP_NEXT[saved] ?? ONBOARDING_STEPS[0];
+};
 
 export const getNextStep = (step: OnboardingStep): OnboardingStep =>
   ONBOARDING_STEPS[
@@ -118,9 +131,3 @@ export const MEMORY_CATEGORIES: {
     ],
   },
 ];
-
-// 06 / AI 모델 다운로드: 1.2GB, 540MB 형태
-export const formatBytes = (bytes: number) => {
-  const mb = bytes / 1024 / 1024;
-  return mb >= 1024 ? `${(mb / 1024).toFixed(1)}GB` : `${Math.round(mb)}MB`;
-};

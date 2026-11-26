@@ -69,9 +69,7 @@ export type RootStackParamList = {
   PrivacyNotice: undefined;
   NotificationAccess: undefined;
   LinkedApps: undefined;
-  ModelDownload: undefined;
   NotificationTypes: undefined;
-  BatteryOptimization: undefined;
   ContactsImport: undefined;
   ContactsSelect: undefined;
   FriendsReady: undefined;

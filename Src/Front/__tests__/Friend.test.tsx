@@ -1,5 +1,4 @@
 import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
-import { createMockModelService } from "../src/services/model/mockModelService";
 import {
   createMockConversationService,
   createMockMessengerService,
@@ -44,9 +43,6 @@ const seed = async () => {
   services.conversation = createMockConversationService({ latency: 50 });
   services.messenger = createMockMessengerService();
   services.friends = createMockFriendService({ latency: 50 });
-  services.model = createMockModelService({ durationMs: 50 });
-  const info = await services.model.getLatest();
-  await services.model.startDownload(info, () => {}).done;
 };
 
 const openFriends = async () => {
