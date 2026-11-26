@@ -59,7 +59,9 @@ const HomeHero = ({ mode, onChange }: HomeHeroProps) => {
       <Chip>
         <ChipText>오늘의 도움 수준</ChipText>
       </Chip>
-      <Title accessibilityRole="header">{copy.title}</Title>
+      <Title accessibilityRole="header" $compact={!!copy.compactTitle}>
+        {copy.title}
+      </Title>
       <Description>{copy.description}</Description>
       <ChangeButton
         onPress={onChange}
@@ -107,10 +109,12 @@ const ChipText = styled.Text`
 `;
 
 // 글자가 캐릭터(왼쪽 끝 약 233dp)에 겹치지 않게 폭 제한. 길면 두 줄 (시안에 긴 문구 프레임 없음)
-const Title = styled.Text`
+// $compact: 한 줄에 안 들어가는 문구만 18/26 (행간이 같아 카드 높이는 그대로)
+const Title = styled.Text<{ $compact: boolean }>`
   max-width: 214px;
   margin-top: 11px;
-  ${({ theme }) => theme.fonts.headingHomeHero};
+  ${({ theme, $compact }) =>
+    $compact ? theme.fonts.headingDialog : theme.fonts.headingHomeHero};
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 

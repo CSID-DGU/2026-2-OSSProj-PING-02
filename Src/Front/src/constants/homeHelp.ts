@@ -13,12 +13,16 @@ export interface HeroCopy {
   title: string;
   description: string;
   image: ImageSourcePropType;
+  // 제목이 길어 20px로는 한 줄(폭 214)에 안 들어가는 문구만 18px (headingDialog 18/26, 팀 확정)
+  compactTitle?: boolean;
 }
 
 // 홈 히어로 카드: 아직 선택하지 않음(unset) + 모드 4개
 export const HERO: Record<HelpMode | "unset", HeroCopy> = {
   unset: {
     title: "오늘은 어떻게 도와드릴까요?",
+    // 20px로 약 229dp라 214dp에 안 들어감 → 18px로 한 줄
+    compactTitle: true,
     // 폭 214에 다 안 들어가서, 안드로이드가 글자 단위로 끊으면 "요"만 넘어감 → 낱말 사이에서 직접 나눔
     description: "지금 답장할 수 있는 정도에 맞춰\n도움을 준비할게요",
     image: heroImage,
