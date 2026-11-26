@@ -59,19 +59,21 @@ const Row = styled.Pressable<{ $box: boolean }>`
       : ""}
 `;
 
+// Figma 06: 항목 제목 → 설명 3dp
 const Texts = styled.View`
   flex: 1;
-  gap: 2px;
+  gap: 3px;
 `;
 
-// TODO(Figma 스타일 확인): 글자 스타일 이름을 받으면 맞춤 (지금은 가까운 토큰)
+// Figma 06: 전체 알림 13/15 Regular(bodyCompact) · 항목 제목 14/20 SemiBold(titleSection)
 const Label = styled.Text<{ $box: boolean }>`
-  ${({ theme, $box }) => ($box ? theme.fonts.bodyMedium : theme.fonts.labelButton)};
+  ${({ theme, $box }) => ($box ? theme.fonts.bodyCompact : theme.fonts.titleSection)};
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
+// Figma 06: 항목 설명 11/12 Regular
 const Description = styled.Text`
-  ${({ theme }) => theme.fonts.captionRegular};
+  ${({ theme }) => theme.fonts.captionDense};
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 

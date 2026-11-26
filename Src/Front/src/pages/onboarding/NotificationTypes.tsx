@@ -53,7 +53,9 @@ const NotificationTypes = () => {
   return (
     <AuthLayout
       backOnly
-      gap={26}
+      gap={32}
+      // 마지막 항목 아래 여백(18.5)이 이미 있어서 화면 아래 여백은 0 (Figma 06처럼 버튼 위 구분선 없이 들어감)
+      paddingBottom={0}
       footer={
         <>
           <Button

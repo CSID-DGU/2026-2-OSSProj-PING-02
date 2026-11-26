@@ -67,6 +67,7 @@ export const fonts = {
   captionSmall: fontGenerator(11, fontFamily.regular, 16),
   captionXSmall: fontGenerator(10, fontFamily.regular, 14),
   captionCard: fontGenerator(10, fontFamily.regular, 16), // #53 홈 연락 카드 요약
+  captionDense: fontGenerator(11, fontFamily.regular, 12), // #59 온보딩 06 알림 항목 설명
 };
 
 export const FontList = Object.keys(fonts);
