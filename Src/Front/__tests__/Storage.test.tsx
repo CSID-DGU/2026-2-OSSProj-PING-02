@@ -1,6 +1,14 @@
 import * as Keychain from "react-native-keychain";
 import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
-import { services, STORAGE_KEYS, type SavedAiReply } from "../src/services";
+import {
+  AI_REPLY_MAX_PER_CONVERSATION,
+  AI_REPLY_MAX_TOTAL,
+  AI_REPLY_RETENTION_DAYS,
+  createKeyValueAiReplyStore,
+  services,
+  STORAGE_KEYS,
+  type SavedAiReply,
+} from "../src/services";
 import { createMemoryStorage } from "../src/services/storage/memoryStorage";
 import { createSecureKeyValueStorage } from "../src/services/storage/secureKeyValueStorage";
 import { createUserScopedStorage } from "../src/services/storage/userScopedStorage";
@@ -22,7 +30,7 @@ const CONVERSATION_ID = "com.kakao.talk::room-1";
 const savedReply = (): SavedAiReply => ({
   id: "reply-1",
   conversationId: CONVERSATION_ID,
-  createdAt: 1,
+  createdAt: Date.now(),
   relation: "FRIEND",
   needsDecision: false,
   summary: "요약",
@@ -52,6 +60,122 @@ describe("암호화 기기 저장소", () => {
   });
 });
 
+describe("AI 답장 저장소 (칸 하나에 묶음)", () => {
+  const NOW = Date.UTC(2026, 10, 26);
+  const DAY = 24 * 60 * 60 * 1000;
+  const reply = (
+    conversationId: string,
+    n: number,
+    createdAt = NOW - n * 1000
+  ): SavedAiReply => ({
+    id: `${conversationId}-${n}`,
+    conversationId,
+    createdAt,
+    relation: "FRIEND",
+    needsDecision: false,
+    summary: `요약 ${n}`,
+    replies: [],
+  });
+  const keychainServices = () => Keychain.getAllGenericPasswordServices();
+
+  test("여러 대화방 결과를 암호화 저장소 칸 하나에 두고, 대화방별로 최신순으로 읽는다", async () => {
+    const store = createKeyValueAiReplyStore(
+      createSecureKeyValueStorage("test.ai"),
+      { now: () => NOW }
+    );
+    for (let room = 0; room < 30; room += 1) {
+      await store.save(reply(`room-${room}`, 1));
+    }
+    await store.save(reply("room-0", 0));
+
+    // 대화방이 30개여도 Keystore 칸(=키)은 하나
+    expect(await keychainServices()).toEqual(["test.ai.malssiat.aiReplies"]);
+    expect(
+      (await store.listByConversation("room-0")).map(r => r.id)
+    ).toEqual(["room-0-0", "room-0-1"]);
+    expect(await store.listByConversation("room-29")).toHaveLength(1);
+  });
+
+  test("예전 대화방별 칸은 처음 읽을 때 새 칸으로 옮기고 지운다", async () => {
+    const storage = createSecureKeyValueStorage("test.ai");
+    await storage.setItem(
+      "malssiat.aiReplies.room-a",
+      JSON.stringify([reply("room-a", 1), reply("room-a", 2)])
+    );
+    await storage.setItem(
+      "malssiat.aiReplies.room-b",
+      JSON.stringify([reply("room-b", 1)])
+    );
+    // 망가진 옛 칸은 건너뛰고 지움
+    await storage.setItem("malssiat.aiReplies.room-c", "{망가짐");
+    await storage.setItem("malssiat.other", "그대로");
+
+    const store = createKeyValueAiReplyStore(storage, { now: () => NOW });
+    expect(
+      (await store.listByConversation("room-a")).map(r => r.id)
+    ).toEqual(["room-a-1", "room-a-2"]);
+    expect(await store.listByConversation("room-b")).toHaveLength(1);
+
+    expect((await storage.getAllKeys()).sort()).toEqual([
+      "malssiat.aiReplies",
+      "malssiat.other",
+    ]);
+
+    // 옮긴 뒤 새로 만든 저장소(앱 재시작)에서도 그대로
+    const restarted = createKeyValueAiReplyStore(storage, { now: () => NOW });
+    expect(await restarted.listByConversation("room-a")).toHaveLength(2);
+  });
+
+  test("보관 기간(30일)이 지난 결과는 빠진다", async () => {
+    const storage = createMemoryStorage();
+    const store = createKeyValueAiReplyStore(storage, { now: () => NOW });
+    await store.save(reply("room", 1, NOW - (AI_REPLY_RETENTION_DAYS + 1) * DAY));
+    await store.save(reply("room", 2, NOW - (AI_REPLY_RETENTION_DAYS - 1) * DAY));
+
+    expect((await store.listByConversation("room")).map(r => r.id)).toEqual([
+      "room-2",
+    ]);
+    // 저장된 값에서도 빠짐
+    expect(await storage.getItem("malssiat.aiReplies")).not.toContain("room-1");
+  });
+
+  test("대화방별·전체 최대 개수를 넘으면 오래된 것부터 뺀다", async () => {
+    const store = createKeyValueAiReplyStore(createMemoryStorage(), {
+      now: () => NOW,
+    });
+    for (let n = AI_REPLY_MAX_PER_CONVERSATION + 3; n >= 1; n -= 1) {
+      await store.save(reply("busy", n));
+    }
+    expect((await store.listByConversation("busy")).map(r => r.id)).toEqual(
+      Array.from(
+        { length: AI_REPLY_MAX_PER_CONVERSATION },
+        (_, i) => `busy-${i + 1}`
+      )
+    );
+
+    // 대화방마다 1개씩, 전체 최대 개수보다 많이 저장
+    for (let room = AI_REPLY_MAX_TOTAL + 10; room >= 1; room -= 1) {
+      await store.save(reply(`room-${room}`, 0, NOW - room * 1000));
+    }
+    expect(await store.listByConversation("room-1")).toHaveLength(1);
+    expect(
+      await store.listByConversation(`room-${AI_REPLY_MAX_TOTAL + 10}`)
+    ).toHaveLength(0);
+  });
+
+  test("동시에 여러 개를 저장해도 하나도 잃지 않는다", async () => {
+    const store = createKeyValueAiReplyStore(createMemoryStorage(), {
+      now: () => NOW,
+    });
+    await Promise.all(
+      Array.from({ length: 10 }, (_, room) => store.save(reply(`room-${room}`, 1)))
+    );
+    for (let room = 0; room < 10; room += 1) {
+      expect(await store.listByConversation(`room-${room}`)).toHaveLength(1);
+    }
+  });
+});
+
 describe("사용자별 저장소", () => {
   test("사용자마다 칸이 나뉘고, 로그인 전에는 읽어도 없고 쓰기는 버린다", async () => {
     const storage = createUserScopedStorage(createMemoryStorage());
@@ -67,8 +191,11 @@ describe("사용자별 저장소", () => {
 
     storage.setUserId("a");
     expect(await storage.getItem("k")).toBe("A");
+    // 키 목록도 지금 사용자 것만
+    expect(await storage.getAllKeys()).toEqual(["k"]);
     storage.setUserId(null);
     expect(await storage.getItem("k")).toBeNull();
+    expect(await storage.getAllKeys()).toEqual([]);
   });
 });
 
@@ -101,9 +228,13 @@ describe("앱 재시작·로그아웃", () => {
     expect(
       await services.aiReplies.listByConversation(CONVERSATION_ID)
     ).toHaveLength(1);
+    // 대화방별 칸이 아니라 사용자 칸 하나에 묶여 저장됨
+    expect(
+      await services.storage.getItem(`user.${USER_ID}.malssiat.aiReplies`)
+    ).not.toBeNull();
     expect(
       await services.storage.getItem(`user.${USER_ID}.malssiat.aiReplies.${CONVERSATION_ID}`)
-    ).not.toBeNull();
+    ).toBeNull();
 
     await pressByRole(root, "tab", "설정");
     await press(root, "로그아웃 (개발용)");

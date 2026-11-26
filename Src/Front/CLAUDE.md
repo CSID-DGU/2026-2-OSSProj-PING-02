@@ -52,6 +52,8 @@
   - 온보딩 진행 상황·선택 값(연동 앱·받을 알림·친구·AI 메모리): `services.storage`에 사용자 id를 붙인 키 (`OnboardingProvider`)
   - 연락 상태(답장함·확인함·나중에 답하기)·AI 답장 결과: `services.userStorage`(사용자별로 나눔). `SessionProvider`가 세션을 바꿀 때 `setUserId`로 사용자를 지정, 로그인 전·로그아웃 뒤에는 읽어도 없고 쓰기는 버림
   - 로그아웃해도 지우지 않음 (같은 계정으로 다시 로그인하면 이어서 씀)
+  - **칸(키)마다 Keystore 키가 따로 생김** → 키 이름에 대화방 id처럼 늘어나는 값을 넣지 말고 칸 하나에 묶음. AI 답장은 사용자당 `malssiat.aiReplies` 한 칸(30일·대화방당 5개·전체 100개, 예전 대화방별 칸은 처음 읽을 때 옮기고 지움). #47(SQLCipher 알림 DB)이 머지되면 그 DB로 옮김 (`AiReplyStore.ts` TODO)
+  - 온보딩 진행 상황을 못 읽으면 다시 시도(0.5·1.5·3초), 그래도 못 읽으면 저장하지 않음 (저장된 완료 상태를 덮어쓰지 않게)
 - mock 회원·친구 편집 등 mock 서비스 안의 데이터는 여전히 메모리라 앱을 완전히 끄면 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
 - AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계·결정 여부 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. 지금 `services.ai`는 mock

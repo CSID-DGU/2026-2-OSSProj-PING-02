@@ -12,5 +12,6 @@ export const createMemoryStorage = (): KeyValueStorage => {
     removeItem: async key => {
       store.delete(key);
     },
+    getAllKeys: async () => [...store.keys()],
   };
 };

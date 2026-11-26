@@ -12,7 +12,11 @@ export const createUserScopedStorage = (
   base: KeyValueStorage
 ): UserScopedStorage => {
   let userId: string | null = null;
-  const scoped = (key: string) => (userId ? `user.${userId}.${key}` : null);
+  const userPrefix = () => (userId ? `user.${userId}.` : null);
+  const scoped = (key: string) => {
+    const prefix = userPrefix();
+    return prefix ? prefix + key : null;
+  };
 
   return {
     setUserId(next) {
@@ -29,6 +33,14 @@ export const createUserScopedStorage = (
     async removeItem(key) {
       const k = scoped(key);
       if (k) await base.removeItem(k);
+    },
+    // 지금 사용자 칸의 키만 (사용자 접두어를 뗀 이름으로)
+    async getAllKeys() {
+      const prefix = userPrefix();
+      if (!prefix) return [];
+      return (await base.getAllKeys())
+        .filter(key => key.startsWith(prefix))
+        .map(key => key.slice(prefix.length));
     },
   };
 };

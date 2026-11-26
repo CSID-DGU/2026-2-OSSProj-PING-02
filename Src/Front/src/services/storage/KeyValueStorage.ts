@@ -5,6 +5,8 @@ export interface KeyValueStorage {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
+  /** 저장된 키 목록 (옛 형식 데이터를 옮길 때 사용) */
+  getAllKeys(): Promise<string[]>;
 }
 
 export const STORAGE_KEYS = {
