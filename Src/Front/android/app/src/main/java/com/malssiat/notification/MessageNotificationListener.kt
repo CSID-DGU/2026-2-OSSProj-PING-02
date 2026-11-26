@@ -58,7 +58,13 @@ class MessageNotificationListener : NotificationListenerService() {
 
         scope.launch {
             runCatching { dao.insertAll(items).count { it != -1L } }
-                .onSuccess { saved -> if (saved > 0) Log.d(TAG, "${sbn.packageName}: ${saved}건 저장") }
+                .onSuccess { saved ->
+                    if (saved > 0) {
+                        Log.d(TAG, "${sbn.packageName}: ${saved}건 저장")
+                        // 목록 화면이 열려 있으면 다시 읽게 알림 (#71). 이미 저장된 메시지(중복)만이면 보내지 않음
+                        NotificationEvents.notifySaved()
+                    }
+                }
                 .onFailure { Log.e(TAG, "알림 저장 실패", it) }
             runCatching { retention.purgeIfDue(dao) }
                 .onFailure { Log.e(TAG, "보관 기간 정리 실패", it) }

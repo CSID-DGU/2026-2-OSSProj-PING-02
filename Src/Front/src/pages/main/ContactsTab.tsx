@@ -40,6 +40,9 @@ const EMPTY_TEXT: Record<Filter, { title: string; body: string }> = {
   },
 };
 
+// 목록 맨 앞(머리말)부터 보이는 첫 항목의 위치를 지킴 (FlatList는 머리말이 0번)
+const MAINTAIN_POSITION = { minIndexForVisible: 0 };
+
 // 중요: 경조사·마감, 나를 언급한 질문 등 분석에서 중요로 고른 연락 (모델이 있어야 판단 가능)
 const isImportant = (item: ConversationSummary) =>
   item.analysis.status === "done" &&
@@ -136,6 +139,9 @@ const ContactsTab = ({ title }: { title: string }) => {
       <FlatList
         data={data}
         keyExtractor={item => item.conversation.id}
+        // 새 메시지로 목록이 자동으로 바뀔 때(#71) 보던 자리를 유지
+        // 맨 위(머리말이 보임)면 새 카드가 머리말 아래에 보이고, 내려서 보는 중이면 보던 카드가 제자리에 있음
+        maintainVisibleContentPosition={MAINTAIN_POSITION}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         contentContainerStyle={s.listContent}
