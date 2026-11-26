@@ -187,7 +187,20 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 | `brandHomeLogo` | 조선굴림체 Regular | `20/20` | 홈 앱바 "말씨앗" (Figma: Brand/Accent를 20/20으로 사용) |
 | `titleCardSmall` | Pretendard Bold | `13/19` | 홈 빠른 기능 카드 제목 |
 | `labelTab` | Pretendard Medium | `11/16` | 하단 탭 글자 (선택·기본 같은 굵기) |
-| `captionCard` | Pretendard Regular | `10/16` | 홈 연락 카드 요약 |
+| `captionCard` | Pretendard Regular | `10/16` | 홈 연락 카드 요약, 단체방·일정 카드 설명 |
+| `brandDateMonth` | 조선굴림체 Regular | `9/15` | 홈 일정 카드 "11월" |
+| `brandDateDay` | 조선굴림체 Regular | `17/23` | 홈 일정 카드 날짜 숫자 |
+| `headingHomeHero` | Pretendard Bold | `20/26` | 홈 히어로 제목 |
+| `titleHomeSection` | Pretendard Bold | `16/22` | 홈 섹션 제목 |
+| `titleCard` | Pretendard Bold | `14/20` | 홈 연락·일정·안부 카드 제목 |
+| `bodyCompact` | Pretendard Regular | `13/15` | 홈 빈 상태 설명, 도움 수준 화면 설명 |
+| `labelButtonCompact` | Pretendard Medium | `13/13` | 도움 수준 화면 버튼 |
+| `labelLink` | Pretendard Medium | `11/17` | "상태 바꾸기", "전체 보기", "캘린더" |
+| `captionHero` | Pretendard Regular | `11/17` | 홈 히어로 설명 |
+| `captionCompact` | Pretendard Regular | `11/15` | 홈 안부 카드 설명 |
+| `captionQuick` | Pretendard Regular | `10/15` | 홈 빠른 기능 카드 설명 |
+
+- 일정 카드 날짜("11월"·"22")는 Figma에서 로고와 같은 폰트(이 PC에 없어 이름이 안 보임)라 조선굴림체로 맞춤. 숫자 폭(약 0.46em)도 굴림 계열 반각 숫자와 일치
 
 - 화면에서는 `__Source/*`가 아니라 위의 역할 기반 스타일을 적용합니다.
 - `__Source/*`는 로컬 폰트 연결을 확인하기 위한 내부 소스 스타일이므로 실제 UI에 사용하지 않습니다.

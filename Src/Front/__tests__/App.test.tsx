@@ -54,7 +54,7 @@ describe("자동 로그인", () => {
     );
 
     let root = await renderApp();
-    await waitForText(root, "오늘의 연락");
+    await waitForText(root, "오늘의 도움 수준");
     await pressByRole(root, "tab", "설정");
     await press(root, "로그아웃 (개발용)");
     await waitForText(root, "시작하기");

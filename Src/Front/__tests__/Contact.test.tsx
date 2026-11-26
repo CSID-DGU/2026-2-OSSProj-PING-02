@@ -51,7 +51,7 @@ const waitForTabs = (root: Instance) =>
 
 const openContacts = async () => {
   const root = await renderApp();
-  await waitForText(root, "오늘의 연락");
+  await waitForText(root, "오늘의 도움 수준");
   await pressByRole(root, "tab", "연락");
   await waitForText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.");
   return root;

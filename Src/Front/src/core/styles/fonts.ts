@@ -27,6 +27,19 @@ export const fonts = {
   brandAccent: fontGenerator(14, fontFamily.brand, 20),
   brandTagline: fontGenerator(12, fontFamily.light, 17),
   brandHomeLogo: fontGenerator(20, fontFamily.brand, 20), // #53 홈 로고 (Figma: Brand/Accent를 20/20으로)
+  brandDateMonth: fontGenerator(9, fontFamily.brand, 15), // #53 홈 일정 카드 "11월"
+  brandDateDay: fontGenerator(17, fontFamily.brand, 23), // #53 홈 일정 카드 "22"
+
+  //#53 홈
+  headingHomeHero: fontGenerator(20, fontFamily.bold, 26), // 히어로 제목
+  titleHomeSection: fontGenerator(16, fontFamily.bold, 22), // 섹션 제목
+  titleCard: fontGenerator(14, fontFamily.bold, 20), // 연락·일정·안부 카드 제목
+  bodyCompact: fontGenerator(13, fontFamily.regular, 15), // 빈 상태 설명, 도움 수준 화면 설명
+  labelButtonCompact: fontGenerator(13, fontFamily.medium, 13), // 도움 수준 화면 버튼
+  labelLink: fontGenerator(11, fontFamily.medium, 17), // "상태 바꾸기", "전체 보기"
+  captionHero: fontGenerator(11, fontFamily.regular, 17), // 히어로 설명
+  captionCompact: fontGenerator(11, fontFamily.regular, 15), // 안부 카드 설명
+  captionQuick: fontGenerator(10, fontFamily.regular, 15), // 빠른 기능 카드 설명
 
   //display / heading
   displayAuth: fontGenerator(24, fontFamily.bold, 35),

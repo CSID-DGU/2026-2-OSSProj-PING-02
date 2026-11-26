@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
+import type { HelpMode } from "@constants/homeHelp";
 import type { MemoryCategory } from "@constants/onboarding";
 import type { MainTabKey } from "@constants/tabs";
 import type { ReplyStance as Stance, ReplyTone as Tone } from "@services";
@@ -20,6 +21,9 @@ export type TabStackParamList = {
   // ── 공통 상세 화면 (모든 탭 스택에 등록) ──
   // 앱바 🔔 알림 센터 (자리만)
   Notifications: undefined;
+  // 04 홈: C02 오늘 상태 선택(current: 지금 고른 모드) / C03~C05 모드별 화면
+  HomeHelpLevel: { current?: HelpMode } | undefined;
+  HomeHelpMode: { mode: Exclude<HelpMode, "rest"> };
   // 04 연락
   // 08 1:1 연락 상세
   ConversationDetail: { conversationId: string };

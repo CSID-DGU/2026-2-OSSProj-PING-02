@@ -1,5 +1,6 @@
 import type {
   Analysis,
+  ContactEvent,
   ConversationDetail,
   ConversationSummary,
   DeferredReply,
@@ -33,6 +34,8 @@ export interface ConversationService {
   cancelDeferred(conversationId: string): Promise<void>;
   // 홈 "오늘의 작은 행동"
   getSmallAction(): Promise<{ conversationId: string | null; text: string }>;
+  // 메시지에서 뽑은 일정 전체 (홈 "다가오는 일정"). TODO(캘린더): 캘린더 서비스가 생기면 옮김
+  listEvents(): Promise<ContactEvent[]>;
 }
 
 // 메신저 연결 (나중에 네이티브: 알림 바로 답장(RemoteInput)·클립보드·앱 열기)
