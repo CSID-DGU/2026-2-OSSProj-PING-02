@@ -3,6 +3,18 @@ const toInt = (value: string | undefined, fallback: number): number => {
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
+/**
+ * AI 호출 기본값 (#65: 답장이 9개로 늘어 출력이 약 3배).
+ * - 출력 토큰: 답장 9개 × 최대 약 100자 + 요약 + JSON 키 ≈ 최대 1,200 토큰 → 1500
+ * - 시간 제한: 앱이 35초까지 기다리므로 그보다 짧은 30초
+ * - Claude 는 생각 토큰도 max_tokens 에 들어가서 더 넉넉하게 4096
+ */
+export const AI_DEFAULTS = {
+  timeoutMs: 30_000,
+  maxOutputTokens: 1500,
+  anthropicMaxOutputTokens: 4096,
+} as const;
+
 export default () => {
   const jwtSecret = process.env.JWT_SECRET ?? '';
   if (jwtSecret.length < 32) {
@@ -39,8 +51,8 @@ export default () => {
       apiKey: process.env.OPENROUTER_API_KEY ?? '',
       baseUrl: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
       model: process.env.AI_MODEL ?? '',
-      timeoutMs: toInt(process.env.AI_TIMEOUT_MS, 20_000),
-      maxOutputTokens: toInt(process.env.AI_MAX_OUTPUT_TOKENS, 400),
+      timeoutMs: toInt(process.env.AI_TIMEOUT_MS, AI_DEFAULTS.timeoutMs),
+      maxOutputTokens: toInt(process.env.AI_MAX_OUTPUT_TOKENS, AI_DEFAULTS.maxOutputTokens),
       maxInputChars: toInt(process.env.AI_MAX_INPUT_CHARS, 1000),
       perMinute: toInt(process.env.AI_RATE_PER_MINUTE, 10),
       perDay: toInt(process.env.AI_RATE_PER_DAY, 300),
@@ -51,7 +63,7 @@ export default () => {
         apiKey: process.env.ANTHROPIC_API_KEY ?? '',
         baseUrl: process.env.ANTHROPIC_BASE_URL ?? '',
         model: process.env.ANTHROPIC_MODEL ?? '',
-        maxOutputTokens: toInt(process.env.ANTHROPIC_MAX_OUTPUT_TOKENS, 2048),
+        maxOutputTokens: toInt(process.env.ANTHROPIC_MAX_OUTPUT_TOKENS, AI_DEFAULTS.anthropicMaxOutputTokens),
         effort: process.env.ANTHROPIC_EFFORT ?? 'low',
       },
     },
