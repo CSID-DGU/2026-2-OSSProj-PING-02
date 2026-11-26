@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
-import { Animated, Modal, StyleSheet } from "react-native";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Animated, Keyboard, Modal, StyleSheet } from "react-native";
 import styled from "styled-components/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../button";
@@ -8,6 +8,7 @@ import { Button } from "../button";
 //        "메신저 연결 관리" 시트 (720px 시안 → dp는 ÷2)
 // 위 모서리 28dp · 손잡이 44×4dp · 제목 18 Bold 가운데 · 좌우 20dp
 // 닫기: 딤 누르기, 안드로이드 뒤로가기(Modal onRequestClose), 취소 버튼
+// 키보드: Modal 창은 adjustResize로 줄어들지 않아서, 키보드 높이만큼 시트를 직접 올림 (#60 탈퇴 시트 입력칸)
 export interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -40,6 +41,7 @@ export const BottomSheet = ({
 }: BottomSheetProps) => {
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SLIDE_FROM)).current;
+  const keyboard = useKeyboardHeight(visible);
 
   // Modal 자체는 딤만 fade, 시트는 아래에서 밀려 올라옴
   useEffect(() => {
@@ -61,7 +63,10 @@ export const BottomSheet = ({
       navigationBarTranslucent
       onRequestClose={onClose}
     >
-      <Container>
+      {/* 키보드 높이에는 아래 내비게이션 영역이 빠져 있어(창이 화면 끝까지 그려짐) 그만큼 더 올림 */}
+      <Container
+        style={{ paddingBottom: keyboard > 0 ? keyboard + insets.bottom : 0 }}
+      >
         <Dim
           style={StyleSheet.absoluteFill}
           onPress={dismissOnBackdrop ? onClose : undefined}
@@ -73,7 +78,8 @@ export const BottomSheet = ({
           testID={testID}
           accessibilityViewIsModal
           style={{ maxHeight, transform: [{ translateY }] }}
-          $bottom={insets.bottom}
+          // 키보드가 올라오면 아래 안전 영역은 키보드가 덮으므로 빼고 12dp만
+          $bottom={keyboard > 0 ? 0 : insets.bottom}
         >
           <Handle importantForAccessibility="no" />
           {(title || description) && (
@@ -98,6 +104,26 @@ export const BottomSheet = ({
       </Container>
     </Modal>
   );
+};
+
+// 열려 있는 동안 키보드 높이 (안드로이드는 Did 이벤트만 옴)
+const useKeyboardHeight = (active: boolean) => {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (!active) {
+      setHeight(0);
+      return;
+    }
+    const show = Keyboard.addListener("keyboardDidShow", e =>
+      setHeight(e.endCoordinates.height)
+    );
+    const hide = Keyboard.addListener("keyboardDidHide", () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [active]);
+  return height;
 };
 
 // 시트 아래 버튼 묶음: 노란 주요 버튼 + "취소" 텍스트 버튼 (시안 공통)

@@ -13,4 +13,9 @@ export {
   GroupChatIcon,
   ClipboardIcon,
   PersonAddIcon,
+  PersonCircleIcon,
+  IdCardIcon,
+  BirthdayHatIcon,
+  CloseIcon,
+  ErrorCircleIcon,
 } from "./Icon";

@@ -41,6 +41,12 @@ export const fonts = {
   captionCompact: fontGenerator(11, fontFamily.regular, 15), // 안부 카드 설명
   captionQuick: fontGenerator(10, fontFamily.regular, 15), // 빠른 기능 카드 설명
 
+  //#60 설정
+  titleProfile: fontGenerator(16, fontFamily.bold, 26), // 프로필 카드 이름
+  titleSheetCompact: fontGenerator(16, fontFamily.bold, 28), // 회원 탈퇴 시트 제목
+  labelSettingSection: fontGenerator(11, fontFamily.medium, 24), // 설정 메뉴 묶음 이름 ("내 계정")
+  labelToast: fontGenerator(13, fontFamily.medium, 20), // 오류 토스트 문구
+
   //display / heading
   displayAuth: fontGenerator(24, fontFamily.bold, 35),
   headingOnboarding: fontGenerator(22, fontFamily.bold, 31),

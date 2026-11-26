@@ -129,6 +129,7 @@ const Playground = () => {
   const [tone, setTone] = useState("다정하게");
   const [resultOpen, setResultOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [closeIconOpen, setCloseIconOpen] = useState(false);
   const [year, setYear] = useState<string>();
   const [month, setMonth] = useState<string>();
   const [day, setDay] = useState<string>();
@@ -182,6 +183,12 @@ const Playground = () => {
             placeholder="비밀번호를 입력해주세요"
             secureTextEntry
             error="비밀번호가 올바르지 않아요"
+          />
+          <TextField
+            label="비밀번호 확인 (success, #60)"
+            secureTextEntry
+            value="abcd1234"
+            success="비밀번호가 일치해요."
           />
           <TextField
             label="이메일 (비활성)"
@@ -381,6 +388,14 @@ const Playground = () => {
             확인 팝업 열기
           </Button>
 
+          <Button
+            variant="secondary"
+            fullWidth
+            onPress={() => setCloseIconOpen(true)}
+          >
+            닫기(X) 팝업 열기 (#60 설정)
+          </Button>
+
           {/* 결과 안내형 (Figma: 아이디 찾기 완료) */}
           <Dialog
             visible={resultOpen}
@@ -409,6 +424,18 @@ const Playground = () => {
             dismissOnBackdrop={false}
           />
 
+          {/* 닫기(X) 있는 확인형 (Figma 08 설정 H08 로그아웃) */}
+          <Dialog
+            visible={closeIconOpen}
+            icon={null}
+            showCloseIcon
+            title="이 기기에서 로그아웃 할까요?"
+            confirmLabel="로그아웃"
+            onConfirm={() => setCloseIconOpen(false)}
+            closeLabel="취소"
+            onClose={() => setCloseIconOpen(false)}
+          />
+
           {/* ───────── Button ───────── */}
           <SectionTitle>Button</SectionTitle>
           <Button variant="primary" fullWidth>
@@ -416,6 +443,9 @@ const Playground = () => {
           </Button>
           <Button variant="secondary" fullWidth>
             secondary 버튼
+          </Button>
+          <Button variant="danger" fullWidth typo="labelForm">
+            danger 버튼 (탈퇴하기·삭제하기)
           </Button>
           <Button variant="primary" fullWidth disabled>
             disabled 버튼
@@ -470,6 +500,7 @@ const Playground = () => {
           <SectionTitle>Toast</SectionTitle>
           <Toast message="붙여넣기 성공!" />
           <Toast message="아이콘 없는 토스트" icon="none" />
+          <Toast message="저장하지 못했어요. 다시 시도해주세요." icon="error" />
           <Button
             variant="secondary"
             fullWidth

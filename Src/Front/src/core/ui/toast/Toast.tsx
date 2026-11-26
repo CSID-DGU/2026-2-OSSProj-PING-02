@@ -11,12 +11,13 @@ import {
 import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 import styled from "styled-components/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CheckIcon } from "../icon";
+import { CheckIcon, ErrorCircleIcon } from "../icon";
 
 // Figma: 05 연락 Screens Toast/토스트에셋, D04 "붙여넣기 성공!"
 // 높이 52dp · 모서리 10dp · 좌우 14dp · 체크 원 20dp · 진한 갈색 배경 + 흰 글씨
 // 시안 갈색(#4F3832)은 토큰에 없어 가장 가까운 actionPrimaryBg(brown700 #4D3932) 사용
-export type ToastIcon = "success" | "none";
+// "error": 저장 실패 등 (Figma 08 설정 H03·H04·H06 실패 토스트) 연한 빨강 배경 + 빨간 원 + 진한 글씨 13/20
+export type ToastIcon = "success" | "error" | "none";
 
 export interface ToastProps {
   message: string;
@@ -24,16 +25,30 @@ export interface ToastProps {
 }
 
 // 화면 어디에든 직접 놓을 수 있는 토스트 모양 (보통은 useToast().show 사용)
-export const Toast = ({ message, icon = "success" }: ToastProps) => (
-  <Box accessibilityRole="alert" accessibilityLiveRegion="polite">
-    {icon === "success" && (
-      <IconCircle importantForAccessibility="no-hide-descendants">
-        <CheckIcon size={14} />
-      </IconCircle>
-    )}
-    <Message numberOfLines={2}>{message}</Message>
-  </Box>
-);
+export const Toast = ({ message, icon = "success" }: ToastProps) => {
+  const error = icon === "error";
+  return (
+    <Box
+      $error={error}
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
+    >
+      {icon === "success" && (
+        <IconCircle importantForAccessibility="no-hide-descendants">
+          <CheckIcon size={14} />
+        </IconCircle>
+      )}
+      {error && (
+        <ErrorIconSlot importantForAccessibility="no-hide-descendants">
+          <ErrorCircleIcon />
+        </ErrorIconSlot>
+      )}
+      <Message $error={error} numberOfLines={2}>
+        {message}
+      </Message>
+    </Box>
+  );
+};
 
 export interface ShowToastOptions {
   icon?: ToastIcon;
@@ -139,14 +154,15 @@ const Overlay = styled(Animated.View)`
   padding: 0px 18px;
 `;
 
-const Box = styled.View`
+const Box = styled.View<{ $error: boolean }>`
   flex-direction: row;
   align-items: center;
   gap: 10px;
   min-height: 52px;
   padding: 12px 14px;
   border-radius: 10px;
-  background-color: ${({ theme }) => theme.colors.actionPrimaryBg};
+  background-color: ${({ theme, $error }) =>
+    $error ? theme.colors.feedbackDangerBg : theme.colors.actionPrimaryBg};
   /* 시안: 아래로 퍼지는 옅은 그림자 */
   shadow-color: ${({ theme }) => theme.colors.textPrimary};
   shadow-offset: 0px 4px;
@@ -165,10 +181,17 @@ const IconCircle = styled.View`
   background-color: ${({ theme }) => theme.colors.brandBrown};
 `;
 
-const Message = styled.Text`
+const ErrorIconSlot = styled.View`
+  width: 20px;
+  height: 20px;
+`;
+
+const Message = styled.Text<{ $error: boolean }>`
   flex-shrink: 1;
-  ${({ theme }) => theme.fonts.bodyLarge};
-  color: ${({ theme }) => theme.colors.textOnDark};
+  ${({ theme, $error }) =>
+    $error ? theme.fonts.labelToast : theme.fonts.bodyLarge};
+  color: ${({ theme, $error }) =>
+    $error ? theme.colors.textPrimary : theme.colors.textOnDark};
 `;
 
 export default Toast;
