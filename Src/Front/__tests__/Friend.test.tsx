@@ -51,7 +51,7 @@ const seed = async () => {
 
 const openFriends = async () => {
   const root = await renderApp();
-  await waitForText(root, "오늘의 연락");
+  await waitForText(root, "오늘의 도움 수준");
   await pressByRole(root, "tab", "친구");
   await waitForText(root, "다시 연락하고 싶은 관계를 천천히 살펴봐요.");
   return root;
@@ -121,7 +121,7 @@ describe("13 친구 목록", () => {
   test("불러오지 못하면 다시 불러오기, 친구가 없으면 빈 상태", async () => {
     services.friends = createMockFriendService({ latency: 50, failList: true });
     const root = await renderApp();
-    await waitForText(root, "오늘의 연락");
+    await waitForText(root, "오늘의 도움 수준");
     await pressByRole(root, "tab", "친구");
     await waitForText(root, "친구 목록을 불러오지 못했어요");
     expect(findText(root, "다시 불러오기").length).toBeGreaterThan(0);

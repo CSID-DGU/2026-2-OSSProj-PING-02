@@ -22,10 +22,7 @@ const tabConfig = (key: MainTabKey) => MAIN_TABS.find(t => t.key === key)!;
 const HomeRoot = () => {
   const navigation = useAuthNavigation();
   return (
-    <HomeTab
-      title={tabConfig("home").title}
-      onOpenTab={key => navigation.navigate("Home", { screen: key })}
-    />
+    <HomeTab onOpenTab={key => navigation.navigate("Home", { screen: key })} />
   );
 };
 const ContactsRoot = () => <ContactsTab title={tabConfig("contacts").title} />;

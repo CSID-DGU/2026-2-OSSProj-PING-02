@@ -5,4 +5,12 @@ export {
   ChevronDownIcon,
   CheckIcon,
   SuccessIcon,
+  HomeIcon,
+  ChatIcon,
+  FriendsIcon,
+  CalendarIcon,
+  SettingsIcon,
+  GroupChatIcon,
+  ClipboardIcon,
+  PersonAddIcon,
 } from "./Icon";
