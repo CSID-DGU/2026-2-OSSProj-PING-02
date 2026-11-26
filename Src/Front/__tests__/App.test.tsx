@@ -58,7 +58,10 @@ describe("자동 로그인", () => {
     // 로그인하면 AI 마스킹에 내 이름이 들어가고 (#69)
     expect(services.maskNames.get()).toEqual([MOCK_DEMO_ACCOUNT.name]);
     await pressByRole(root, "tab", "설정");
-    await press(root, "로그아웃 (개발용)");
+    // 설정 > 로그아웃 → 확인 팝업의 로그아웃 (#60)
+    await press(root, "로그아웃");
+    await waitForText(root, "이 기기에서 로그아웃 할까요?");
+    await press(root, "로그아웃");
     await waitForText(root, "시작하기");
     // 로그아웃하면 비워짐
     expect(services.maskNames.get()).toEqual([]);

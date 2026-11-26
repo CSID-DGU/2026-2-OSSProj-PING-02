@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DeviceEventEmitter } from "react-native";
+import { DeviceEventEmitter, Keyboard } from "react-native";
 import ReactTestRenderer from "react-test-renderer";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MalssiatProvider } from "../src/core";
@@ -14,6 +14,9 @@ import {
   formatDateTime,
   formatTime,
 } from "../src/core/ui/calendar";
+import { Dialog } from "../src/core/ui/dialog";
+import { TextField } from "../src/core/ui/field";
+import { Toast as ToastView } from "../src/core/ui/toast";
 import { findText, press, pressByRole } from "../test-utils/app";
 
 // 공통 컴포넌트(시트·토스트·스위치·밑줄 탭·달력) 동작·접근성 테스트
@@ -287,3 +290,83 @@ describe("DateTimeSheet", () => {
 
 // 뒤로가기 이벤트가 다른 테스트에 남지 않도록
 afterAll(() => DeviceEventEmitter.removeAllListeners("hardwareBackPress"));
+
+// #60 설정에서 추가한 모양: 오류 토스트, 닫기(X) 팝업, 입력창 성공 상태
+describe("#60 공통 컴포넌트 추가", () => {
+  test("오류 토스트는 같은 문구를 알림으로 읽어 준다", async () => {
+    const renderer = await render(
+      <ToastView message="저장하지 못했어요." icon="error" />
+    );
+    const alert = byRole(renderer.root, "alert")[0];
+    expect(findText(alert, "저장하지 못했어요.").length).toBe(1);
+  });
+
+  test("닫기(X)는 onDismiss, 아래 글자 버튼은 onClose", async () => {
+    const onClose = jest.fn();
+    const onDismiss = jest.fn();
+    const renderer = await render(
+      <Dialog
+        visible
+        icon={null}
+        showCloseIcon
+        title="계정을 삭제할까요?"
+        confirmLabel="계속해서 사용하기"
+        onConfirm={() => {}}
+        closeLabel="탈퇴 진행하기"
+        onClose={onClose}
+        onDismiss={onDismiss}
+      />
+    );
+    await pressByRole(renderer.root, "button", "닫기");
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    await press(renderer.root, "탈퇴 진행하기");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test("성공 문구는 도움말 자리에 보이고, 오류가 있으면 오류가 먼저", async () => {
+    const renderer = await render(
+      <>
+        <TextField label="확인" success="비밀번호가 일치해요." />
+        <TextField label="확인2" success="일치" error="일치하지 않아요." />
+      </>
+    );
+    expect(findText(renderer.root, "비밀번호가 일치해요.").length).toBe(1);
+    expect(findText(renderer.root, "일치").length).toBe(0);
+    expect(findText(renderer.root, "일치하지 않아요.").length).toBe(1);
+  });
+});
+
+describe("BottomSheet 키보드", () => {
+  test("키보드가 올라오면 그 높이만큼 시트를 올리고, 내려가면 되돌린다", async () => {
+    // jest의 Keyboard는 mock이라 등록한 함수를 직접 부름
+    const handlers: Record<string, (e: unknown) => void> = {};
+    const spy = jest
+      .spyOn(Keyboard, "addListener")
+      .mockImplementation((event: string, fn: (e: never) => void) => {
+        handlers[event] = fn as (e: unknown) => void;
+        return { remove: () => {} } as ReturnType<typeof Keyboard.addListener>;
+      });
+    const renderer = await render(
+      <BottomSheet visible onClose={() => {}} testID="kb-sheet" />
+    );
+    // 시트를 아래로 붙이는 바깥 틀(justify-content: flex-end)의 아래 여백
+    const bottomOf = () => {
+      const flat = (style: unknown) =>
+        Object.assign({}, ...[style].flat(10).filter(Boolean));
+      const container = renderer.root
+        .findAll(n => typeof n.type === "string")
+        .find(n => flat(n.props.style).justifyContent === "flex-end");
+      return flat(container!.props.style).paddingBottom ?? 0;
+    };
+    expect(bottomOf()).toBe(0);
+    await ReactTestRenderer.act(async () => {
+      handlers.keyboardDidShow({ endCoordinates: { height: 300 } });
+    });
+    expect(bottomOf()).toBeGreaterThanOrEqual(300);
+    await ReactTestRenderer.act(async () => {
+      handlers.keyboardDidHide({});
+    });
+    expect(bottomOf()).toBe(0);
+    spy.mockRestore();
+  });
+});

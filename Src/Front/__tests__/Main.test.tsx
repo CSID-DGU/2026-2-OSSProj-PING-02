@@ -143,7 +143,7 @@ describe("홈·연락", () => {
     const root = await renderApp();
     await waitForText(root, "오늘의 도움 수준");
     await pressByRole(root, "tab", "설정");
-    await waitForText(root, "설정 화면을 준비하고 있어요");
+    await waitForText(root, "내 계정");
     const settings = root
       .findAll(
         n =>
