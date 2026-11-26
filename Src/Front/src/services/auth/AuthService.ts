@@ -21,6 +21,7 @@ export interface AuthUser {
   loginId: string;
   name: string;
   email?: string;
+  birthdate?: string; // YYYY-MM-DD (GET /users/me. 로그인 응답에는 없을 수 있음)
 }
 
 export interface AuthTokens {
@@ -76,6 +77,9 @@ export interface AuthService {
   // 내 정보(GET /users/me)를 받음. 갱신된 토큰은 보관소에 바로 저장됨
   // 갱신 토큰이 만료·재사용이면 401 REFRESH_TOKEN_INVALID (보관소 토큰도 지워짐)
   restoreSession(): Promise<AuthUser>;
+  // 회원 탈퇴 (DELETE /users/me). 서버 데이터는 바로 지워지고 이 토큰도 무효
+  // 비밀번호가 틀리면 401 INVALID_CREDENTIALS. 기기 데이터는 부르는 쪽에서 지움
+  deleteAccount(password: string): Promise<void>;
 
   // 아이디·비밀번호 찾기 (AUTH_FEATURES.accountRecovery)
   // 가입한 이메일로 아이디를 보냄. 계정이 있는지는 알려 주지 않음 (항상 성공)

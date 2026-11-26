@@ -26,6 +26,7 @@ export const MOCK_DEMO_ACCOUNT = {
   password: "abcd1234",
   name: "말씨",
   email: "demo@malssiat.app",
+  birthdate: "1997-02-12",
 };
 
 // 백엔드 시드와 같은 3건 (AI_TRANSFER는 초안·선택 동의)
@@ -127,6 +128,7 @@ export const createMockAuthService = ({
         loginId: MOCK_DEMO_ACCOUNT.loginId,
         name: MOCK_DEMO_ACCOUNT.name,
         email: MOCK_DEMO_ACCOUNT.email,
+        birthdate: MOCK_DEMO_ACCOUNT.birthdate,
         password: MOCK_DEMO_ACCOUNT.password,
         verified: true,
         failedLogins: 0,
@@ -141,11 +143,12 @@ export const createMockAuthService = ({
   let nextId = 1;
   let issued = 0;
 
-  const toUser = ({ id, loginId, name, email }: MockUser): AuthUser => ({
+  const toUser = ({ id, loginId, name, email, birthdate }: MockUser): AuthUser => ({
     id,
     loginId,
     name,
     email,
+    birthdate,
   });
 
   // 갱신 토큰: mock-refresh.<아이디>.<시각>.<번호> (아이디에는 '.'이 없음)
@@ -224,6 +227,7 @@ export const createMockAuthService = ({
         loginId,
         name,
         email,
+        birthdate: input.birthdate,
         password: input.password,
         verified: !verify,
         failedLogins: 0,
@@ -280,6 +284,22 @@ export const createMockAuthService = ({
       revoked.add(refreshToken);
       tokens.set(issueTokens(user));
       return toUser(user);
+    },
+
+    async deleteAccount(password) {
+      await delay(latency);
+      // 지금 세션의 계정 (갱신 토큰에 아이디가 들어 있음)
+      const refreshToken = tokens.get()?.refreshToken;
+      const [, loginId] = refreshToken?.split(".") ?? [];
+      const user = loginId ? users.get(loginId) : undefined;
+      if (!refreshToken || !user || revoked.has(refreshToken)) {
+        throw new ServiceError(COMMON_ERROR_CODE.unauthorized, "로그인이 필요합니다.", {
+          status: 401,
+        });
+      }
+      if (user.password !== password) throw invalidCredentials();
+      users.delete(user.loginId);
+      revoked.add(refreshToken);
     },
 
     async findLoginId(email) {

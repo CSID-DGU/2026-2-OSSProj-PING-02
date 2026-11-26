@@ -17,6 +17,7 @@ interface ServerUser {
   username: string;
   name: string;
   email?: string;
+  birthdate?: string;
 }
 
 interface ServerAuthResult {
@@ -24,11 +25,12 @@ interface ServerAuthResult {
   tokens: AuthTokens;
 }
 
-const toUser = ({ id, username, name, email }: ServerUser): AuthUser => ({
+const toUser = ({ id, username, name, email, birthdate }: ServerUser): AuthUser => ({
   id,
   loginId: username,
   name,
   email,
+  birthdate,
 });
 
 const toResult = ({ user, tokens }: ServerAuthResult): AuthResult => ({
@@ -86,6 +88,14 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
     await http.refreshTokens();
     const me = await http.request<ServerUser>("GET", "/users/me", { auth: true });
     return toUser(me);
+  },
+
+  // 회원 탈퇴 (Doc/API_목록.md 4.9). 204
+  async deleteAccount(password) {
+    await http.request<void>("DELETE", "/users/me", {
+      body: { password },
+      auth: true,
+    });
   },
 
   // 아이디·비밀번호 찾기 (Doc/API_목록.md 4.5-1 ~ 4.5-3). 모두 204
