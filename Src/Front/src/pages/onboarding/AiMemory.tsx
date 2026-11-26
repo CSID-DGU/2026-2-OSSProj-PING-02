@@ -89,7 +89,7 @@ const AiMemory = () => {
     <>
       <AuthLayout
         backOnly
-        gap={16}
+        gap={12}
         footer={
           <>
             <Button

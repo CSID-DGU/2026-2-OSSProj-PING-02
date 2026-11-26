@@ -4,6 +4,8 @@ import styled, { css } from "styled-components/native";
 // Figma: Choice / Signup Gender Option (shape="option", 네모)
 //        choice (shape="chip", 알약 모양 - 말투 선택 등)
 // 선택됨: 진한 갈색 바탕 + 흰 글씨 / 누르는 중: 연노랑 바탕
+// chip은 Figma 03 온보딩 11·02-4 최종 값 (#59): 높이 28 · 바탕 seed100 · 테두리 brown700 · 칩 사이 가로 3 세로 4
+//   (누르는 중은 바탕보다 한 단계 진한 seed200)
 export type ChoiceShape = "option" | "chip";
 
 export interface ChoiceOption<T extends string> {
@@ -20,10 +22,18 @@ export interface ChoiceGroupProps<T extends string> {
   disabled?: boolean;
 }
 
-const Group = styled.View`
+const Group = styled.View<{ $shape: ChoiceShape }>`
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 8px;
+  ${({ $shape }) =>
+    $shape === "chip"
+      ? css`
+          column-gap: 3px;
+          row-gap: 4px;
+        `
+      : css`
+          gap: 8px;
+        `}
 `;
 
 const Inner = styled.View<{
@@ -39,8 +49,8 @@ const Inner = styled.View<{
   ${({ $shape }) =>
     $shape === "chip"
       ? css`
-          min-height: 32px;
-          padding: 6px 12px;
+          min-height: 28px;
+          padding: 0px 12px;
           border-radius: 999px;
         `
       : css`
@@ -55,16 +65,17 @@ const Inner = styled.View<{
     if ($selected) return theme.colors.actionPrimaryBg;
     if ($error) return theme.colors.stateError;
     return $shape === "chip"
-      ? theme.colors.brandBrown
+      ? theme.colors.actionPrimaryBg
       : theme.colors.borderDefault;
   }};
   background-color: ${({ theme, $shape, $selected, $pressed, $disabled }) => {
     if ($disabled) return theme.colors.backgroundSubtle;
     if ($selected) return theme.colors.actionPrimaryBg;
+    if ($shape === "chip") {
+      return $pressed ? theme.palette.seed200 : theme.colors.stateSelectedBg;
+    }
     if ($pressed) return theme.colors.stateSelectedBg;
-    return $shape === "chip"
-      ? theme.colors.surfaceSeed
-      : theme.colors.surfaceDefault;
+    return theme.colors.surfaceDefault;
   }};
 `;
 
@@ -74,7 +85,7 @@ const Label = styled.Text<{
   $disabled: boolean;
 }>`
   ${({ theme, $shape }) =>
-    $shape === "chip" ? theme.fonts.labelCompact : theme.fonts.labelForm};
+    $shape === "chip" ? theme.fonts.captionChip : theme.fonts.labelForm};
   color: ${({ theme, $shape, $selected, $disabled }) => {
     if ($disabled) return theme.palette.neutral400;
     if ($selected) return theme.colors.actionPrimaryText;
@@ -93,7 +104,7 @@ export const ChoiceGroup = <T extends string>({
   disabled = false,
 }: ChoiceGroupProps<T>) => {
   return (
-    <Group accessibilityRole="radiogroup">
+    <Group accessibilityRole="radiogroup" $shape={shape}>
       {options.map(option => {
         const selected = option.value === value;
         return (
@@ -101,8 +112,9 @@ export const ChoiceGroup = <T extends string>({
             key={option.value}
             onPress={() => onChange(option.value)}
             disabled={disabled}
-            // 보이는 크기는 Figma 그대로, 터치 영역만 48dp (chip 32→48, option 40→48)
-            hitSlop={shape === "chip" ? 8 : { top: 4, bottom: 4 }}
+            // 보이는 크기는 Figma 그대로, 터치 영역만 세로 48dp (chip 28→48, option 40→48)
+            // chip은 칩 사이가 좁아(가로 3) 가로로 넓히면 옆 칩과 겹쳐서 세로로만 넓힘
+            hitSlop={shape === "chip" ? { top: 10, bottom: 10 } : { top: 4, bottom: 4 }}
             accessibilityRole="radio"
             accessibilityState={{ selected, disabled }}
           >

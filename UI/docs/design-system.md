@@ -206,6 +206,13 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 |---|---|---:|---|
 | `captionDense` | Pretendard Regular | `11/12` | 온보딩 06 받을 알림 항목 설명 (추가) |
 | `bodyCompact` | Pretendard Regular | `13/15` | 온보딩 06 "전체 알림" (Figma: Body/Small을 행간 15로) |
+| `titleSubsection` | Pretendard Bold | `16/24` | 온보딩 11 "AI 답장 맞춤 설정" (추가) |
+| `bodySmallRelaxed` | Pretendard Regular | `13/20` | 온보딩 11 소제목 설명 (추가) |
+| `labelField` | Pretendard SemiBold | `12/18` | `TextArea` 상자 라벨 (추가) |
+| `captionChip` | Pretendard Regular | `10/13.5` (135%) | 공통 칩(`ChoiceGroup` chip) 글자 (추가) |
+| `captionRegular` | Pretendard Regular | `12/17` | `TextArea` 입력·placeholder (Caption/Regular) |
+| `captionQuick` | Pretendard Regular | `10/15` | `TextArea` 글자 수 |
+| `labelForm` | Pretendard Medium | `13/18` | 온보딩 10 줄 제목 (Label/Form) |
 
 - **예외: 일정 카드 날짜.** 조선굴림체는 서비스명·브랜드 문구에만 쓰지만, 홈 일정 카드의 날짜 원("11월"·"22")은 시안대로 조선굴림체를 씀 (#53 팀 확정). Figma에서 로고와 같은 폰트로 지정돼 있고, 숫자 폭(약 0.46em)도 굴림 계열 반각 숫자와 일치
 

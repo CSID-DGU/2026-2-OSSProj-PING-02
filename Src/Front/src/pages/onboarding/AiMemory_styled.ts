@@ -9,19 +9,20 @@ export const Top = styled.View`
   padding-top: 24px;
 `;
 
+// 소제목(16/24) → 설명(13/20) 약 2
 export const Section = styled.View`
-  gap: 6px;
+  gap: 2px;
   padding: 0px 6px;
 `;
 
-// TODO(Figma 스타일 확인): 소제목·설명 스타일 이름을 받으면 맞춤 (지금은 가까운 토큰)
+// Figma 11: 소제목 16/24 Bold · 설명 13/20 Regular
 export const SectionTitle = styled.Text`
-  ${({ theme }) => theme.fonts.headingDialog};
+  ${({ theme }) => theme.fonts.titleSubsection};
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
 export const SectionDescription = styled.Text`
-  ${({ theme }) => theme.fonts.bodyMedium};
+  ${({ theme }) => theme.fonts.bodySmallRelaxed};
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 

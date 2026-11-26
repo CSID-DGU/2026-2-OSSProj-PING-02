@@ -111,16 +111,16 @@ const Box = styled(Pressable)<{ $state: FieldState; $minHeight: number }>`
   }}
 `;
 
-// TODO(Figma 스타일 확인): 라벨·입력·글자 수 스타일 이름을 받으면 맞춤 (지금은 가까운 토큰)
+// Figma 11: 라벨 12/18 SemiBold · 입력·placeholder 12/17 (Caption/Regular) · 글자 수 10/15
 const Label = styled.Text`
-  ${({ theme }) => theme.fonts.labelForm};
+  ${({ theme }) => theme.fonts.labelField};
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
 const Text = styled(TextInput)`
   flex: 1;
   padding: 0px;
-  ${({ theme }) => theme.fonts.bodySmall};
+  ${({ theme }) => theme.fonts.captionRegular};
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
@@ -130,7 +130,7 @@ const Spacer = styled.View`
 
 const Counter = styled.Text`
   align-self: flex-end;
-  ${({ theme }) => theme.fonts.captionRegular};
+  ${({ theme }) => theme.fonts.captionQuick};
   color: ${({ theme }) => theme.colors.textTertiary};
 `;
 
