@@ -48,7 +48,8 @@ export const ONBOARDING_ICONS = {
   occasion: img(iconOccasion, 32, 32),
   work: img(iconWork, 32, 32),
   counseling: img(iconCounseling, 32, 32),
-  privacyDevice: img(iconPrivacyDevice, 44, 40),
-  privacyMasked: img(iconPrivacyMasked, 44, 40),
-  privacyConfirm: img(iconPrivacyConfirm, 44, 40),
+  // 03: 그림 파일에 투명 여백이 커서(보이는 부분 약 60%) 표시 크기를 키워 보이는 크기를 시안(약 43×45dp)과 맞춤
+  privacyDevice: img(iconPrivacyDevice, 71, 65),
+  privacyMasked: img(iconPrivacyMasked, 71, 65),
+  privacyConfirm: img(iconPrivacyConfirm, 71, 65),
 };
