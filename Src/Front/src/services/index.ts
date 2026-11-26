@@ -46,6 +46,8 @@ const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 // 연락 데이터: 기기에 쌓인 알림(Kotlin 알림 수집 모듈의 로컬 DB)을 씀. 네이티브 모듈이 없으면(Jest) mock
 // 화면만 작업하면서 예시 대화를 보고 싶으면 false로 바꿈 (커밋 전에 되돌리기)
 const USE_DEVICE_CONVERSATIONS = true;
+// AI로 보내기 전에 가릴 이름 (사용자 본인. SessionProvider가 로그인·로그아웃 때 바꿈, #69)
+const maskNames = createMaskNameStore();
 
 // 기기 저장소 (mock은 메모리). AI 답장 결과도 같은 저장소에 둠
 const storage = createMemoryStorage();
@@ -53,8 +55,6 @@ const network = createMockNetworkService();
 // AI 답장 (백엔드 PR #36 POST /v1/ai/reply). 서버 연결 시 createHttpAiReplyService로 교체
 const ai = createMockAiReplyService();
 const aiReplies = createKeyValueAiReplyStore(storage);
-// AI로 보내기 전에 가릴 이름 (사용자 본인. SessionProvider가 로그인·로그아웃 때 바꿈)
-const maskNames = createMaskNameStore();
 
 const conversation =
   USE_DEVICE_CONVERSATIONS && isNotificationStoreAvailable()

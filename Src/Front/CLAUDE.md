@@ -131,7 +131,7 @@
 - 09 연락처 검색창
 
 네이티브·API 연결
-- 권한·연락처·모델 다운로드·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69 완료)
+- 권한(알림 접근·앱 알림·배터리)·모델 다운로드·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70에서 구현)
 - 연락: `MessengerService`의 `canReplyDirectly`·`sendReply`(바로 답장, 정책 확인 후), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
 - 친구: `services.friends`(`FriendService`)를 기기 안 암호화 DB의 person·account로 교체, 15 첫마디 후보는 가린 메모로 외부 AI
 - 저장소: 온보딩 진행 상황·AI 답장 결과는 AsyncStorage/암호화 저장소(지금 메모리 `services.storage`), 친구 목록은 기기 안 암호화 DB (로그인 토큰은 keychain 완료)

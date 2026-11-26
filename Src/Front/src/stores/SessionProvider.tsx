@@ -37,16 +37,10 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-const { auth, tokens, maskNames } = services;
+const { auth, tokens } = services;
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<SessionState>({ status: "loading" });
-
-  // AI로 보내기 전 마스킹에 내 이름을 넣음 (#69). 로그아웃하면 비움
-  const userName = session.status === "signedIn" ? session.user.name : null;
-  useEffect(() => {
-    maskNames.setUserName(userName);
-  }, [userName]);
 
   // 토큰이 지워지면 로그인 화면으로 (로그아웃·갱신 실패 모두)
   useEffect(
@@ -107,6 +101,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     () => ({ session, signIn, signOut }),
     [session, signIn, signOut]
   );
+
+  // AI로 보내기 전 마스킹에 내 이름을 넣음 (#69). 로그아웃하면 비움
+  const userName = session.status === "signedIn" ? session.user.name : null;
+  useEffect(() => {
+    services.maskNames.setUserName(userName);
+  }, [userName]);
 
   return (
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
