@@ -2,6 +2,8 @@ import styled from "styled-components/native";
 
 // 04 홈 C02~C05 선택 줄 (제목 + 설명, 선택하면 연노랑 둥근 바탕)
 // 시안: 줄 높이 72, 모서리 16, 위 12 · 아래 11 간격, 줄 사이 구분선 1 (borderDefault)
+// 선택 표시는 시안대로 노란 둥근 상자만 (체크 아이콘 없음, #53 팀 확정)
+// 대신 화면 읽기 프로그램에는 radio + selected 상태로 꼭 알림
 interface HelpRowProps {
   title: string;
   description: string;
