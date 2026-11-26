@@ -81,11 +81,11 @@
   - 목록 분석(질문·멘션·답장 필요)은 기기 안 규칙만. **AI는 대화방을 열 때 그 방 하나만 한 번** 부르고 결과를 저장해 답장 화면에서 다시 씀. 기관·번호 발신자, 안내 문구(`isPlaceholder`)만 있는 대화는 보내지 않음
   - 기기에 데이터를 쌓으려면 개발용 `NotificationDebug` 화면에서 알림 접근 허용 + 수집 앱 선택
   - 알림 DB는 SQLCipher로 암호화돼 있음 (암호는 Android Keystore로 감싸 보관, 예전 평문 DB는 처음 열 때 옮김). DB는 다시 열 수 없는 게 확실할 때(키 없음·영구 무효·AEADBadTag, SQLITE_NOTADB·CORRUPT)만 지우고, 일시적인 실패는 지우지 않고 다시 시도. 메시지는 보관 기간(기본 30일)이 지나면 지움 → `NotificationStore.get/setRetentionDays`. 자세한 내용은 README "알림 수집"
-- **기기 연락처 (#70)**: `services.contacts`는 Kotlin `Contacts` 모듈(`android/.../contacts/ContactsModule.kt`, JS `src/native/Contacts.ts`)로 `ContactsContract`에서 id·이름·전화번호만 읽음(대표 번호 하나, 가나다순). 네이티브 모듈이 없으면(Jest) mock 42명. 연락처와 고른 친구는 기기에만 두고 서버로 보내지 않음
-  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)만 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근·앱 알림·배터리는 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
 - mock 저장소는 메모리라 앱을 완전히 끄면 진행 상황·mock 회원이 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
+- **기기 연락처 (#70)**: `services.contacts`는 Kotlin `Contacts` 모듈(`android/.../contacts/ContactsModule.kt`, JS `src/native/Contacts.ts`)로 `ContactsContract`에서 id·이름·전화번호만 읽음(대표 번호 하나, 가나다순). 네이티브 모듈이 없으면(Jest) mock 42명. 연락처와 고른 친구는 기기에만 두고 서버로 보내지 않음
+  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)만 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근·앱 알림·배터리는 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
 - AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계·결정 여부 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. 지금 `services.ai`는 mock
 
 ## 팀 Git 규칙
@@ -129,8 +129,8 @@
 - 09 연락처 검색창
 
 네이티브·API 연결
-- 권한(알림 접근·앱 알림·배터리)·모델 다운로드·클립보드·메신저 열기·바로 답장: Kotlin 모듈로 교체 (연락처·연락처 권한은 #70 완료)
-- 연락: `MessengerService`(복사·앱 열기·`canReplyDirectly`·`sendReply`), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
+- 권한(알림 접근·앱 알림·배터리)·모델 다운로드·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70에서 구현)
+- 연락: `MessengerService`의 `canReplyDirectly`·`sendReply`(바로 답장, 정책 확인 후), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
 - 친구: `services.friends`(`FriendService`)를 기기 안 암호화 DB의 person·account로 교체, 15 첫마디 후보는 가린 메모로 외부 AI
 - 저장소: 온보딩 진행 상황·AI 답장 결과는 AsyncStorage/암호화 저장소(지금 메모리 `services.storage`), 친구 목록은 기기 안 암호화 DB (로그인 토큰은 keychain 완료)
 
