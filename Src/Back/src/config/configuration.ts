@@ -44,6 +44,16 @@ export default () => {
       maxInputChars: toInt(process.env.AI_MAX_INPUT_CHARS, 1000),
       perMinute: toInt(process.env.AI_RATE_PER_MINUTE, 10),
       perDay: toInt(process.env.AI_RATE_PER_DAY, 300),
+      // 어느 통로를 쓸지. 비어 있으면 주 통로(openrouter). anthropic 은 보조(테스트용) 통로.
+      provider: process.env.AI_PROVIDER ?? '',
+      // 보조(테스트용) 통로: Claude API. AI_PROVIDER=anthropic 일 때만 쓴다. 키나 모델이 비어 있으면 AI 요청만 503.
+      anthropic: {
+        apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+        baseUrl: process.env.ANTHROPIC_BASE_URL ?? '',
+        model: process.env.ANTHROPIC_MODEL ?? '',
+        maxOutputTokens: toInt(process.env.ANTHROPIC_MAX_OUTPUT_TOKENS, 2048),
+        effort: process.env.ANTHROPIC_EFFORT ?? 'low',
+      },
     },
     model: {
       cdnBaseUrl: process.env.MODEL_CDN_BASE_URL ?? 'https://cdn.example.com/models',
