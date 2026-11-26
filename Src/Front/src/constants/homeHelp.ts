@@ -39,13 +39,15 @@ export const HERO: Record<HelpMode | "unset", HeroCopy> = {
   },
   write: {
     title: "오늘은 직접 써볼 수 있어요",
-    description: "먼저 작성하면 필요한 부분만 가볍게 다듬어드려요",
+    // 한 줄에 안 들어가 "…다듬어드려 / 요"로 끊겨서 낱말 사이에서 직접 나눔 (팀 확정)
+    description: "먼저 작성하면 필요한 부분만\n가볍게 다듬어드려요",
     image: writeImage,
   },
   rest: {
     // 디자이너 확인: 문구 표 "오늘은 답장을 잠시 미뤄둘게요"에서 한 줄에 맞게 줄임
     title: "오늘은 답장을 미뤄둘게요",
-    description: "급한 연락만 알려드리고 나머지는 조용히 모아둘게요",
+    // 한 줄에 안 들어가 "…모아둘 / 게요"로 끊겨서 낱말 사이에서 직접 나눔 (팀 확정)
+    description: "급한 연락만 알려드리고\n나머지는 조용히 모아둘게요",
     image: restImage,
   },
 };
