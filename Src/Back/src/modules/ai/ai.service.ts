@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-codes';
+import { AI_COMPLETION_CLIENT, AiCompletionClient } from './ai-completion.client';
 import { AiReplyDto } from './dto/ai-reply.dto';
-import { OpenRouterClient, UpstreamError } from './openrouter.client';
+import { UpstreamError } from './openrouter.client';
 import { buildMessages, labelsFor } from './prompt.builder';
 import { findUnmaskedKinds } from './unmasked-content.util';
 
@@ -16,13 +17,13 @@ const MAX_SUMMARY = 200;
 const MAX_REPLY = 300;
 
 /**
- * AI 답장 통로. 받은 문장을 검사하고 OpenRouter 에 넘긴 뒤 결과를 그대로 돌려준다.
+ * AI 답장 통로. 받은 문장을 검사하고 외부 AI(주: OpenRouter, 보조: Claude API)에 넘긴 뒤 결과를 그대로 돌려준다.
  * 본문·요약·답장은 어디에도 저장하거나 기록하지 않는다(메모리에서만 다룬다).
  */
 @Injectable()
 export class AiService {
   constructor(
-    private readonly client: OpenRouterClient,
+    @Inject(AI_COMPLETION_CLIENT) private readonly client: AiCompletionClient,
     private readonly config: ConfigService,
   ) {}
 

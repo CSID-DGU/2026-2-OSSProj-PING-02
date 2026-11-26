@@ -2,6 +2,7 @@
 
 > 앱이 보낸 마스킹된 메시지로 **요약 1줄과 답장 3개**를 만들어 돌려주는 API입니다.
 > 서버는 OpenRouter(데이터 미보관 설정)로 전달하는 **통로**이며, 메시지와 결과를 **아무것도 저장하지 않습니다.**
+> 팀 내부 테스트용으로 Claude API 보조 통로를 서버 설정(`AI_PROVIDER=anthropic`)으로 켤 수 있습니다(5.6). 앱의 요청·응답 형식은 같습니다.
 > 이 문서는 현재 구현(`Src/Back/src/modules/ai`) 기준입니다. 확인하지 못한 외부 사실은 **[미확인]**, 실제 호출로 검증하지 않은 것은 **[미검증]**으로 표시했습니다.
 
 ## 1. 처리 흐름
@@ -236,6 +237,43 @@
 | `require_parameters: true` + `json_schema` 조합에서 지원 제공자가 없을 때의 실제 동작 | **[미검증]** (문서 설명이 엇갈림. 503이 올 수 있음) |
 | 모델별 ZDR 지원 여부 | 모델을 정한 뒤 `GET https://openrouter.ai/api/v1/endpoints/zdr` 목록으로 확인 필요 (응답 형식 [미확인]) |
 | OpenRouter 자체의 입력·출력 로깅 설정 메뉴와 기본값 | [미확인] (ZDR 문서는 ZDR 추론의 프롬프트·응답을 처리 후 보관하지 않는다고 설명) |
+
+### 5.6 보조 통로: Claude API (테스트용)
+
+OpenRouter 준비 전에 팀 내부 테스트를 하려고 넣은 **보조 통로**입니다. 주 통로는 OpenRouter이고, 위 5.1~5.5는 그대로입니다.
+
+| 항목 | 내용 |
+|---|---|
+| 켜는 법 | 서버 `.env`의 `AI_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` + `ANTHROPIC_MODEL`. 비우거나 `openrouter`면 OpenRouter |
+| 잘못된 값 | 오타 등 모르는 값이면 어느 쪽으로도 보내지 않고 `/v1/ai/reply`만 503 (서버 로그에 경고) |
+| 앱에 보이는 차이 | 없음. 요청·응답·에러 코드가 같음 (2장, 3장) |
+| 공유하는 부분 | 입력 검사, 마스킹 누락 검사, 프롬프트 틀, 출력 형식 검사(`parseReply`), 사용자별 호출 제한 |
+| 코드 | `anthropic.client.ts` (공식 SDK `@anthropic-ai/sdk`), 통로 선택은 `ai-completion.client.ts`·`ai.module.ts` |
+
+**서버가 보내는 요청:** `POST https://api.anthropic.com/v1/messages` (Messages API)
+- 프롬프트 틀의 system 지시는 최상위 `system`으로, 사용자 메시지는 `messages`로 보냅니다.
+- JSON 출력은 `output_config.format`(json_schema, 5.1과 같은 스키마)으로 강제합니다.
+- 생각 깊이 `output_config.effort`는 기본 `low`(`ANTHROPIC_EFFORT`), 출력 한도 `max_tokens`는 기본 2,048(`ANTHROPIC_MAX_OUTPUT_TOKENS`)입니다. 최신 모델은 생각(thinking) 토큰도 이 한도에 포함됩니다.
+- `temperature`는 보내지 않습니다(최신 모델은 거부). 사용자 식별자(`metadata.user_id`)도 보내지 않습니다.
+- SDK 자동 재시도는 끕니다. 실패해도 한 번만 보냅니다.
+
+**오류 처리:** 실패 종류는 OpenRouter 통로와 같은 규칙으로 바뀝니다.
+
+| Claude 쪽 | 서버 처리 | 앱이 받는 응답 |
+|---|---|---|
+| 401, 402, 403 (키 오류, 결제, 권한) | 우리 쪽 설정 문제로 기록 | 503 `UPSTREAM_UNAVAILABLE` |
+| 408, 504, 서버 시간 제한 초과 | 시간 초과 | 504 `UPSTREAM_TIMEOUT` |
+| 429, 400(잘못된 모델 ID 등), 5xx, 529(과부하) | 사용 불가 | 503 `UPSTREAM_UNAVAILABLE` |
+| `stop_reason`이 `refusal`(거절) 또는 `max_tokens`(잘림) | 응답 이상으로 기록 (로그에는 중단 이유만) | 503 `UPSTREAM_UNAVAILABLE` |
+| 출력 형식 오류 (JSON이 아니거나 답장 수가 다름) | 형식 오류 | 502 `AI_RESPONSE_INVALID` |
+
+**OpenRouter 통로와 다른 점 (개인정보):**
+- OpenRouter 통로는 요청마다 데이터 미보관(ZDR)을 강제하지만(5.2), Claude 통로에는 요청 옵션으로 켜는 ZDR이 없습니다. 보관 정책은 Anthropic 계정·계약을 따릅니다. **[확인 필요: 기본 보관 기간과 조건]**
+- 그래서 **팀 내부 테스트 대화로만** 씁니다. 실제 사용자에게 켜기 전에 약관의 받는 곳(Anthropic, 미국)과 보관 정책을 고쳐 다시 동의받아야 합니다(`Doc/약관_초안_AI전송.md` 검토자에게 7번).
+
+**확인한 것:**
+- 가짜 Claude 서버로 e2e 테스트 (`test/ai-reply-anthropic.e2e-spec.ts`)
+- 실제 Claude API(`claude-sonnet-5-5`)로 개인정보 없는 문장 1건을 호출해 200과 정상 형식 응답을 확인 (로컬 서버, 2026-11-26)
 
 ## 6. 앱이 해야 할 일
 
