@@ -13,8 +13,8 @@ import {
   NOTIFICATION_PREF_OPTIONS,
   ONBOARDING_STEPS,
   resolveSavedStep,
+  type AvoidTopic,
   type LinkedApp,
-  type MemoryCategory,
   type NotificationPref,
   type OnboardingStep,
 } from "@constants/onboarding";
@@ -30,7 +30,14 @@ export interface OnboardingData {
   notificationPrefs: NotificationPref[];
   // TODO(네이티브): 친구 목록은 기기 안 암호화 DB로 옮기기. 지금은 온보딩 저장소에 함께 둠
   friends: Contact[];
-  memory: Record<MemoryCategory, string>;
+  memory: MemoryData;
+}
+
+// 11 AI 메모리 (예전 저장값 { status, avoid }도 그대로 읽힘, avoidTopics만 빈 배열로 채움)
+export interface MemoryData {
+  status: string;
+  avoid: string;
+  avoidTopics: AvoidTopic[];
 }
 
 interface OnboardingContextValue {
@@ -46,7 +53,7 @@ const DEFAULT_DATA: OnboardingData = {
   // Figma 06: 전체 선택이 기본값
   notificationPrefs: NOTIFICATION_PREF_OPTIONS.map(o => o.value),
   friends: [],
-  memory: { status: "", avoid: "" },
+  memory: { status: "", avoid: "", avoidTopics: [] },
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);

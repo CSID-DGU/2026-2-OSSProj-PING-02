@@ -1,109 +1,198 @@
-import { useTheme } from "styled-components/native";
+import { useState } from "react";
+import { View } from "react-native";
 import { Button } from "@core/ui/button";
-import { Card, CardDescription, CardTitle } from "@core/ui/card";
-import { BackIcon } from "@core/ui/icon";
+import { ChoiceGroup } from "@core/ui/choice";
+import { TextArea } from "@core/ui/field";
+import { BottomSheet, BottomSheetActions } from "@core/ui/sheet";
+import { useToast } from "@core/ui/toast";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
-import Notice from "@components/onboarding/Notice";
 import SkipButton from "@components/onboarding/SkipButton";
-import { MEMORY_CATEGORIES } from "@constants/onboarding";
+import {
+  AVOID_TOPICS,
+  MEMORY_MAX_LENGTH,
+  type AvoidTopic,
+} from "@constants/onboarding";
 import { useOnboardingStep } from "@hooks/useOnboardingStep";
 import { useOnboarding } from "@stores/OnboardingProvider";
 import * as s from "./AiMemory_styled";
 
-// 11 / AI 메모리 작성 · 기본 (선택 사항)
-// 항목을 누르면 상세 작성 화면(AiMemoryEdit, Figma 없음 → 입력창 + 예시 칩 임시 구현)
+const CUSTOM = "직접 입력";
+type Chip = AvoidTopic | typeof CUSTOM;
+const CHIPS: Chip[] = [...AVOID_TOPICS, CUSTOM];
+
+// 11 / AI 메모리 작성 · 기본 (Figma 03 온보딩 11 최종, 선택 사항)
+// - 상자 1: 답장에 사용해도 되는 내 상황 (500자)
+// - 상자 2: 먼저 꺼내지 않을 이야기 칩(여러 개) + "직접 입력"을 고르면 입력칸 (500자)
+// - 저장하기: 비어 있으면 11-1 건너뛰기 확인 시트, 아니면 저장 후 12
+// - 건너뛰기: 11-1 시트 → "건너뛰기"면 저장하지 않고 12, "계속 작성하기"면 시트만 닫음
+// 이 기기에만 저장 (서버로 보내지 않음)
 const AiMemory = () => {
-  const theme = useTheme();
-  const { navigation, goNext } = useOnboardingStep("AiMemory");
-  const { data } = useOnboarding();
-  const isWritten = (c: (typeof MEMORY_CATEGORIES)[number]) =>
-    !!data.memory[c.value].trim();
-  const anyWritten = MEMORY_CATEGORIES.some(isWritten);
-  // "내용 작성하기"는 아직 안 쓴 첫 항목을 엶
-  const firstUnwritten = MEMORY_CATEGORIES.find(c => !isWritten(c));
+  const { goNext } = useOnboardingStep("AiMemory");
+  const { data, update } = useOnboarding();
+  const toast = useToast();
+  const [status, setStatus] = useState(data.memory.status);
+  const [avoid, setAvoid] = useState(data.memory.avoid);
+  const [topics, setTopics] = useState<AvoidTopic[]>(data.memory.avoidTopics);
+  const [custom, setCustom] = useState(!!data.memory.avoid.trim());
+  const [skipOpen, setSkipOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const openEdit = (category: (typeof MEMORY_CATEGORIES)[number]["value"]) =>
-    navigation.navigate("AiMemoryEdit", { category });
+  const isEmpty =
+    !status.trim() && !(custom && avoid.trim()) && topics.length === 0;
 
-  // - 하나도 안 씀: 건너뛰기 + "‘요즘 나의 상태’부터 쓰기"
-  // - 일부만 씀  : "‘…’도 쓰기"(텍스트) + 다음
-  // - 모두 씀    : 다음
-  // TODO(Figma 문구 확인): 시안은 "내용 작성하기"인데 어느 항목인지 모호해 항목 이름을 넣음
-  const footer = !anyWritten ? (
-    <>
-      <Button
-        variant="primary"
-        fullWidth
-        onPress={() => openEdit(MEMORY_CATEGORIES[0].value)}
-      >
-        {`‘${MEMORY_CATEGORIES[0].title}’부터 쓰기`}
-      </Button>
-      <SkipButton onPress={goNext}>지금은 건너뛰기</SkipButton>
-    </>
-  ) : (
-    <>
-      <Button variant="primary" fullWidth onPress={goNext}>
-        다음
-      </Button>
-      {firstUnwritten && (
-        <SkipButton onPress={() => openEdit(firstUnwritten.value)}>
-          {`‘${firstUnwritten.title}’도 쓰기`}
-        </SkipButton>
-      )}
-    </>
-  );
+  const isSelected = (chip: Chip) =>
+    chip === CUSTOM ? custom : topics.includes(chip);
+
+  const toggleChip = (chip: Chip) => {
+    if (chip === CUSTOM) {
+      setCustom((prev) => !prev);
+      return;
+    }
+    setTopics((prev) =>
+      prev.includes(chip) ? prev.filter((t) => t !== chip) : [...prev, chip]
+    );
+  };
+
+  const handleSave = async () => {
+    if (saving) return;
+    if (isEmpty) {
+      setSkipOpen(true);
+      return;
+    }
+    setSaving(true);
+    try {
+      await update({
+        memory: {
+          status: status.trim(),
+          // "직접 입력"을 끄면 쓴 내용은 저장하지 않음
+          avoid: custom ? avoid.trim() : "",
+          avoidTopics: topics,
+        },
+      });
+      goNext();
+    } catch {
+      toast.show("저장하지 못했어요. 잠시 뒤에 다시 시도해 주세요.", {
+        icon: "none",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSkip = () => {
+    setSkipOpen(false);
+    goNext();
+  };
 
   return (
-    <AuthLayout backOnly centered gap={24} footer={footer}>
-      <AuthIntro
-        variant="onboarding"
-        title={"내 상황을 조금\n알려주실래요?"}
-        description="답장에 참고해도 되는 내용만 선택해서 적어요"
-      />
-
-      <s.Cards>
-        {MEMORY_CATEGORIES.map(category => {
-          const text = data.memory[category.value].trim();
-          return (
-            <Card
-              key={category.value}
-              onPress={() => openEdit(category.value)}
-              accessibilityLabel={`${category.title}, ${
-                text ? "작성함" : "아직 쓰지 않음"
-              }`}
-              accessibilityHint="눌러서 내용을 적거나 고쳐요"
+    <>
+      <AuthLayout
+        backOnly
+        gap={16}
+        footer={
+          <>
+            <Button
+              variant="primary"
+              fullWidth
+              onPress={handleSave}
+              disabled={saving}
+              accessibilityState={{ busy: saving, disabled: saving }}
             >
-              <s.Row>
-                <s.Texts>
-                  <s.TitleRow>
-                    <CardTitle>{category.title}</CardTitle>
-                    {/* 작성 여부: 색만이 아니라 글자로 표시 */}
-                    {text && (
-                      <s.WrittenBadge>
-                        <s.WrittenText>작성함</s.WrittenText>
-                      </s.WrittenBadge>
-                    )}
-                  </s.TitleRow>
-                  {/* 작성했으면 내용 첫 줄 미리보기, 아니면 항목 설명 */}
-                  <CardDescription numberOfLines={1}>
-                    {text ? text.split("\n")[0] : category.description}
-                  </CardDescription>
-                </s.Texts>
-                {/* 오른쪽 화살표: 뒤로가기 아이콘을 뒤집어 씀 (UI 아이콘 세트에 오른쪽 화살표가 없음) */}
-                <s.Chevron>
-                  <BackIcon size={20} color={theme.colors.textBrand} />
-                </s.Chevron>
-              </s.Row>
-            </Card>
-          );
-        })}
-      </s.Cards>
+              저장하기
+            </Button>
+            <SkipButton onPress={() => setSkipOpen(true)}>건너뛰기</SkipButton>
+          </>
+        }
+      >
+        <s.Top>
+          <AuthIntro
+            variant="onboarding"
+            title={"내 상황을 조금\n알려주실래요?"}
+            description="답장에 참고해도 되는 내용만 선택해서 적어요"
+          />
+        </s.Top>
 
-      <Notice title="내 기기에서 언제든 관리해요">
-        작성한 내용은 수정하거나 전부 삭제할 수 있어요
-      </Notice>
-    </AuthLayout>
+        <s.Section>
+          <s.SectionTitle accessibilityRole="header">
+            AI 답장 맞춤 설정
+          </s.SectionTitle>
+          <s.SectionDescription>
+            {
+              "AI가 답장 생성에 참고할 내용을 작성해요.\n민감한 내용은 적지 않아도 괜찮아요."
+            }
+          </s.SectionDescription>
+        </s.Section>
+
+        <s.Boxes>
+          <TextArea
+            label="답장에 사용해도 되는 내 상황"
+            placeholder="예: 요즘 시험 준비 중이라 답장이 늦을 수 있어요"
+            value={status}
+            onChangeText={setStatus}
+            maxLength={MEMORY_MAX_LENGTH}
+          />
+          <TextArea
+            label="먼저 꺼내지 않을 이야기"
+            value={avoid}
+            onChangeText={setAvoid}
+            maxLength={MEMORY_MAX_LENGTH}
+            minHeight={167}
+            showInput={custom}
+            accessibilityLabel="먼저 꺼내지 않을 이야기 직접 입력"
+          >
+            <s.Chips>
+              {CHIPS.map((chip) => {
+                const selected = isSelected(chip);
+                return (
+                  // ChoiceGroup은 하나만 고르는 라디오라, 칩마다 감싸 여러 개를 고르는 버튼으로 읽게 함
+                  <View
+                    key={chip}
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel={chip}
+                    accessibilityState={{ selected }}
+                    accessibilityActions={[{ name: "activate" }]}
+                    onAccessibilityAction={({ nativeEvent }) => {
+                      if (nativeEvent.actionName === "activate")
+                        toggleChip(chip);
+                    }}
+                  >
+                    <View
+                      importantForAccessibility="no-hide-descendants"
+                      accessibilityElementsHidden
+                    >
+                      <ChoiceGroup
+                        shape="chip"
+                        options={[{ label: chip, value: chip }]}
+                        value={selected ? chip : undefined}
+                        onChange={toggleChip}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+            </s.Chips>
+          </TextArea>
+        </s.Boxes>
+      </AuthLayout>
+
+      {/* 11-1 건너뛰기 확인 (화면 버튼보다 위에 그려지도록 AuthLayout 뒤에 둠) */}
+      <BottomSheet
+        visible={skipOpen}
+        onClose={() => setSkipOpen(false)}
+        title="작성하지 않고 넘어갈까요?"
+        description={"지금 건너뛰어도 설정에서\n언제든 다시 작성할 수 있어요."}
+        footer={
+          <BottomSheetActions
+            confirmLabel="계속 작성하기"
+            onConfirm={() => setSkipOpen(false)}
+            cancelLabel="건너뛰기"
+            onCancel={handleSkip}
+          />
+        }
+      />
+    </>
   );
 };
 

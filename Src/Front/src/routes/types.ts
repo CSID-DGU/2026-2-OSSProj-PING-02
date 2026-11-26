@@ -1,6 +1,5 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { HelpMode } from "@constants/homeHelp";
-import type { MemoryCategory } from "@constants/onboarding";
 import type { MainTabKey } from "@constants/tabs";
 import type { ReplyStance as Stance, ReplyTone as Tone } from "@services";
 
@@ -74,8 +73,6 @@ export type RootStackParamList = {
   ContactsSelect: undefined;
   FriendsReady: undefined;
   AiMemory: undefined;
-  // 11의 상세 작성 화면 (온보딩 단계가 아니라 11에서 열고 닫는 화면)
-  AiMemoryEdit: { category: MemoryCategory };
   OnboardingDone: undefined;
   // 메인(하단 탭). 특정 탭으로 보내려면 navigate("Home", { screen: "contacts" })
   Home: NavigatorScreenParams<MainTabParamList> | undefined;

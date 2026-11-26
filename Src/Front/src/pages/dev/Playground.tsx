@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import styled from "styled-components/native";
 
 import { Button } from "@core/ui/button";
-import { Field, TextField } from "@core/ui/field";
+import { Field, TextArea, TextField } from "@core/ui/field";
 import { Header } from "@core/ui/header";
 import { Checkbox } from "@core/ui/checkbox";
 import { ChoiceGroup } from "@core/ui/choice";
@@ -122,6 +122,7 @@ const REPLIES = [
 
 const Playground = () => {
   const [email, setEmail] = useState("");
+  const [memo, setMemo] = useState("");
   const [checkA, setCheckA] = useState(false);
   const [checkB, setCheckB] = useState(true);
   const [gender, setGender] = useState<string>();
@@ -187,6 +188,24 @@ const Playground = () => {
             placeholder="이메일을 입력해주세요"
             disabled
           />
+
+          {/* ───────── TextArea (#59) ───────── */}
+          <SectionTitle>TextArea - 라벨·여러 줄·글자 수 (온보딩 11)</SectionTitle>
+          <TextArea
+            label="답장에 사용해도 되는 내 상황"
+            placeholder="예: 요즘 시험 준비 중이라 답장이 늦을 수 있어요"
+            value={memo}
+            onChangeText={setMemo}
+            maxLength={500}
+          />
+          <TextArea
+            label="입력칸 없이 칩만 (showInput=false)"
+            maxLength={500}
+            showInput={false}
+            minHeight={100}
+          >
+            <ChoiceGroup shape="chip" options={TONES} value={tone} onChange={setTone} />
+          </TextArea>
 
           {/* ───────── Checkbox ───────── */}
           <SectionTitle>Checkbox</SectionTitle>

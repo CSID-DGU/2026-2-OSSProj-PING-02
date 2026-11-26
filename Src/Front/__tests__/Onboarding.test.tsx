@@ -49,6 +49,16 @@ const TITLE = {
   done: "이제 준비가\n모두 끝났어요",
 };
 
+// 11-1 건너뛰기 확인 시트
+const SKIP_SHEET = "작성하지 않고 넘어갈까요?";
+
+// 11에서 건너뛰기 → 시트의 건너뛰기 (시트 버튼이 화면 버튼보다 뒤에 있어 press가 시트 것을 누름)
+const skipMemory = async (root: Instance) => {
+  await press(root, "건너뛰기");
+  await waitForText(root, SKIP_SHEET);
+  await press(root, "건너뛰기");
+};
+
 // 06 스위치 줄의 켜짐 상태 (스택 아래 화면 것 말고 맨 위 화면 것)
 const switchOn = (root: Instance, title: string) =>
   root
@@ -110,6 +120,56 @@ test("06: 알림을 모두 끄면 권한을 묻지 않고 07로 간다", async (
   await waitForText(root, TITLE.contacts);
   expect(request).not.toHaveBeenCalledWith("postNotifications");
   request.mockRestore();
+});
+
+test("11: 비어 있으면 저장하기도 확인 시트, 쓰고 칩을 고르면 저장하고 12로", async () => {
+  await services.storage.setItem(
+    `${STORAGE_KEYS.onboarding}.${USER_ID}`,
+    JSON.stringify({ completed: false, lastStep: "AiMemory" })
+  );
+  const root = await renderApp();
+  await login(root);
+  await waitForText(root, TITLE.memory);
+
+  // 비어 있을 때 저장하기 → 11-1 시트
+  await press(root, "저장하기");
+  await waitForText(root, SKIP_SHEET);
+  await press(root, "계속 작성하기");
+  await waitForNoText(root, SKIP_SHEET);
+
+  // 내 상황 입력 + 칩 두 개 + 직접 입력
+  const inputs = (label: string) =>
+    root.findAll(
+      n =>
+        typeof n.type === "string" &&
+        !!n.props.onChangeText &&
+        n.props.accessibilityLabel === label
+    );
+  const input = (label: string) => inputs(label).at(-1)!;
+  // 칩: 바깥 View는 스크린리더용 버튼, 실제 누르는 곳은 안쪽 ChoiceGroup 항목
+  const chip = (label: string) => pressByRole(root, "radio", label);
+  await ReactTestRenderer.act(async () =>
+    input("답장에 사용해도 되는 내 상황").props.onChangeText("시험 준비 중이에요")
+  );
+  await chip("건강");
+  await chip("취업");
+  await chip("건강"); // 다시 누르면 빠짐
+  expect(inputs("먼저 꺼내지 않을 이야기 직접 입력")).toHaveLength(0);
+  await chip("직접 입력");
+  await ReactTestRenderer.act(async () =>
+    input("먼저 꺼내지 않을 이야기 직접 입력").props.onChangeText("이사 이야기")
+  );
+  await press(root, "저장하기");
+  await waitForText(root, TITLE.done);
+
+  const saved = JSON.parse(
+    (await services.storage.getItem(`${STORAGE_KEYS.onboarding}.${USER_ID}`))!
+  );
+  expect(saved.memory).toEqual({
+    status: "시험 준비 중이에요",
+    avoid: "이사 이야기",
+    avoidTopics: ["취업"],
+  });
 });
 
 test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기는 이전 단계로 간다", async () => {
@@ -227,18 +287,19 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
   expect(findText(root, "친구 42명 추가 완료").length).toBe(1);
   await press(root, "다음");
 
-  // 11 AI 메모리: 아직 안 쓴 첫 항목을 여는 버튼
+  // 11 AI 메모리: 건너뛰기 → 11-1 확인 시트 → 계속 작성하기면 그대로, 건너뛰기면 12
   await waitForText(root, TITLE.memory);
   await checkBack(root, TITLE.memory, TITLE.friends, () => press(root, "다음"));
-  expect(findText(root, "‘요즘 나의 상태’부터 쓰기").length).toBe(1);
-  await press(root, "지금은 건너뛰기");
+  await press(root, "건너뛰기");
+  await waitForText(root, SKIP_SHEET);
+  await press(root, "계속 작성하기");
+  await waitForNoText(root, SKIP_SHEET);
+  await skipMemory(root);
 
   // 12 완료: 말씨앗의 약속, 뒤로가기면 11
   await waitForText(root, TITLE.done);
   expect(findText(root, "말씨앗의 약속").length).toBe(1);
-  await checkBack(root, TITLE.done, TITLE.memory, () =>
-    press(root, "지금은 건너뛰기")
-  );
+  await checkBack(root, TITLE.done, TITLE.memory, () => skipMemory(root));
   await press(root, "말씨앗 시작하기");
   await waitForText(root, "오늘의 도움 수준");
 }, 90000);

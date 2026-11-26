@@ -116,40 +116,20 @@ export const NOTIFICATION_PREF_OPTIONS: {
   },
 ];
 
-// 11 / AI 메모리: 항목별로 따로 작성
-export type MemoryCategory = "status" | "avoid";
+// 11 / AI 메모리 (Figma 03 온보딩 11 최종: 한 화면에 상자 2개)
+// - status: 답장에 사용해도 되는 내 상황 (직접 입력)
+// - avoidTopics: 먼저 꺼내지 않을 이야기 칩 (여러 개 고름)
+// - avoid: "직접 입력" 칩을 고르면 쓰는 내용
+export const MEMORY_MAX_LENGTH = 500;
 
-export const MEMORY_MAX_LENGTH = 300;
+export const AVOID_TOPICS = [
+  "건강",
+  "가족",
+  "연애",
+  "취업",
+  "직장",
+  "시험",
+  "금전",
+] as const;
 
-export const MEMORY_CATEGORIES: {
-  value: MemoryCategory;
-  title: string;
-  description: string;
-  placeholder: string;
-  examples: string[];
-}[] = [
-  {
-    value: "status",
-    title: "요즘 나의 상태",
-    description: "일정이나 답장이 늦는 이유를 알려주세요",
-    placeholder: "예) 요즘 시험 준비로 답장이 늦어요",
-    examples: [
-      "요즘 시험 준비로 바빠요",
-      "몸이 좀 안 좋아서 쉬고 있어요",
-      "새 일을 시작해서 적응 중이에요",
-      "답장은 짧게 쓰는 편이에요",
-    ],
-  },
-  {
-    value: "avoid",
-    title: "먼저 꺼내지 않을 이야기",
-    description: "AI가 먼저 언급하지 않을 내용을 알려주세요",
-    placeholder: "예) 취업 이야기는 먼저 꺼내지 않았으면 해요",
-    examples: [
-      "취업·진로 이야기",
-      "연애 이야기",
-      "가족 이야기",
-      "건강 이야기",
-    ],
-  },
-];
+export type AvoidTopic = (typeof AVOID_TOPICS)[number];
