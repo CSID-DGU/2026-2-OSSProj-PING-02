@@ -51,9 +51,15 @@ class MessageNotificationListener : NotificationListenerService() {
         if (!monitoredApps.isMonitored(sbn.packageName)) return
 
         val shortcut = conversationShortcutOf(sbn)
+        val parsed = NotificationParser.parse(sbn, appNameOf(sbn.packageName), shortcut?.label)
+        // 답장 화면의 "복사하고 메신저 열기"에서 그 대화방을 바로 열 수 있게 알림 동작을 기억해 둔다 (#69)
+        sbn.notification.contentIntent?.let { intent ->
+            parsed.map { it.conversationId }.distinct().forEach { id ->
+                ConversationIntents.put(sbn.packageName, id, intent)
+            }
+        }
         // 보관 기간보다 오래된 메시지(알림창에 오래 남아 있던 알림 등)는 저장하지 않는다.
-        val items = NotificationParser.parse(sbn, appNameOf(sbn.packageName), shortcut?.label)
-            .filterNot { retention.isExpired(it.messageTime) }
+        val items = parsed.filterNot { retention.isExpired(it.messageTime) }
         if (items.isEmpty()) return
 
         scope.launch {

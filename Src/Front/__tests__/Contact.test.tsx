@@ -153,6 +153,50 @@ describe("가리기 모델이 준비된 경우", () => {
     await waitForText(root, "답장함");
   });
 
+  test("복사하고 메신저 열기: 그 대화방 id로 앱을 열고, 앱이 안 열려도 복사했다는 안내는 보여 준다 (#69)", async () => {
+    const openApp = jest.fn(async () => {
+      throw new Error("앱이 없음");
+    });
+    services.messenger = { ...createMockMessengerService(), openApp };
+    const root = await openContacts();
+    await openCard(root, "하늘");
+    await waitForText(root, "답장 후보 살펴보기");
+    await press(root, "답장 후보 살펴보기");
+    await waitForText(root, "어떤 말투가 편하세요?");
+    await pressByRole(root, "radio", "다정하게");
+    await press(root, "선택한 말투로 계속");
+    await waitForText(root, "알림이 남아 있지 않아 여기서 바로 보낼 수는 없어요.");
+
+    await press(root, "복사하고 인스타그램 열기");
+    await waitForText(root, "답장을 복사했어요");
+    expect(findText(root, "잠시 문제가 생겼어요. 조금 뒤에 다시 해 주세요.").length).toBe(0);
+    expect(openApp).toHaveBeenCalledWith("INSTAGRAM", expect.any(String));
+  });
+
+  test("복사가 실패하면 오류를 보여 주고 앱은 열지 않는다 (#69)", async () => {
+    const openApp = jest.fn(async () => {});
+    services.messenger = {
+      ...createMockMessengerService(),
+      copyText: async () => {
+        throw new Error("복사 실패");
+      },
+      openApp,
+    };
+    const root = await openContacts();
+    await openCard(root, "하늘");
+    await waitForText(root, "답장 후보 살펴보기");
+    await press(root, "답장 후보 살펴보기");
+    await waitForText(root, "어떤 말투가 편하세요?");
+    await pressByRole(root, "radio", "다정하게");
+    await press(root, "선택한 말투로 계속");
+    await waitForText(root, "알림이 남아 있지 않아 여기서 바로 보낼 수는 없어요.");
+
+    await press(root, "복사하고 인스타그램 열기");
+    await waitForText(root, "잠시 문제가 생겼어요. 조금 뒤에 다시 해 주세요.");
+    expect(findText(root, "답장을 복사했어요").length).toBe(0);
+    expect(openApp).not.toHaveBeenCalled();
+  });
+
   test("단톡은 08 없이 09-C로 가고, 나를 언급한 메시지를 강조한다", async () => {
     const root = await openContacts();
     await openCard(root, "2026 봄학기 오픈소스 프로젝트 PING 운영진 방");

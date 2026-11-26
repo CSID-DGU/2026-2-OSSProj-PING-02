@@ -100,7 +100,7 @@ const emptyState = (): StoredState => ({ replied: {}, checked: {}, deferred: {} 
 const SEPARATOR = "::";
 export const toConversationKey = (packageName: string, conversationId: string) =>
   `${packageName}${SEPARATOR}${conversationId}`;
-const parseConversationKey = (key: string) => {
+export const parseConversationKey = (key: string) => {
   const i = key.indexOf(SEPARATOR);
   if (i < 0) {
     throw new ServiceError(CONVERSATION_ERROR_CODE.notFound, "대화를 찾을 수 없습니다.");
