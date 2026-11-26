@@ -214,16 +214,16 @@ describe("앱 재시작·로그아웃", () => {
 
   test("온보딩을 마친 뒤 앱을 껐다 켜면 홈으로 바로 간다", async () => {
     let root = await renderApp();
-    await waitForText(root, "오늘의 연락");
+    await waitForText(root, "오늘의 도움 수준");
 
     await closeApp();
     root = await renderApp();
-    await waitForText(root, "오늘의 연락");
+    await waitForText(root, "오늘의 도움 수준");
   });
 
   test("AI 답장 결과는 로그인한 사용자 칸에 남고, 로그아웃하면 보이지 않다가 다시 로그인하면 보인다", async () => {
     let root = await renderApp();
-    await waitForText(root, "오늘의 연락");
+    await waitForText(root, "오늘의 도움 수준");
     await services.aiReplies.save(savedReply());
     expect(
       await services.aiReplies.listByConversation(CONVERSATION_ID)
@@ -250,7 +250,7 @@ describe("앱 재시작·로그아웃", () => {
     await type(root, "아이디", MOCK_DEMO_ACCOUNT.loginId);
     await type(root, "비밀번호", MOCK_DEMO_ACCOUNT.password);
     await press(root, "로그인");
-    await waitForText(root, "오늘의 연락");
+    await waitForText(root, "오늘의 도움 수준");
     expect(
       await services.aiReplies.listByConversation(CONVERSATION_ID)
     ).toHaveLength(1);
@@ -321,7 +321,7 @@ describe("온보딩 진행 상황 불러오기 실패", () => {
   test("처음 몇 번 실패해도 다시 시도해서 저장된 진행 상황(완료)대로 홈으로 간다", async () => {
     failOnboardingReads(2);
     const root = await renderApp();
-    await waitForText(root, "오늘의 연락");
+    await waitForText(root, "오늘의 도움 수준");
     expect(failures).toBe(2);
   });
 
