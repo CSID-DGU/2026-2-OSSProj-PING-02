@@ -28,6 +28,8 @@ const seedSignedIn = async ({ modelInstalled }: { modelInstalled: boolean }) => 
     `${STORAGE_KEYS.onboarding}.${USER_ID}`,
     JSON.stringify({ completed: true, lastStep: "OnboardingDone" })
   );
+  // 오늘의 도움 수준은 테스트마다 "아직 선택하지 않음"에서 시작 (앞 테스트가 고른 모드가 남지 않게)
+  await services.storage.removeItem(`${STORAGE_KEYS.homeHelp}.${USER_ID}`);
   services.model = createMockModelService({ durationMs: 200 });
   if (modelInstalled) {
     const info = await services.model.getLatest();
@@ -121,7 +123,7 @@ describe("모델이 준비된 경우", () => {
     await waitForText(root, "오늘은 어느 정도 도움이 필요하세요?");
     await pressByRole(root, "radio", "오늘은 미루고 싶어요, 답장을 만들지 않고 다시 볼 시간 선택");
     await press(root, "이대로 시작");
-    await waitForText(root, "오늘은 답장을 잠시 미뤄둘게요");
+    await waitForText(root, "오늘은 답장을 미뤄둘게요");
     expect(findText(root, "오늘은 어느 정도 도움이 필요하세요?").length).toBe(0);
 
     // 건너뛰기 → 아직 선택하지 않음

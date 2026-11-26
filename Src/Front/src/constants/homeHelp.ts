@@ -43,7 +43,8 @@ export const HERO: Record<HelpMode | "unset", HeroCopy> = {
     image: writeImage,
   },
   rest: {
-    title: "오늘은 답장을 잠시 미뤄둘게요",
+    // 디자이너 확인: 문구 표 "오늘은 답장을 잠시 미뤄둘게요"에서 한 줄에 맞게 줄임
+    title: "오늘은 답장을 미뤄둘게요",
     description: "급한 연락만 알려드리고 나머지는 조용히 모아둘게요",
     image: restImage,
   },
