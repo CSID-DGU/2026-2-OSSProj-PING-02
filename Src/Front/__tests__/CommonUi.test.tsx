@@ -143,8 +143,9 @@ describe("UnderlineTabs", () => {
   });
 });
 
-describe("Calendar", () => {
-  // 실제 오늘이 시험 날짜와 겹치면 라벨에 ", 오늘"이 붙으므로 오늘을 고정 (Date만 가짜로)
+// 실제 오늘이 시험 날짜와 겹치면 날짜 라벨에 ", 오늘"이 붙으므로 오늘을 고정 (Date만 가짜로)
+// (Calendar·DateTimeSheet 공통. 고정하지 않으면 그 날짜에만 테스트가 실패함)
+const fixToday = () => {
   beforeEach(() => {
     jest.useFakeTimers({
       now: new Date(2026, 0, 15),
@@ -169,6 +170,10 @@ describe("Calendar", () => {
   afterEach(() => {
     jest.useRealTimers();
   });
+};
+
+describe("Calendar", () => {
+  fixToday();
 
   test("날짜를 고르고 달을 넘기며, 범위 밖 날짜는 누를 수 없다", async () => {
     const onChange = jest.fn();
@@ -213,6 +218,8 @@ describe("Calendar", () => {
 });
 
 describe("DateTimeSheet", () => {
+  fixToday();
+
   test("날짜와 시간 칩을 고르면 확인 버튼 문구에 반영된다", async () => {
     const onConfirm = jest.fn();
     const { root, unmount } = await render(
