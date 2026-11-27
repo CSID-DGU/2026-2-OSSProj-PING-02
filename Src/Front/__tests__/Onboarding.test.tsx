@@ -85,6 +85,18 @@ const checkBack = async (
   await waitForText(root, current);
 };
 
+// 글자가 text인 버튼이 비활성인지 (맨 위 화면 것)
+const isDisabledButton = (root: Instance, text: string) =>
+  root
+    .findAll(
+      n =>
+        n.props.accessibilityRole === "button" &&
+        typeof n.props.onPress === "function" &&
+        findText(n, text).length > 0
+    )
+    .map(n => n.props.accessibilityState?.disabled ?? n.props.disabled)
+    .at(-1);
+
 beforeEach(() => reset("allow"));
 
 test("없어진 단계(AI 모델·배터리)가 저장돼 있으면 그다음 단계부터 이어서 한다", () => {
@@ -120,6 +132,60 @@ test("06: 알림을 모두 끄면 권한을 묻지 않고 07로 간다", async (
   await waitForText(root, TITLE.contacts);
   expect(request).not.toHaveBeenCalledWith("postNotifications");
   request.mockRestore();
+});
+
+test("08 불러오는 중 → 09: 검색은 목록만 거르고 전체 선택은 전체 기준, 0명이면 저장 비활성 + 건너뛰기", async () => {
+  await services.storage.setItem(
+    `${STORAGE_KEYS.onboarding}.${USER_ID}`,
+    JSON.stringify({ completed: false, lastStep: "ContactsSelect" })
+  );
+  const root = await renderApp();
+  await login(root);
+  // 08 진행 막대 → 다 받으면 09
+  await waitForText(root, "연락처를 불러오고 있어요");
+  expect(
+    root.findAll(n => n.props.accessibilityRole === "progressbar").length
+  ).toBeGreaterThan(0);
+  await waitForText(root, TITLE.select);
+  expect(findText(root, "42명").length).toBe(1);
+  await waitForText(root, "42명 친구로 저장하기");
+
+  // 검색: 목록만 거름, 결과가 없으면 한 줄 안내
+  await type(root, "연락처 검색", "없는이름");
+  await waitForText(root, "검색 결과가 없어요");
+  // 전체 선택은 검색과 상관없이 전체 연락처 기준 → 모두 해제
+  await pressByRole(root, "checkbox", "전체 선택, 연락처 42명 중 42명 선택됨");
+  await waitForText(root, "0명 친구로 저장하기");
+  expect(isDisabledButton(root, "0명 친구로 저장하기")).toBe(true);
+
+  // 0명이면 건너뛰기 → 11
+  await press(root, "건너뛰기");
+  await waitForText(root, TITLE.memory);
+});
+
+test("08: 연락처를 못 불러오면 이 화면에서 다시 불러오기", async () => {
+  const original = services.contacts;
+  let fail = true;
+  services.contacts = {
+    getAll: async () => {
+      if (fail) throw new Error("읽기 실패");
+      return original.getAll();
+    },
+  };
+  try {
+    await services.storage.setItem(
+      `${STORAGE_KEYS.onboarding}.${USER_ID}`,
+      JSON.stringify({ completed: false, lastStep: "ContactsSelect" })
+    );
+    const root = await renderApp();
+    await login(root);
+    await waitForText(root, "연락처를 불러오지 못했어요");
+    fail = false;
+    await press(root, "다시 불러오기");
+    await waitForText(root, TITLE.select);
+  } finally {
+    services.contacts = original;
+  }
 });
 
 test("11: 비어 있으면 저장하기도 확인 시트, 쓰고 칩을 고르면 저장하고 12로", async () => {
@@ -276,13 +342,13 @@ test("기본(허용): Figma 순서대로 진행하고, 단계마다 뒤로가기
   await checkBack(root, TITLE.select, TITLE.contacts, () =>
     press(root, "연락처 가져오기")
   );
-  await waitForText(root, "선택한 42명 추가");
-  await press(root, "선택한 42명 추가");
+  await waitForText(root, "42명 친구로 저장하기");
+  await press(root, "42명 친구로 저장하기");
 
   // 10 친구 목록 완료
   await waitForText(root, TITLE.friends);
   await checkBack(root, TITLE.friends, TITLE.select, () =>
-    press(root, "선택한 42명 추가")
+    press(root, "42명 친구로 저장하기")
   );
   expect(findText(root, "친구 42명 추가 완료").length).toBe(1);
   await press(root, "다음");
