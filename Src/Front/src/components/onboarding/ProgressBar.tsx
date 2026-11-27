@@ -1,6 +1,6 @@
 import styled from "styled-components/native";
 
-// 가로 진행 막대 (진행 단계 표시, 모델 다운로드 진행률 공통)
+// 가로 진행 막대 (Figma 08 연락처 불러오는 중: 높이 10 · 모서리 5 · 막대 brandSeed · 바탕 borderDefault)
 interface ProgressBarProps {
   value: number; // 0 ~ 1
   accessibilityLabel: string;
@@ -34,16 +34,16 @@ const ProgressBar = ({
 // 부모 너비를 가득 채움 (가로 줄에 넣을 때는 부모를 flex: 1로)
 const Track = styled.View`
   align-self: stretch;
-  height: 6px;
-  border-radius: 3px;
+  height: 10px;
+  border-radius: 5px;
   overflow: hidden;
   background-color: ${({ theme }) => theme.colors.borderDefault};
 `;
 
 const Fill = styled.View`
   height: 100%;
-  border-radius: 3px;
-  background-color: ${({ theme }) => theme.colors.brandBrown};
+  border-radius: 5px;
+  background-color: ${({ theme }) => theme.colors.brandSeed};
 `;
 
 export default ProgressBar;

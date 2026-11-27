@@ -2,7 +2,9 @@ import { Button } from "@core/ui/button";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import PermissionGuide from "@components/onboarding/PermissionGuide";
+import Illustration from "@components/onboarding/Illustration";
 import SkipButton from "@components/onboarding/SkipButton";
+import { ONBOARDING_IMAGES } from "@constants/onboardingImages";
 import { useOnboardingStep } from "@hooks/useOnboardingStep";
 import {
   permissionActionLabel,
@@ -60,11 +62,9 @@ const ContactsImport = () => {
         title={"연락처로 친구 목록을\n만들어볼까요?"}
         description={"이름과 전화번호는 기기 안에서만\n친구를 구분하는 데 사용해요"}
       />
-      {/* TODO(에셋): 연락처 책 3D 아이콘 PNG 2x·3x를 받으면 Illustration으로 바꿈 (Figma 07·08, 66×82dp) */}
-      <s.BookPlaceholder
-        accessible={false}
-        importantForAccessibility="no-hide-descendants"
-      />
+      <s.Book>
+        <Illustration image={ONBOARDING_IMAGES.contactsBook} />
+      </s.Book>
       {(state.guide || state.load === "error") && (
         <s.Boxes>
           <PermissionGuide

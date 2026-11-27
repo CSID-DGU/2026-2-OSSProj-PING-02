@@ -1,6 +1,8 @@
 module.exports = {
   preset: "@react-native/jest-preset",
   setupFiles: ["./jest.setup.js"],
+  // 화면 테스트는 앱 전체를 그려서 에뮬레이터 등으로 PC가 바쁘면 기본 5초를 넘김 (#79)
+  testTimeout: 20000,
   // 안드로이드 전용 앱이라 안드로이드 구현으로 테스트 (뒤로가기 BackHandler 등)
   haste: {
     defaultPlatform: "android",

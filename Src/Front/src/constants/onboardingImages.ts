@@ -13,6 +13,7 @@ import iconCounseling from "@assets/img/onboarding/icon-counseling.png";
 import iconPrivacyDevice from "@assets/img/onboarding/icon-privacy-device.png";
 import iconPrivacyMasked from "@assets/img/onboarding/icon-privacy-masked.png";
 import iconPrivacyConfirm from "@assets/img/onboarding/icon-privacy-confirm.png";
+import contactsBook from "@assets/img/onboarding/contacts-book.png";
 
 // 온보딩 그림 (원본: UI/assets, 표시 크기는 Figma PNG(2x)에서 잰 값 → 1x/2x/3x로 줄여 둠)
 export interface OnboardingImage {
@@ -28,6 +29,9 @@ const img = (
 ): OnboardingImage => ({ source, width, height });
 
 export const ONBOARDING_IMAGES = {
+  // 07·08: 연락처 책 (PNG 100dp 안에 책이 약 66×82dp, 위 8·아래 10 투명 여백 → 화면에서는 82 높이 자리에 겹쳐 둠)
+  // TODO(에셋): 1x 파일이 없어 2x 파일을 기본으로 둠
+  contactsBook: img(contactsBook, 100, 100),
   // 04: 씨앗을 안고 앉은 말씨 (remembering-messages)
   sittingSeeds: img(sittingSeeds, 116, 110),
   // 12: 같은 그림을 04의 0.88배로 (Figma 12 그림 85×97.5dp, 04는 96.5×110.5dp)
