@@ -21,7 +21,7 @@ const FriendsTab = ({ title }: { title: string }) => {
   }, [params]);
 
   return (
-    <TabScreen title={title} divider={false}>
+    <TabScreen title={title} divider={false} background="surface">
       <FriendList
         tab={tab}
         onTabChange={setTab}

@@ -24,6 +24,8 @@ export interface BottomSheetProps {
   dismissOnBackdrop?: boolean;
   // 화면 대비 최대 높이 (기본 90%)
   maxHeight?: `${number}%`;
+  // 화면 대비 고정 높이 (#79 친구 E04-1: 약 60%). 내용이 적어도 이 높이로, 버튼은 아래에 붙고 내용은 스크롤
+  height?: `${number}%`;
   testID?: string;
 }
 
@@ -40,6 +42,7 @@ export const BottomSheet = ({
   scrollable = true,
   dismissOnBackdrop = true,
   maxHeight = "90%",
+  height,
   testID,
 }: BottomSheetProps) => {
   const insets = useSafeAreaInsets();
@@ -76,7 +79,7 @@ export const BottomSheet = ({
         <Sheet
           testID={testID}
           accessibilityViewIsModal
-          style={{ maxHeight, transform: [{ translateY }] }}
+          style={{ maxHeight, height, transform: [{ translateY }] }}
           $bottom={insets.bottom}
         >
           <Handle importantForAccessibility="no" />
@@ -90,6 +93,7 @@ export const BottomSheet = ({
           )}
           {scrollable ? (
             <Scroll
+              $fill={!!height}
               bounces={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.scrollContent}
@@ -97,7 +101,7 @@ export const BottomSheet = ({
               {children}
             </Scroll>
           ) : (
-            <Fill>{children}</Fill>
+            <Fill $fill={!!height}>{children}</Fill>
           )}
           {footer && <Footer>{footer}</Footer>}
         </Sheet>
@@ -186,12 +190,14 @@ const Description = styled.Text`
   text-align: center;
 `;
 
-const Scroll = styled.ScrollView`
-  flex-grow: 0;
+// $fill: 고정 높이(height)일 때 남는 공간을 내용이 채움
+const Scroll = styled.ScrollView<{ $fill: boolean }>`
+  flex-grow: ${({ $fill }) => ($fill ? 1 : 0)};
 `;
 
-const Fill = styled.View`
+const Fill = styled.View<{ $fill: boolean }>`
   flex-shrink: 1;
+  ${({ $fill }) => ($fill ? "flex-grow: 1;" : "")}
 `;
 
 const Footer = styled.View`

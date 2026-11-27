@@ -48,6 +48,8 @@ const ConnectFriendSheet = ({
       visible={visible}
       onClose={onClose}
       title={title}
+      // 시안 E04-1: 화면 아래 약 60% (친구가 적어도 같은 높이, 많으면 목록 스크롤)
+      height="60%"
       footer={
         <BottomSheetActions
           confirmLabel="연결하기"

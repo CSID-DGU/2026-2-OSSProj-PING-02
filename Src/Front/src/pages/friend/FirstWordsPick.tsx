@@ -16,6 +16,7 @@ const FirstWordsPick = () => {
     <TabScreen
       title="첫마디 보내기"
       divider={false}
+      background="surface"
       onBack={() => navigation.goBack()}
     >
       <FriendList

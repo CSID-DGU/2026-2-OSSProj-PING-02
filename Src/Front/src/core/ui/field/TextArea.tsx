@@ -7,6 +7,7 @@ import {
   type TextInputProps,
 } from "react-native";
 import styled, { css, useTheme } from "styled-components/native";
+import { fonts } from "../../styles/fonts";
 import type { FieldState } from "./Field";
 
 // 라벨·여러 줄 입력·글자 수가 한 상자 안에 있는 입력 (Figma 03 온보딩 11 "AI 답장 맞춤 설정",
@@ -23,6 +24,8 @@ export interface TextAreaProps
   state?: FieldState;
   showInput?: boolean;
   children?: ReactNode;
+  // 입력 글자 스타일 (기본 captionRegular). #77 연락 D03 답장 입력은 bodyReply 12/21
+  typo?: keyof typeof fonts;
 }
 
 export const TextArea = ({
@@ -32,6 +35,7 @@ export const TextArea = ({
   state = "default",
   showInput = true,
   children,
+  typo,
   value = "",
   onFocus,
   onBlur,
@@ -72,6 +76,7 @@ export const TextArea = ({
           editable={current !== "disabled"}
           maxLength={maxLength}
           value={value}
+          $typo={typo}
           accessibilityLabel={accessibilityLabel ?? label}
           accessibilityHint={`${maxLength}자까지 쓸 수 있어요`}
           {...rest}
@@ -117,10 +122,10 @@ const Label = styled.Text`
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-const Text = styled(TextInput)`
+const Text = styled(TextInput)<{ $typo?: keyof typeof fonts }>`
   flex: 1;
   padding: 0px;
-  ${({ theme }) => theme.fonts.captionRegular};
+  ${({ theme, $typo }) => theme.fonts[$typo ?? "captionRegular"]};
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 

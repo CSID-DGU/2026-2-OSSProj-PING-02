@@ -298,7 +298,12 @@ const FriendDetail = () => {
     : null;
 
   return (
-    <TabScreen title="친구" divider={false} onBack={() => navigation.goBack()}>
+    <TabScreen
+      title="친구"
+      divider={false}
+      background="surface"
+      onBack={() => navigation.goBack()}
+    >
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={scrollContent}>
         <Top testID="friend-detail-top">
           <FriendSearchBar onPress={() => goToList({ focusSearch: Date.now() })} />

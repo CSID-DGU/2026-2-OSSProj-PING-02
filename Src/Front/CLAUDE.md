@@ -138,7 +138,7 @@
 
 ## 다음 작업
 
-- 진행: **06 친구 최종 시안 반영** `feat/#79-friends` (worktree `C:\dev\ping-friends`). 끝난 것: E01 목록, 아이콘·캐릭터 에셋, 글자 토큰, E05 첫마디 보내기(`FriendList` 공용 + `FirstWordsPick`, 홈 카드·도움 수준·NEW 빈 상태에서 진입), E02·E03 상세(기본 정보 자동 저장 · 연결 계정 · 원문 관리) + E03-3/4 연결 관리 시트 + E04 동일 인물 팝업 + E04-1 친구에게 연결 시트. 공통: `ChoiceGroup` pill(#77 9aa7e3b와 같은 코드), `UnderlineTabs` typo·`BottomSheet` titleTypo, 글자 `titleSheet`. 남은 것: 에뮬레이터 시안 비교, 빨간 점 실제 데이터(TODO(API))
+- 진행: **06 친구 최종 시안 반영** `feat/#79-friends` (worktree `C:\dev\ping-friends`). 끝난 것: E01 목록, 아이콘·캐릭터 에셋, 글자 토큰, E05 첫마디 보내기(`FriendList` 공용 + `FirstWordsPick`, 홈 카드·도움 수준·NEW 빈 상태에서 진입), E02·E03 상세(기본 정보 자동 저장 · 연결 계정 · 원문 관리) + E03-3/4 연결 관리 시트 + E04 동일 인물 팝업 + E04-1 친구에게 연결 시트. 공통: `ChoiceGroup` pill(#77 9aa7e3b와 같은 코드), `TabScreen`·`FooterLayout` background·`TextArea` typo(#77 520748a·9aa7e3b와 같은 코드), `UnderlineTabs` typo·`BottomSheet` titleTypo·height, 글자 `titleSheet`. 에뮬레이터 비교 완료(바탕 흰색, E04-1 시트 60% 고정, 하위 탭 위치·관계 설명 글자(D03과 같은 captionRegular)·"연결 해지하기" 색은 그대로 두기로 함). 남은 것: 빨간 점 실제 데이터(TODO(API))
 - 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 남은 것: 07(아이콘)·08·09는 민재 #73 머지 후 + 에셋(연락처 책 PNG·아바타·돋보기 SVG)과 함께. 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영
 - 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)
