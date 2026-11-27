@@ -10,6 +10,7 @@ import {
 } from "react";
 import { services, STORAGE_KEYS } from "@services";
 import {
+  collectPackagesFor,
   NOTIFICATION_PREF_OPTIONS,
   ONBOARDING_STEPS,
   resolveSavedStep,
@@ -72,6 +73,14 @@ const parseSaved = (raw: string): OnboardingData => {
 // 모두 실패하면 기본값으로 화면을 열되, 저장된 값을 덮어쓰지 않도록 저장은 막음
 export const ONBOARDING_LOAD_RETRY_MS = [500, 1500, 3000];
 
+// 연동 앱(05) → 알림을 모을 앱 목록 (#83, 알림 리스너는 이 목록의 앱만 저장)
+// - 비어 있으면 건드리지 않음 (연동 앱을 아직 고르지 않았을 때 개발 화면에서 직접 켠 설정을 지우지 않게)
+// - 실패해도 온보딩은 그대로 진행 (다음에 진행 상황을 읽을 때 다시 맞춤)
+const syncCollection = (apps: LinkedApp[]) => {
+  if (apps.length === 0) return;
+  services.collection.setApps(collectPackagesFor(apps)).catch(() => {});
+};
+
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 // 호출할 때마다 services에서 꺼냄 (테스트·실제 구현으로 바꿔 끼워도 반영되게)
@@ -92,6 +101,14 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const dataRef = useRef(data);
   // 저장된 값을 한 번이라도 제대로 읽었는지. 못 읽었으면 저장된 값을 덮어쓰지 않도록 쓰기 전에 다시 읽음
   const loadedOkRef = useRef(false);
+
+  // 로그인하지 않은 상태(로그아웃·세션 만료·처음 실행)에서는 알림을 모으지 않음 (#83)
+  // 이미 쌓인 알림은 지우지 않고, 다시 로그인하면 그 사람의 연동 앱으로 다시 맞춤
+  useEffect(() => {
+    if (session.status === "signedOut") {
+      services.collection.setApps([]).catch(() => {});
+    }
+  }, [session.status]);
 
   // 로그인한 사용자가 바뀌면 그 사람의 진행 상황을 불러옴
   useEffect(() => {
@@ -117,6 +134,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
             const next = parseSaved(raw);
             dataRef.current = next;
             setData(next);
+            // 이미 온보딩을 마친 사용자·다시 로그인한 사용자도 그 사람의 연동 앱으로 수집 목록을 맞춤 (#83)
+            syncCollection(next.linkedApps);
           }
           setLoadedKey(storageKey);
         })
@@ -148,6 +167,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       const next = { ...dataRef.current, ...patch };
       dataRef.current = next;
       setData(next);
+      // 05 연동 앱을 바꾸면 알림을 모을 앱 목록도 바로 맞춤 (#83)
+      if (patch.linkedApps) syncCollection(patch.linkedApps);
       if (!storageKey) return;
 
       if (!loadedOkRef.current) {

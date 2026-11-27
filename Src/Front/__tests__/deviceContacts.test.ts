@@ -4,6 +4,7 @@ import {
   createDevicePermissionService,
   READ_CONTACTS,
   type AndroidPermissionApi,
+  type NotificationAccessApi,
 } from "../src/services/permission/devicePermissionService";
 import { createMockPermissionService } from "../src/services/permission/mockPermissionService";
 
@@ -93,5 +94,86 @@ describe("연락처 권한", () => {
     expect((await service.request("postNotifications")).status).toBe("granted");
     await service.openSettings("notificationListener");
     expect(calls.filter(c => c.startsWith("request") || c === "settings")).toEqual([]);
+  });
+});
+
+describe("알림 접근 권한 (#83, NotificationStore 설정 화면)", () => {
+  const fakeAccess = (initiallyGranted = false) => {
+    let granted = initiallyGranted;
+    const calls: string[] = [];
+    const access: NotificationAccessApi = {
+      async isGranted() {
+        calls.push("isGranted");
+        return granted;
+      },
+      async openSettings() {
+        calls.push("openSettings");
+      },
+    };
+    // 사용자가 설정에서 켜고 돌아온 상황
+    return { access, calls, grant: () => (granted = true), revoke: () => (granted = false) };
+  };
+  const noAndroid: AndroidPermissionApi = {
+    check: async () => false,
+    request: async () => "denied",
+    openSettings: async () => {},
+  };
+
+  test("꺼져 있으면 denied, 요청하면 설정 화면을 열고, 켜고 돌아오면 granted", async () => {
+    const { access, calls, grant } = fakeAccess();
+    const service = createDevicePermissionService(noAndroid, createMockPermissionService(), access);
+
+    expect((await service.checkAll()).notificationListener).toBe("denied");
+    // 팝업이 없어서 설정으로 보냄 → 화면은 "설정에 다녀오는 중"으로 기다림
+    expect(await service.request("notificationListener")).toEqual({
+      status: "denied",
+      openedSettings: true,
+    });
+    expect(calls).toContain("openSettings");
+
+    grant();
+    expect((await service.checkAll()).notificationListener).toBe("granted");
+  });
+
+  test("이미 켜져 있으면 설정을 열지 않고 granted, 나중에 끄면 다시 denied", async () => {
+    const { access, calls, revoke } = fakeAccess(true);
+    const service = createDevicePermissionService(noAndroid, createMockPermissionService(), access);
+
+    expect(await service.request("notificationListener")).toEqual({
+      status: "granted",
+      openedSettings: false,
+    });
+    expect(calls).not.toContain("openSettings");
+
+    revoke();
+    expect((await service.checkAll()).notificationListener).toBe("denied");
+  });
+
+  test("설정 열기(설정 다시 열기 버튼)도 알림 접근 설정 화면으로", async () => {
+    const { access, calls } = fakeAccess();
+    const service = createDevicePermissionService(noAndroid, createMockPermissionService(), access);
+    await service.openSettings("notificationListener");
+    expect(calls).toEqual(["openSettings"]);
+  });
+
+  test("연락처 권한은 그대로 PermissionsAndroid가 처리한다", async () => {
+    const { access } = fakeAccess(true);
+    const androidCalls: string[] = [];
+    const android: AndroidPermissionApi = {
+      check: async p => {
+        androidCalls.push(`check:${p}`);
+        return false;
+      },
+      request: async p => {
+        androidCalls.push(`request:${p}`);
+        return "granted";
+      },
+      openSettings: async () => {
+        androidCalls.push("settings");
+      },
+    };
+    const service = createDevicePermissionService(android, createMockPermissionService(), access);
+    expect((await service.request("contacts")).status).toBe("granted");
+    expect(androidCalls).toEqual([`request:${READ_CONTACTS}`]);
   });
 });

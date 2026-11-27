@@ -9,6 +9,7 @@ import {
   STORAGE_KEYS,
   type SavedAiReply,
 } from "../src/services";
+import { createMockCollectionService } from "../src/services/collection/CollectionService";
 import { createMemoryStorage } from "../src/services/storage/memoryStorage";
 import { createSecureKeyValueStorage } from "../src/services/storage/secureKeyValueStorage";
 import { createUserScopedStorage } from "../src/services/storage/userScopedStorage";
@@ -254,6 +255,95 @@ describe("앱 재시작·로그아웃", () => {
     expect(
       await services.aiReplies.listByConversation(CONVERSATION_ID)
     ).toHaveLength(1);
+  });
+});
+
+describe("알림을 모을 앱 목록 (#83)", () => {
+  const KAKAO = "com.kakao.talk";
+  const INSTAGRAM = "com.instagram.android";
+  const SMS = ["com.google.android.apps.messaging", "com.samsung.android.messaging"];
+
+  const saveOnboarding = (userId: string, linkedApps: string[]) =>
+    services.storage.setItem(
+      `${STORAGE_KEYS.onboarding}.${userId}`,
+      JSON.stringify({ completed: true, lastStep: "OnboardingDone", linkedApps })
+    );
+
+  const loginDemo = async () => {
+    const login = await services.auth.login(MOCK_DEMO_ACCOUNT.loginId, MOCK_DEMO_ACCOUNT.password);
+    services.tokens.set(login.tokens);
+  };
+
+  beforeEach(() => {
+    services.collection = createMockCollectionService();
+  });
+
+  test("이미 온보딩을 마친 사용자가 앱을 켜면 연동 앱(05)으로 수집 목록을 맞춘다", async () => {
+    await loginDemo();
+    await saveOnboarding(USER_ID, ["KAKAOTALK", "SMS"]);
+    const root = await renderApp();
+    await waitForText(root, "오늘의 도움 수준");
+    expect(await services.collection.getApps()).toEqual([KAKAO, ...SMS].sort());
+  });
+
+  test("연동 앱 기록이 비어 있으면 수집 목록을 건드리지 않는다", async () => {
+    services.collection = createMockCollectionService([INSTAGRAM]);
+    await loginDemo();
+    await saveOnboarding(USER_ID, []);
+    const root = await renderApp();
+    await waitForText(root, "오늘의 도움 수준");
+    expect(await services.collection.getApps()).toEqual([INSTAGRAM]);
+  });
+
+  test("로그아웃하면 수집을 멈추고, 다시 로그인하면 그 사람의 연동 앱으로 다시 모은다", async () => {
+    await loginDemo();
+    await saveOnboarding(USER_ID, ["KAKAOTALK"]);
+    const root = await renderApp();
+    await waitForText(root, "오늘의 도움 수준");
+    expect(await services.collection.getApps()).toEqual([KAKAO]);
+
+    await pressByRole(root, "tab", "설정");
+    await press(root, "로그아웃 (개발용)");
+    await waitForText(root, "시작하기");
+    expect(await services.collection.getApps()).toEqual([]);
+
+    await press(root, "시작하기");
+    await press(root, "로그인");
+    await type(root, "아이디", MOCK_DEMO_ACCOUNT.loginId);
+    await type(root, "비밀번호", MOCK_DEMO_ACCOUNT.password);
+    await press(root, "로그인");
+    await waitForText(root, "오늘의 도움 수준");
+    expect(await services.collection.getApps()).toEqual([KAKAO]);
+  });
+
+  test("같은 폰에서 다른 계정으로 로그인하면 그 계정의 연동 앱으로 바뀐다", async () => {
+    // 데모 계정(카카오톡)으로 쓰다가 로그아웃
+    await loginDemo();
+    await saveOnboarding(USER_ID, ["KAKAOTALK"]);
+    const root = await renderApp();
+    await waitForText(root, "오늘의 도움 수준");
+    await pressByRole(root, "tab", "설정");
+    await press(root, "로그아웃 (개발용)");
+    await waitForText(root, "시작하기");
+
+    // 다른 계정(인스타그램)으로 앱을 다시 켬 (저장된 토큰으로 자동 로그인)
+    const terms = await services.auth.getTerms();
+    const signup = await services.auth.signup({
+      loginId: "otheruser83",
+      name: "다른사람",
+      birthdate: "2000-01-01",
+      gender: "FEMALE",
+      email: "other83@example.com",
+      password: "abcd1234",
+      termsAgreements: terms.map(t => ({ termsId: t.id, agreed: true })),
+    });
+    if (signup.status !== "signedIn") throw new Error("가입 후 바로 로그인돼야 함");
+    services.tokens.set(signup.result.tokens);
+    await saveOnboarding(signup.result.user.id, ["INSTAGRAM"]);
+    await closeApp();
+    const next = await renderApp();
+    await waitForText(next, "오늘의 도움 수준");
+    expect(await services.collection.getApps()).toEqual([INSTAGRAM]);
   });
 });
 
