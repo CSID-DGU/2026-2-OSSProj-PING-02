@@ -1,7 +1,8 @@
 import styled from "styled-components/native";
 import { Checkbox } from "@core/ui/checkbox";
+import { AvatarIcon, WarningBadgeIcon } from "@core/ui/icon";
 import {
-  APP_ICON,
+  APP_LOGO_SMALL,
   APP_LABEL,
   formatRelative,
   isMustCare,
@@ -67,16 +68,12 @@ const ConversationRow = ({
           <Checkbox checked={!!checked} onChange={() => {}} label="" />
         </CheckSlot>
       )}
-      {/* TODO(에셋): 기본 프로필 그림 (Figma에서 내보내면 교체) */}
-      <Avatar />
+      <Avatar>
+        <AvatarIcon size={44} />
+      </Avatar>
       <Texts>
         <NameRow>
-          {/* TODO(에셋): 노란 "!" 아이콘 (Figma에서 내보내면 교체) */}
-          {mustCare && (
-            <Mark>
-              <MarkText>!</MarkText>
-            </Mark>
-          )}
+          {mustCare && <WarningBadgeIcon size={16} />}
           <Name numberOfLines={1}>{conversation.title}</Name>
         </NameRow>
         <Summary numberOfLines={2}>{body}</Summary>
@@ -84,7 +81,7 @@ const ConversationRow = ({
       <Side>
         <Time numberOfLines={1}>{time}</Time>
         <Logos>
-          <Logo source={APP_ICON[conversation.app]} accessible={false} />
+          <Logo source={APP_LOGO_SMALL[conversation.app]} accessible={false} />
         </Logos>
       </Side>
     </Row>
@@ -105,12 +102,11 @@ const CheckSlot = styled.View`
   overflow: hidden;
 `;
 
+// 그림 안쪽 빈 곳은 시안처럼 연노랑
 const Avatar = styled.View`
   width: 44px;
   height: 44px;
   border-radius: 22px;
-  border-width: 3px;
-  border-color: ${({ theme }) => theme.colors.brandBrown};
   background-color: ${({ theme }) => theme.colors.surfaceSeed};
 `;
 
@@ -123,20 +119,6 @@ const NameRow = styled.View`
   flex-direction: row;
   align-items: center;
   gap: 7px;
-`;
-
-const Mark = styled.View`
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  justify-content: center;
-  align-items: center;
-  background-color: ${({ theme }) => theme.colors.brandSeed};
-`;
-
-const MarkText = styled.Text`
-  ${({ theme }) => theme.fonts.labelCompact};
-  color: ${({ theme }) => theme.colors.textOnDark};
 `;
 
 const Name = styled.Text`
@@ -162,13 +144,11 @@ const Time = styled.Text`
 
 const Logos = styled.View`
   flex-direction: row;
-  gap: 1px;
 `;
 
 const Logo = styled.Image`
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  width: 17px;
+  height: 17px;
 `;
 
 export default ConversationRow;

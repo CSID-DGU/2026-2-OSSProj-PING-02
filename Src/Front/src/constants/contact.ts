@@ -23,6 +23,13 @@ export const APP_ICON = Object.fromEntries(
   LINKED_APP_OPTIONS.map(o => [o.value, o.icon])
 ) as Record<MessengerApp, ImageSourcePropType>;
 
+// 05 연락 D01·D03 작은 메신저 로고 (17dp, Figma에서 내보낸 2x·3x)
+export const APP_LOGO_SMALL: Record<MessengerApp, ImageSourcePropType> = {
+  KAKAOTALK: require("@assets/img/contact/logo-kakao.png"),
+  INSTAGRAM: require("@assets/img/contact/logo-instagram.png"),
+  SMS: require("@assets/img/contact/logo-sms.png"),
+};
+
 // 05 연락 D01 관계 필터 (시안 메뉴 순서: 친구·가족·직장·기타·전체)
 export type RelationFilter = ContactRelation | "all";
 

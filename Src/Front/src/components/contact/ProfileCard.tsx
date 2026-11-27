@@ -1,6 +1,12 @@
 import styled from "styled-components/native";
+import {
+  AvatarIcon,
+  BirthdayIcon,
+  EditIcon,
+  PhoneIcon,
+} from "@core/ui/icon";
 import SeedGradientBox from "@components/main/SeedGradientBox";
-import { APP_ICON, APP_LABEL } from "@constants/contact";
+import { APP_LABEL, APP_LOGO_SMALL } from "@constants/contact";
 import type { MessengerApp } from "@services";
 
 // 05 연락 D03 위 프로필 카드 (시안 ÷2): 좌우 16 · 모서리 28 · 홈 카드와 같은 그라데이션
@@ -40,8 +46,9 @@ const ProfileCard = ({
   return (
     <SeedGradientBox id="contactProfile" radius={28} style={CARD}>
       <Row accessible accessibilityLabel={label}>
-        {/* TODO(에셋): 기본 프로필 그림 */}
-        <Avatar />
+        <Avatar>
+          <AvatarIcon size={44} />
+        </Avatar>
         <Info>
           <NameRow>
             <Name numberOfLines={1}>{name}</Name>
@@ -55,24 +62,26 @@ const ProfileCard = ({
           {contact && (
             <>
               <Line>
-                {/* TODO(에셋): 전화 아이콘 */}
-                <LineIcon />
+                <LineIcon>
+                  <PhoneIcon />
+                </LineIcon>
                 <LineText numberOfLines={1}>{phone}</LineText>
               </Line>
               <Line>
-                {/* TODO(에셋): 생일(사람) 아이콘 */}
-                <LineIcon />
+                <LineIcon>
+                  <BirthdayIcon />
+                </LineIcon>
                 <LineText>{birthday}</LineText>
               </Line>
             </>
           )}
         </Info>
         <Side>
-          {/* TODO(에셋)·TODO(06 친구): ✏️ 아이콘, 누르면 D06 친구 설정 */}
-          <EditSlot />
+          {/* TODO(06 친구): 누르면 D06 친구 설정. 지금은 모양만 */}
+          <EditIcon />
           <Logos>
             {apps.map(app => (
-              <Logo key={app} source={APP_ICON[app]} accessible={false} />
+              <Logo key={app} source={APP_LOGO_SMALL[app]} accessible={false} />
             ))}
           </Logos>
         </Side>
@@ -93,8 +102,6 @@ const Avatar = styled.View`
   width: 44px;
   height: 44px;
   border-radius: 22px;
-  border-width: 3px;
-  border-color: ${({ theme }) => theme.colors.brandBrown};
   background-color: ${({ theme }) => theme.colors.surfaceSeed};
 `;
 
@@ -137,7 +144,7 @@ const Line = styled.View`
 
 const LineIcon = styled.View`
   width: 10px;
-  height: 10px;
+  align-items: center;
 `;
 
 // TODO(Figma 스타일 확인): 전화번호·생일 줄은 가장 가까운 captionRegular 12/17
@@ -153,20 +160,13 @@ const Side = styled.View`
   padding-top: 3px;
 `;
 
-const EditSlot = styled.View`
-  width: 14px;
-  height: 14px;
-`;
-
 const Logos = styled.View`
   flex-direction: row;
-  gap: 2px;
 `;
 
 const Logo = styled.Image`
-  width: 15px;
-  height: 15px;
-  border-radius: 4px;
+  width: 17px;
+  height: 17px;
 `;
 
 export default ProfileCard;

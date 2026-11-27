@@ -1,7 +1,7 @@
-import styled, { useTheme } from "styled-components/native";
+import styled from "styled-components/native";
 import { Button } from "@core/ui/button";
 import { TextArea } from "@core/ui/field";
-import { ClipboardIcon } from "@core/ui/icon";
+import { CopyIcon } from "@core/ui/icon";
 import HelpRow from "@components/home/HelpRow";
 import writeImage from "@assets/img/home/malssi-mode-write.png";
 import {
@@ -39,7 +39,6 @@ const ReplySection = ({
   onCopy,
   onComplete,
 }: ReplySectionProps) => {
-  const theme = useTheme();
   const { step } = flow;
 
   const title = (
@@ -198,7 +197,7 @@ const ReplySection = ({
               accessibilityState={{ disabled: empty }}
               hitSlop={16}
             >
-              <ClipboardIcon size={16} color={theme.colors.textSecondary} />
+              <CopyIcon />
             </CopyButton>
           </TextArea>
         </EditBox>
@@ -358,10 +357,10 @@ const EditBox = styled.View`
 // 상자 오른쪽 위 복사 아이콘 (라벨과 같은 줄)
 const CopyButton = styled.Pressable`
   position: absolute;
-  top: 16px;
-  right: 19px;
-  width: 16px;
-  height: 18px;
+  top: 15px;
+  right: 17px;
+  width: 20px;
+  height: 20px;
   justify-content: center;
   align-items: center;
 `;

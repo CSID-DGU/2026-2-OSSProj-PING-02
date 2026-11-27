@@ -13,4 +13,12 @@ export {
   GroupChatIcon,
   ClipboardIcon,
   PersonAddIcon,
+  AvatarIcon,
+  WarningBadgeIcon,
+  SettingsSmallIcon,
+  FilterIcon,
+  EditIcon,
+  PhoneIcon,
+  BirthdayIcon,
+  CopyIcon,
 } from "./Icon";

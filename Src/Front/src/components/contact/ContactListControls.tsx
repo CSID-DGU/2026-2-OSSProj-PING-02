@@ -6,7 +6,11 @@ import {
   type ViewInstance,
 } from "react-native";
 import styled, { useTheme } from "styled-components/native";
-import { ChevronDownIcon, SettingsIcon } from "@core/ui/icon";
+import {
+  ChevronDownIcon,
+  FilterIcon,
+  SettingsSmallIcon,
+} from "@core/ui/icon";
 import { UnderlineTabs } from "@core/ui/tabs";
 import {
   CONTACT_TABS,
@@ -78,7 +82,6 @@ const ContactListControls = ({
         />
       </TabsSlot>
       <Toolbar>
-        {/* TODO(에셋): 작은 톱니 아이콘 (지금은 탭바 설정 아이콘) */}
         {onSettings ? (
           <IconButton
             onPress={onSettings}
@@ -86,11 +89,11 @@ const ContactListControls = ({
             accessibilityLabel="분석 대화방 관리"
             hitSlop={14}
           >
-            <SettingsIcon size={14} color={theme.colors.textSecondary} />
+            <SettingsSmallIcon />
           </IconButton>
         ) : (
           <GearSlot importantForAccessibility="no-hide-descendants">
-            <SettingsIcon size={14} color={theme.colors.textSecondary} />
+            <SettingsSmallIcon />
           </GearSlot>
         )}
         <FilterButton
@@ -103,8 +106,7 @@ const ContactListControls = ({
           accessibilityState={{ expanded: !!menu }}
           hitSlop={14}
         >
-          {/* TODO(에셋): 깔때기 아이콘 (Figma에서 내보내면 교체) */}
-          <FunnelSlot />
+          <FilterIcon />
           <FilterText>{relationLabel}</FilterText>
           <ChevronDownIcon size={9} color={theme.colors.textSecondary} />
         </FilterButton>
@@ -183,11 +185,6 @@ const FilterButton = styled.Pressable`
   align-items: center;
   height: 20px;
   gap: 3px;
-`;
-
-const FunnelSlot = styled.View`
-  width: 9px;
-  height: 9px;
 `;
 
 const FilterText = styled.Text`

@@ -1,4 +1,5 @@
 import styled from "styled-components/native";
+import { WarningBadgeIcon } from "@core/ui/icon";
 
 // 05 연락 D01·D03 "인식에 실패한 장문 메시지가 있어요" 안내 (누르면 D04 긴 메시지 보완)
 // 시안(÷2): 좌우 16 · 높이 약 58 · 모서리 12 · 안쪽 위아래 12 좌 15 · "!" 17 → 9 → 제목
@@ -15,10 +16,7 @@ const LongMessageNotice = ({ onPress }: LongMessageNoticeProps) => (
     accessibilityLabel="인식에 실패한 장문 메시지가 있어요. 원문을 말씨앗에 보내주세요."
   >
     <TitleRow>
-      {/* TODO(에셋): 노란 "!" 아이콘 (Figma에서 내보내면 교체) */}
-      <Mark>
-        <MarkText>!</MarkText>
-      </Mark>
+      <WarningBadgeIcon size={17} />
       <Title>인식에 실패한 장문 메시지가 있어요</Title>
     </TitleRow>
     <Body>원문을 말씨앗에 보내주세요.</Body>
@@ -36,20 +34,6 @@ const TitleRow = styled.View`
   flex-direction: row;
   align-items: center;
   gap: 9px;
-`;
-
-const Mark = styled.View`
-  width: 17px;
-  height: 17px;
-  border-radius: 4px;
-  justify-content: center;
-  align-items: center;
-  background-color: ${({ theme }) => theme.colors.brandSeed};
-`;
-
-const MarkText = styled.Text`
-  ${({ theme }) => theme.fonts.labelCompact};
-  color: ${({ theme }) => theme.colors.textOnDark};
 `;
 
 const Title = styled.Text`
