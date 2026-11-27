@@ -1,6 +1,6 @@
 import type { KeyValueStorage } from "./KeyValueStorage";
 
-// mock: 앱 메모리에만 저장 (앱을 완전히 끄면 초기화됨)
+// 테스트용: 앱 메모리에만 저장 (앱을 완전히 끄면 초기화됨). 앱은 secureKeyValueStorage를 씀
 export const createMemoryStorage = (): KeyValueStorage => {
   const store = new Map<string, string>();
 
@@ -12,5 +12,6 @@ export const createMemoryStorage = (): KeyValueStorage => {
     removeItem: async key => {
       store.delete(key);
     },
+    getAllKeys: async () => [...store.keys()],
   };
 };

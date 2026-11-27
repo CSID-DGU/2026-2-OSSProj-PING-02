@@ -56,10 +56,29 @@ const DEFAULT_DATA: OnboardingData = {
   memory: { status: "", avoid: "", avoidTopics: [] },
 };
 
+// 저장된 진행 상황(JSON)을 지금 단계 구성에 맞춰 읽음
+const parseSaved = (raw: string): OnboardingData => {
+  const saved = JSON.parse(raw);
+  return {
+    ...DEFAULT_DATA,
+    ...saved,
+    memory: { ...DEFAULT_DATA.memory, ...saved.memory },
+    // 단계 구성이 바뀌어 없어진 단계면 그다음 단계부터 (모르는 값이면 처음부터, #59)
+    lastStep: resolveSavedStep(saved.lastStep),
+  };
+};
+
+// 불러오기 실패 시 다시 시도하는 간격 (부팅 직후 암호화 저장소가 아직 준비되지 않은 경우 대비)
+// 모두 실패하면 기본값으로 화면을 열되, 저장된 값을 덮어쓰지 않도록 저장은 막음
+export const ONBOARDING_LOAD_RETRY_MS = [500, 1500, 3000];
+
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 // 호출할 때마다 services에서 꺼냄 (테스트·실제 구현으로 바꿔 끼워도 반영되게)
-const { storage } = services;
+const storage = {
+  getItem: (key: string) => services.storage.getItem(key),
+  setItem: (key: string, value: string) => services.storage.setItem(key, value),
+};
 
 export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const { session } = useSession();
@@ -71,54 +90,78 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const hydrated = session.status !== "loading" && loadedKey === storageKey;
   const [data, setData] = useState<OnboardingData>(DEFAULT_DATA);
   const dataRef = useRef(data);
+  // 저장된 값을 한 번이라도 제대로 읽었는지. 못 읽었으면 저장된 값을 덮어쓰지 않도록 쓰기 전에 다시 읽음
+  const loadedOkRef = useRef(false);
 
   // 로그인한 사용자가 바뀌면 그 사람의 진행 상황을 불러옴
   useEffect(() => {
     let alive = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     dataRef.current = DEFAULT_DATA;
     setData(DEFAULT_DATA);
+    loadedOkRef.current = false;
 
     if (!storageKey) {
       setLoadedKey(null);
       return;
     }
 
-    storage
-      .getItem(storageKey)
-      .then(raw => {
-        if (!alive || !raw) return;
-        const saved = JSON.parse(raw);
-        const next: OnboardingData = {
-          ...DEFAULT_DATA,
-          ...saved,
-          memory: { ...DEFAULT_DATA.memory, ...saved.memory },
-          // 단계 구성이 바뀌어 없어진 단계면 그다음 단계부터 (모르는 값이면 처음부터)
-          lastStep: resolveSavedStep(saved.lastStep),
-        };
-        dataRef.current = next;
-        setData(next);
-      })
-      .catch(() => {
-        // 불러오기에 실패하면 처음부터 진행 (진행 상황만 잃고 계정에는 영향 없음)
-      })
-      .finally(() => {
-        if (alive) setLoadedKey(storageKey);
-      });
+    // 실패하면 간격을 두고 다시 시도 (그동안은 hydrated가 아니라 스플래시에서 기다림)
+    const load = (attempt: number) => {
+      storage
+        .getItem(storageKey)
+        .then(raw => {
+          if (!alive) return;
+          loadedOkRef.current = true;
+          if (raw) {
+            const next = parseSaved(raw);
+            dataRef.current = next;
+            setData(next);
+          }
+          setLoadedKey(storageKey);
+        })
+        .catch(() => {
+          if (!alive) return;
+          const delay = ONBOARDING_LOAD_RETRY_MS[attempt];
+          if (delay !== undefined) {
+            retryTimer = setTimeout(() => load(attempt + 1), delay);
+            return;
+          }
+          // 끝까지 못 읽으면 기본값(처음부터)으로 열되 저장은 막음 (update에서 다시 읽기 전까지)
+          setLoadedKey(storageKey);
+        });
+    };
+    load(0);
 
     return () => {
       alive = false;
+      clearTimeout(retryTimer);
     };
   }, [storageKey]);
 
   // 상태는 바로 바꾸고 저장 결과를 돌려줌 (저장 실패를 화면에서 알려야 할 때 await)
+  // 저장된 값을 아직 못 읽었으면 먼저 다시 읽음
+  // - 또 실패: 저장하지 않고 오류 (기본값으로 저장된 completed 등을 덮어쓰지 않게)
+  // - 성공: 저장돼 있던 값 위에 이번 변경만 얹어 저장
   const update = useCallback(
     async (patch: Partial<OnboardingData>) => {
       const next = { ...dataRef.current, ...patch };
       dataRef.current = next;
       setData(next);
-      if (storageKey) {
-        await storage.setItem(storageKey, JSON.stringify(next));
+      if (!storageKey) return;
+
+      if (!loadedOkRef.current) {
+        const raw = await storage.getItem(storageKey).catch(() => {
+          throw new Error("저장된 온보딩 진행 상황을 아직 읽지 못해 저장하지 않았어요");
+        });
+        loadedOkRef.current = true;
+        if (raw) {
+          const merged = { ...parseSaved(raw), ...patch };
+          dataRef.current = merged;
+          setData(merged);
+        }
       }
+      await storage.setItem(storageKey, JSON.stringify(dataRef.current));
     },
     [storageKey]
   );

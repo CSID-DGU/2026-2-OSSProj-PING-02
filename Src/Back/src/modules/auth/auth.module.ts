@@ -9,6 +9,7 @@ import { User } from '../../database/entities/user.entity';
 import { TermsModule } from '../terms/terms.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { PasswordVerifier } from './password-verifier';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AuthService } from './auth.service';
     MailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, PasswordVerifier],
+  exports: [PasswordVerifier],
 })
 export class AuthModule {}

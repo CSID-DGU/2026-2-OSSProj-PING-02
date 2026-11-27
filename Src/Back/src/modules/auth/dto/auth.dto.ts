@@ -18,14 +18,14 @@ import { Gender } from '../../../common/enums';
 import { LowerTrim } from '../../../common/transforms';
 import { TermsAgreementDto } from '../../terms/dto/terms-agreement.dto';
 
-const BIRTHDATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
+export const BIRTHDATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 // 명세 7-1 제안 규칙: 8자 이상, 영문+숫자 포함 (확정 전)
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 // 아이디: 소문자 영문으로 시작, 영문 소문자·숫자·밑줄, 4~20자 (확정 전)
 export const USERNAME_RULE = /^[a-z][a-z0-9_]{3,19}$/;
 
 /** 비밀번호 규칙. 가입과 비밀번호 재설정에서 같은 규칙을 쓴다. */
-const IsPassword = () =>
+export const IsPassword = () =>
   applyDecorators(
     IsString(),
     MinLength(8),

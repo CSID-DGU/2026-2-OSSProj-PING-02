@@ -29,7 +29,7 @@ import * as s from "./Contact_styled";
 // - 복사하고 메신저 열기: 항상 보이는 기본 동작 (보낼지는 메신저에서 사용자가 정함)
 // - 확인하고 보내기: 알림의 바로 답장이 가능할 때만 보이고, 누르면 확인 팝업을 꼭 거침
 // 친구에게 먼저 보내는 첫마디는 받은 알림이 없어서 복사하고 메신저 열기만 (나중에 답하기도 없음)
-// 전송·복사·앱 열기는 mock (TODO(네이티브): MessengerService를 Kotlin 모듈로 교체)
+// 복사·앱 열기는 Kotlin Messenger 모듈(#69). 바로 답장(RemoteInput)은 아직 mock (TODO(네이티브))
 type SendState = "idle" | "copied" | "sending" | "unavailable" | "error";
 
 const ReplyEdit = () => {
@@ -112,13 +112,21 @@ const ReplyEdit = () => {
     }
   };
 
+  // 복사에 성공하면 앱이 열리지 않아도(미설치 등) "복사했어요" 안내를 보여 줌 (붙여 넣을 내용은 이미 있음)
+  // 대화방에서 왔으면 conversationId를 넘겨, 가능하면 그 대화방을 바로 염 (#69)
   const copyAndOpen = async () => {
     try {
       await services.messenger.copyText(text.trim());
-      if (chosenApp) await services.messenger.openApp(chosenApp);
-      setSendState("copied");
     } catch {
       setSendState("error");
+      return;
+    }
+    setSendState("copied");
+    if (!chosenApp) return;
+    try {
+      await services.messenger.openApp(chosenApp, conversationId);
+    } catch {
+      // 앱을 못 열어도 복사는 됐으니 안내는 그대로
     }
   };
 
