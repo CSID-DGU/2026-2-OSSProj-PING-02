@@ -15,7 +15,7 @@ import FriendAvatar from "./FriendAvatar";
 // 줄 높이 72 · 왼쪽 28 · 아바타 44 → 12 → 이름(NEW는 새싹 + 이름) / 관계 칩 → 16 → 메신저 로고(15, 사이 2)
 // 오른쪽 30 안쪽: 위 별·하트(NEW는 없음), 아래 시간 (칩 줄과 같은 높이)
 // 별·하트는 줄 누르기와 따로 누를 수 있게 줄 위에 겹쳐 둠 (스크린리더에서도 따로 읽힘)
-// TODO(Figma 글자 스타일): 이름 titleSection · 칩 captionSmall · 시간 captionHero (05 연락 줄 기준 가까운 토큰)
+// 글자 (디자이너 확인): 이름 titleSection 14/20 SemiBold · 칩 labelRelationChip 11/13 SemiBold · 시간 captionHero 11/17
 interface FriendRowProps {
   item: FriendSummary;
   onPress: () => void;
@@ -139,7 +139,7 @@ const Chip = styled.View`
 `;
 
 const ChipText = styled.Text`
-  ${({ theme }) => theme.fonts.captionSmall};
+  ${({ theme }) => theme.fonts.labelRelationChip};
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 

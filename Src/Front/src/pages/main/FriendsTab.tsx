@@ -25,7 +25,7 @@ import newEmptyImage from "@assets/img/friend/malssi-new-empty.png";
 // - 검색: 지금 탭 안에서 친구 이름·앱 계정 이름으로 찾음
 // - 탭 첫 화면이라 뒤로가기 화살표 없음 (05 연락과 통일, 시안에는 있음)
 // 시안에 없는 상태(예전 화면 그대로): 불러오는 중 · 오류 · 친구가 아직 없음 · 검색 결과 없음
-// TODO(Figma 글자 스타일): 검색창 글자 captionRegular (가까운 토큰)
+// 글자 (디자이너 확인): 검색창 captionSearch 12/22 · 빈 상태 문구 bodySmallMedium 13/20
 const FriendsTab = ({ title }: { title: string }) => {
   const theme = useTheme();
   const navigation = useAuthNavigation();
@@ -120,8 +120,13 @@ const FriendsTab = ({ title }: { title: string }) => {
         </NewEmpty>
       );
     }
-    // TODO(디자이너 공유): 친구·가족·직장·기타 탭이 비었을 때 시안 없음 → 지금은 비워 둠
-    return undefined;
+    // TODO(디자이너 공유): 친구·가족·직장·기타 탭이 비었을 때 시안 없음
+    //   → 팀 확인 문구 한 줄, 자리·글자는 NEW 빈 상태 문구와 같게
+    return (
+      <NewEmpty>
+        <NewEmptyText>아직 이 관계의 친구가 없어요</NewEmptyText>
+      </NewEmpty>
+    );
   })();
 
   return (
@@ -192,7 +197,7 @@ const SearchInput = styled(Input)`
   padding-left: 16px;
   padding-right: 44px;
   border-radius: 10px;
-  ${({ theme }) => theme.fonts.captionRegular};
+  ${({ theme }) => theme.fonts.captionSearch};
 `;
 
 // 돋보기 16, 상자 오른쪽 안에서 약 19
@@ -216,7 +221,7 @@ const NewEmpty = styled.View`
 `;
 
 const NewEmptyText = styled.Text`
-  ${({ theme }) => theme.fonts.bodySmallRelaxed};
+  ${({ theme }) => theme.fonts.bodySmallMedium};
   color: ${({ theme }) => theme.colors.textPrimary};
   text-align: center;
 `;

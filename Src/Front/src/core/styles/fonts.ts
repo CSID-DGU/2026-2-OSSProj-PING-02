@@ -55,15 +55,18 @@ export const fonts = {
   bodyLarge: fontGenerator(15, fontFamily.regular, 22),
   bodyMedium: fontGenerator(14, fontFamily.regular, 20),
   bodySmall: fontGenerator(13, fontFamily.regular, 19),
+  bodySmallMedium: fontGenerator(13, fontFamily.medium, 20), // #79 친구 NEW 빈 상태 문구
 
   //label
   labelButton: fontGenerator(15, fontFamily.medium, 22),
   labelForm: fontGenerator(13, fontFamily.medium, 18),
   labelCompact: fontGenerator(11, fontFamily.semiBold, 16),
   labelTab: fontGenerator(11, fontFamily.medium, 16), // #53 하단 탭 글자 (선택·기본 같음, 색만 다름)
+  labelRelationChip: fontGenerator(11, fontFamily.semiBold, 13), // #79 친구 목록 관계 칩 (NEW·직장)
 
   //caption
   captionRegular: fontGenerator(12, fontFamily.regular, 17),
+  captionSearch: fontGenerator(12, fontFamily.regular, 22), // #79 친구 검색창 글자
   captionSmall: fontGenerator(11, fontFamily.regular, 16),
   captionXSmall: fontGenerator(10, fontFamily.regular, 14),
   captionCard: fontGenerator(10, fontFamily.regular, 16), // #53 홈 연락 카드 요약

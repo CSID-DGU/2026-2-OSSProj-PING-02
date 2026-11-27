@@ -181,6 +181,17 @@ describe("06 E01 친구 목록", () => {
     await waitUntil(() => tabSelected(root, "홈"), "홈 탭으로");
   });
 
+  test("관계 탭이 비면 한 줄 안내", async () => {
+    // 유일한 "기타" 친구(김서연 선배)를 준호에게 합쳐서 기타 탭을 비움
+    await services.friends.mergeAccount("p-junho", "seoyeon-김서연 선배");
+    const root = await openFriends();
+    await waitForText(root, "민지");
+
+    await pressByRole(root, "tab", "기타");
+    await waitForText(root, "아직 이 관계의 친구가 없어요");
+    expect(friendCardLabels(root)).toEqual([]);
+  });
+
   test("불러오지 못하면 다시 불러오기, 친구가 없으면 빈 상태", async () => {
     services.friends = createMockFriendService({ latency: 50, failList: true });
     const root = await renderApp();
