@@ -49,7 +49,7 @@ const TruncatedMessage = () => {
     );
   }
 
-  const { conversation, analysis } = state.data;
+  const { conversation } = state.data;
   const appName = APP_LABEL[conversation.app];
   const working = summary.status === "working";
   const disabled = !pasted.trim() || working;
@@ -62,6 +62,8 @@ const TruncatedMessage = () => {
         pasted
       );
       setSummary({ status: "done", summary: result });
+      // 붙여 넣은 전체 내용으로 AI가 결정 여부를 다시 판단했으니, 새 분석으로 답장 화면 갈래를 정함
+      const { analysis } = await services.conversation.get(conversationId);
       navigation.navigate(replyStepFor(analysis.tags), { conversationId });
     } catch {
       setSummary({ status: "error" });
