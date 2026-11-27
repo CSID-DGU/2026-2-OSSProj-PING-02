@@ -3,6 +3,10 @@ import type { Account, Person } from "../conversation/types";
 // mock 친구 데이터 (Figma 05 친구 예시 + 연락 mock과 같은 사람들)
 // - 민지: 카카오톡 + 인스타그램 계정을 같은 사람으로 합쳐 둔 상태, 문자 "김민지"는 아직 연결 안 됨(합치기 후보)
 // - 지연: 얼려둔 관계, 이도현: 긴 이름(말줄임 확인)
+// - 06 관계·별/하트: 민지 친구♥, 준호 가족, 김서연 선배 기타, 예린 직장★, 나머지 친구
+// - 유영서: NEW (새로 발견한 발신자, 카카오톡 + 문자, 전화번호 있음)
+// - 홍선빈: 친구(카카오톡)와 같은 이름의 NEW(인스타그램 @seonbinihong05) → 06 E04 동일 인물 확인 팝업
+// - 전화번호: 민지·서연 선배·유영서만 (나머지는 알림으로만 잡힌 친구 → "전화번호가 없어요")
 // 1:1 대화가 있는 계정 id는 연락 mock 메시지의 accountId(`대화id-보낸 사람`)와 같게 맞춤
 const DAY = 24 * 60 * 60_000;
 const daysAgo = (days: number) => new Date(Date.now() - days * DAY).toISOString();
@@ -15,6 +19,9 @@ export const PERSONS: Person[] = [
     frozen: false,
     memo: "대학교 친구 · 편하게 안부를 물어볼 수 있음",
     birthday: "05-18",
+    phone: "010-1234-5678",
+    relation: "friend",
+    favorite: true,
   },
   {
     id: "p-junho",
@@ -22,6 +29,7 @@ export const PERSONS: Person[] = [
     isFriend: true,
     frozen: false,
     memo: "고등학교 친구 · 생일을 먼저 챙겨 줌",
+    relation: "family",
   },
   {
     id: "p-seoyeon",
@@ -30,21 +38,38 @@ export const PERSONS: Person[] = [
     frozen: false,
     memo: "동아리 선배",
     birthday: "12-03",
+    phone: "010-2345-6789",
+    relation: "etc",
   },
-  { id: "p-haneul", displayName: "하늘", isFriend: true, frozen: false },
+  {
+    id: "p-haneul",
+    displayName: "하늘",
+    isFriend: true,
+    frozen: false,
+    relation: "friend",
+  },
   {
     id: "p-yerin",
     displayName: "예린",
     isFriend: true,
     frozen: false,
     memo: "스터디 친구",
+    relation: "work",
+    favorite: true,
   },
-  { id: "p-siwoo", displayName: "시우", isFriend: true, frozen: false },
+  {
+    id: "p-siwoo",
+    displayName: "시우",
+    isFriend: true,
+    frozen: false,
+    relation: "friend",
+  },
   {
     id: "p-dohyun",
     displayName: "고등학교 축구부에서 함께 뛰던 이도현",
     isFriend: true,
     frozen: false,
+    relation: "friend",
   },
   {
     id: "p-jiyeon",
@@ -53,7 +78,24 @@ export const PERSONS: Person[] = [
     frozen: true,
     memo: "중학교 친구",
     birthday: "09-02",
+    relation: "friend",
   },
+  {
+    id: "p-seonbin",
+    displayName: "홍선빈",
+    isFriend: true,
+    frozen: false,
+    relation: "friend",
+  },
+  // NEW: 아직 친구로 등록하지 않은 발신자 (06 E02에서 연결하거나 새 친구로 추가)
+  {
+    id: "p-new-youngseo",
+    displayName: "유영서",
+    isFriend: false,
+    frozen: false,
+    phone: "010-1234-1234",
+  },
+  { id: "p-new-seonbin", displayName: "홍선빈", isFriend: false, frozen: false },
 ];
 
 export const ACCOUNTS: Account[] = [
@@ -68,10 +110,23 @@ export const ACCOUNTS: Account[] = [
   { id: "sms-지연", personId: "p-jiyeon", app: "SMS", senderName: "지연" },
   // 아직 친구와 연결 안 된 발신자 (민지와 합치기 후보)
   { id: "sms-김민지", personId: null, app: "SMS", senderName: "김민지" },
+  { id: "kakao-유영서", personId: "p-new-youngseo", app: "KAKAOTALK", senderName: "유영서" },
+  { id: "sms-유영서", personId: "p-new-youngseo", app: "SMS", senderName: "유영서" },
+  { id: "kakao-홍선빈", personId: "p-seonbin", app: "KAKAOTALK", senderName: "홍선빈" },
+  {
+    id: "ig-seonbinihong05",
+    personId: "p-new-seonbin",
+    app: "INSTAGRAM",
+    senderName: "선빈",
+    handle: "seonbinihong05",
+  },
 ];
 
 // 대화가 없는 계정의 마지막 연락 (기기 안 기록에서 가져온 값이라고 가정)
 export const CONTACTED_AT: Record<string, string> = {
+  "kakao-유영서": daysAgo(7),
+  "kakao-홍선빈": daysAgo(20),
+  "ig-seonbinihong05": daysAgo(0.4),
   "ig-minji_daily": daysAgo(90),
   "kakao-도현": daysAgo(62),
   "sms-지연": daysAgo(240),

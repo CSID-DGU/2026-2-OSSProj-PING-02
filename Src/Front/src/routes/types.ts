@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
+import type { FriendTab } from "@constants/friend";
 import type { HelpMode } from "@constants/homeHelp";
 import type { MainTabKey } from "@constants/tabs";
 import type { ReplyStance as Stance, ReplyTone as Tone } from "@services";
@@ -13,7 +14,8 @@ export type TabStackParamList = {
   // 각 탭의 첫 화면 (자기 탭 스택에만 등록됨)
   HomeMain: undefined;
   ContactsMain: undefined;
-  FriendsMain: undefined;
+  // 06 친구 목록. 상세 화면의 6개 탭·검색창에서 돌아올 때 tab(그 탭 선택)·focusSearch(검색칸 포커스)
+  FriendsMain: { tab?: FriendTab; focusSearch?: number } | undefined;
   CalendarMain: undefined;
   SettingsMain: undefined;
 
@@ -45,9 +47,11 @@ export type TabStackParamList = {
   // 08 "메시지가 잘린 상태 보기" (시안 없음)
   TruncatedMessage: { conversationId: string };
   // 05 친구
-  // 14 친구 상세 / 15 첫마디 제안
+  // 06 E02·E03 친구 상세 / 15 첫마디 제안
   FriendDetail: { personId: string };
   FirstWords: { personId: string };
+  // 06 친구 E05 첫마디 보내기: 친구 고르기 → FirstWords
+  FirstWordsPick: undefined;
 };
 
 // 하단 탭: 탭 이름 = MainTabKey
