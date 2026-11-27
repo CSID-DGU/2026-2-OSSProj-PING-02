@@ -1,6 +1,6 @@
 import type { StoredNotification } from "@native/NotificationStore";
 import { ServiceError } from "../common";
-import type { AiReplyService } from "../ai/AiReplyService";
+import type { AiReplyService, AiStance, AiTone } from "../ai/AiReplyService";
 import type { AiReplyStore, SavedAiReply } from "../ai/AiReplyStore";
 import { classifyNeedsDecision, looksLikeInstitution } from "../ai/classifyMessage";
 import { requestAiReply, type ConversationMessage } from "../ai/requestAiReply";
@@ -29,6 +29,10 @@ import type {
 // - 목록의 분석(질문·멘션·답장 필요 등)은 기기 안 규칙으로만 함. 목록을 보는 것만으로는 아무것도 보내지 않음
 // - AI(POST /v1/ai/reply)는 사용자가 대화방을 열었을 때 그 대화방 하나만 한 번 호출해서 요약·답장 후보를 받고,
 //   결과는 기기에 저장해 답장 화면에서 다시 씀. 새 메시지가 오기 전까지 다시 보내지 않음
+// - 결정(수락·보류·거절)이 필요한 메시지인지는 AI가 요약하면서 판단함. AI 결과가 있으면 그 판단으로
+//   "question" 태그를 정해서 답장 화면 갈래(입장 먼저 / 말투 바로)가 AI 판단을 따름.
+//   AI 결과가 아직 없을 때(목록)만 기기 규칙으로 대신함
+//   결정이 필요하면 답장 9개(입장 3 × 말투 3), 아니면 3개(말투)를 한 번에 받음
 //   (기관·번호 발신자, 안내 문구만 있는 대화는 보내지 않음)
 // - 마스킹·전송·되돌리기·로컬 저장은 requestAiReply가 함
 // - 답장함·확인함·나중에 답하기 상태는 KeyValueStorage에 저장. 새 메시지가 오면 답장함·확인함은 풀림
@@ -54,21 +58,23 @@ const OCCASION_RE = /결혼|청첩|부고|별세|장례|발인|조문|돌잔치|
 const DEADLINE_RE =
   /마감|기한|까지\s*(?:제출|납부|회신|신청|등록|입금)|D-\d+|디데이/;
 
-const TONE_BY_LABEL: Record<string, ReplyTone> = {
-  짧게: "short",
-  다정하게: "warm",
-  공손하게: "polite",
+const TONE_FROM_AI: Record<AiTone, ReplyTone> = {
+  SHORT: "short",
+  WARM: "warm",
+  POLITE: "polite",
 };
-const STANCE_BY_LABEL: Record<string, ReplyStance> = {
-  수락: "accept",
-  보류: "hold",
-  거절: "decline",
+const STANCE_FROM_AI: Record<AiStance, ReplyStance> = {
+  ACCEPT: "accept",
+  HOLD: "hold",
+  DECLINE: "decline",
 };
 const TONES: ReplyTone[] = ["short", "warm", "polite"];
 
 /** 알림 메시지 출처. 기본은 네이티브 NotificationStore, 테스트에서는 가짜를 넣음 */
 export interface DeviceMessageSource {
   getNotifications(options: { limit?: number }): Promise<StoredNotification[]>;
+  /** 새 메시지가 저장될 때마다 부름 (#71). 없으면 목록은 화면에 들어올 때만 바뀜 */
+  onSaved?(listener: () => void): () => void;
   getConversationMessages(
     packageName: string,
     conversationId: string,
@@ -100,7 +106,7 @@ const emptyState = (): StoredState => ({ replied: {}, checked: {}, deferred: {} 
 const SEPARATOR = "::";
 export const toConversationKey = (packageName: string, conversationId: string) =>
   `${packageName}${SEPARATOR}${conversationId}`;
-const parseConversationKey = (key: string) => {
+export const parseConversationKey = (key: string) => {
   const i = key.indexOf(SEPARATOR);
   if (i < 0) {
     throw new ServiceError(CONVERSATION_ERROR_CODE.notFound, "대화를 찾을 수 없습니다.");
@@ -142,7 +148,7 @@ const toConversation = (key: string, rows: StoredNotification[]): Conversation =
 
 /**
  * 기기 안 규칙으로 하는 분석. 답장했거나 확인한 뒤에 온 메시지(fresh)만 본다.
- * - question: 수락·거절을 정해야 하는 말 (classifyNeedsDecision, AI 요청의 needsDecision과 같은 규칙)
+ * - question: 수락·거절을 정해야 하는 말. AI 결과가 있으면 AI 판단(aiNeedsDecision), 없으면 classifyNeedsDecision
  * - occasion·deadline: 경조사·마감 낱말
  * - info: 기관·번호 발신자
  */
@@ -150,7 +156,8 @@ export const analyzeLocally = (
   kind: Conversation["kind"],
   rows: StoredNotification[],
   handledAt: number,
-  aiSummary?: string
+  aiSummary?: string,
+  aiNeedsDecision?: boolean
 ): Analysis => {
   const fresh = rows.filter(r => r.messageTime > handledAt);
   const recentTexts = fresh
@@ -160,7 +167,10 @@ export const analyzeLocally = (
   const lastSender = rows[rows.length - 1]?.sender ?? "";
 
   const tags: AnalysisTag[] = [];
-  if (classifyNeedsDecision(recentTexts.slice(-3)).value) tags.push("question");
+  const decision =
+    recentTexts.length > 0 &&
+    (aiNeedsDecision ?? classifyNeedsDecision(recentTexts.slice(-3)).value);
+  if (decision) tags.push("question");
   if (recentTexts.some(t => OCCASION_RE.test(t))) tags.push("occasion");
   if (recentTexts.some(t => DEADLINE_RE.test(t))) tags.push("deadline");
   const institution = looksLikeInstitution(lastSender);
@@ -226,13 +236,9 @@ export const createDeviceConversationService = ({
   };
 
   /** 마지막 메시지 이후에 만든 AI 결과 (그 전 것은 지난 대화라 쓰지 않음) */
-  const latestAiReply = async (key: string, lastMessageTime: number, needsDecision?: boolean) => {
+  const latestAiReply = async (key: string, lastMessageTime: number) => {
     const saved = await aiReplies.listByConversation(key);
-    return saved.find(
-      r =>
-        r.createdAt >= lastMessageTime &&
-        (needsDecision === undefined || r.needsDecision === needsDecision)
-    );
+    return saved.find(r => r.createdAt >= lastMessageTime);
   };
 
   /** AI로 보낼 대화 내용이 있는지 (안내 문구만 있거나 기관·번호 발신자면 보내지 않음) */
@@ -255,7 +261,7 @@ export const createDeviceConversationService = ({
     const handledAt = Math.max(state.replied[key] ?? 0, state.checked[key] ?? 0);
     const saved = await latestAiReply(key, last.messageTime);
     const analysis: Analysis = {
-      ...analyzeLocally(conversation.kind, rows, handledAt, saved?.summary),
+      ...analyzeLocally(conversation.kind, rows, handledAt, saved?.summary, saved?.needsDecision),
       conversationId: key,
     };
     if (forDetail && !saved && canAskAi(rows, analysis)) {
@@ -270,19 +276,21 @@ export const createDeviceConversationService = ({
     };
   };
 
-  // 같은 대화·같은 종류의 AI 요청이 동시에 여러 번 오면 한 번만 보냄
+  // 같은 대화의 AI 요청이 동시에 여러 번 오면 한 번만 보냄
   // (09-A 입장 선택 화면은 수락·보류·거절 후보를 동시에 요청함)
   const inFlight = new Map<string, Promise<SavedAiReply>>();
 
-  const aiReplyFor = async (key: string, needsDecision: boolean): Promise<SavedAiReply> => {
+  const aiReplyFor = async (key: string): Promise<SavedAiReply> => {
+    const running = inFlight.get(key);
+    if (running) return running;
+
     const rows = await loadRows(key);
     const last = rows[rows.length - 1];
-    const cached = await latestAiReply(key, last.messageTime, needsDecision);
+    const cached = await latestAiReply(key, last.messageTime);
     if (cached) return cached;
-
-    const flightKey = `${key}|${needsDecision}`;
-    const running = inFlight.get(flightKey);
-    if (running) return running;
+    // 기다리는 사이 다른 호출이 먼저 보냈을 수 있음
+    const started = inFlight.get(key);
+    if (started) return started;
 
     // 안내 문구("사진을 보냈습니다." 등)는 대화 내용이 아니라서 AI에 보내지 않음
     const messages: ConversationMessage[] = rows
@@ -298,18 +306,19 @@ export const createDeviceConversationService = ({
 
     const request = (async () =>
       requestAiReply(
-        { conversationId: key, messages, names: await getMaskNames(), needsDecision },
+        { conversationId: key, messages, names: await getMaskNames() },
         { ai, store: aiReplies, network }
       ))();
-    inFlight.set(flightKey, request);
+    inFlight.set(key, request);
     try {
       return await request;
     } finally {
-      inFlight.delete(flightKey);
+      inFlight.delete(key);
     }
   };
 
   const service: ConversationService = {
+    onChange: listener => source.onSaved?.(listener) ?? (() => {}),
     async list() {
       const [rows, state] = await Promise.all([
         source.getNotifications({ limit: LIST_LIMIT }),
@@ -349,9 +358,11 @@ export const createDeviceConversationService = ({
       const { analysis } = detail;
       if (analysis.status !== "pending") return analysis;
       try {
-        // 답장 화면 갈래(입장 선택 / 말투 선택)와 같은 기준으로 needsDecision을 정해야 저장된 결과를 다시 쓸 수 있음
-        const reply = await aiReplyFor(key, analysis.tags.includes("question"));
-        return { ...analysis, status: "done", summary: reply.summary };
+        const reply = await aiReplyFor(key);
+        // 저장된 결과로 다시 분석: 요약과 AI의 결정 판단("question" 태그 → 답장 화면 갈래)이 함께 반영됨
+        const next = (await service.get(key)).analysis;
+        // 보내는 사이 새 메시지가 와서 결과가 지난 것이 됐어도 이번에 받은 요약은 보여 줌 (다시 부르지 않게)
+        return next.status === "pending" ? { ...next, status: "done", summary: reply.summary } : next;
       } catch {
         // 실패해도 받은 메시지는 그대로 보이고, 사용자가 직접 답장을 쓸 수 있음
         return { ...analysis, status: "failed" };
@@ -359,33 +370,24 @@ export const createDeviceConversationService = ({
     },
 
     async getReplyCandidates(key, { tone, stance }) {
-      const needsDecision = stance !== undefined;
-      const reply = await aiReplyFor(key, needsDecision);
+      const reply = await aiReplyFor(key);
       const ordered = [tone, ...TONES.filter(t => t !== tone)];
-
-      if (stance) {
-        // 서버는 수락·보류·거절 답장을 하나씩 줌. 고른 입장의 답장을 말투 칸에 같이 넣음
-        // TODO(PR #40 머지 후): stance를 보내 그 입장을 유지한 짧게·다정하게·공손하게 3개를 받기
-        const text = reply.replies.find(r => STANCE_BY_LABEL[r.label] === stance)?.text;
-        if (!text) {
-          throw new ServiceError(CONVERSATION_ERROR_CODE.analysisFailed, "답장 후보를 만들지 못했어요");
-        }
-        return ordered.map<ReplyCandidate>(t => ({
-          id: `${reply.id}-${stance}-${t}`,
-          conversationId: key,
-          tone: t,
-          stance,
-          text,
-        }));
+      // 결정이 필요한 메시지면 9개 중 고른 입장의 3개, 아니면 입장 없는 3개
+      const pool = reply.replies.filter(r =>
+        stance ? r.stance && STANCE_FROM_AI[r.stance] === stance : !r.stance
+      );
+      if (pool.length === 0) {
+        // 화면 갈래와 AI 판단이 엇갈린 경우 (예: AI가 실패해 기기 규칙으로 화면을 고른 뒤 다시 받은 결과가 다름)
+        throw new ServiceError(CONVERSATION_ERROR_CODE.analysisFailed, "답장 후보를 만들지 못했어요");
       }
-
       return ordered
-        .map(t => ({ t, text: reply.replies.find(r => TONE_BY_LABEL[r.label] === t)?.text }))
+        .map(t => ({ t, text: pool.find(r => TONE_FROM_AI[r.tone] === t)?.text }))
         .filter((c): c is { t: ReplyTone; text: string } => !!c.text)
         .map<ReplyCandidate>(({ t, text }) => ({
-          id: `${reply.id}-${t}`,
+          id: stance ? `${reply.id}-${stance}-${t}` : `${reply.id}-${t}`,
           conversationId: key,
           tone: t,
+          ...(stance ? { stance } : {}),
           text,
         }));
     },
@@ -402,7 +404,6 @@ export const createDeviceConversationService = ({
           conversationId: key,
           messages: [{ sender: last.sender || toConversation(key, rows).title, text: trimmed }],
           names: await getMaskNames(),
-          needsDecision: false,
         },
         { ai, store: aiReplies, network }
       );
