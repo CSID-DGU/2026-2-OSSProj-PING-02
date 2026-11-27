@@ -17,6 +17,7 @@ import {
 // 월 제목 18 Bold · 요일 13 보조색 · 날짜 15 · 선택은 지름 32dp 노란 원 + 굵은 글씨
 // 날짜 칸: 시안대로 세로 32 (시안 가로 40, 여기선 7칸 균등 flex)
 // 터치 영역은 옆 칸과 겹치지 않는 만큼만: 가로는 칸 폭 전체, 세로는 줄 간격 절반씩(hitSlop) → 약 36dp
+// size="month" (#80 07 캘린더 F01 월 화면): 줄 간격 44 · 선택 원 40 · 날짜 아래 점(marks) 지름 4, 원 안 아래쪽
 export interface CalendarProps {
   value?: Date | null;
   onChange: (date: Date) => void;
@@ -24,6 +25,9 @@ export interface CalendarProps {
   initialMonth?: Date;
   minDate?: Date;
   maxDate?: Date;
+  size?: "sheet" | "month";
+  // 날짜 아래 점 색 (없으면 점 없음). 예: 그날 일정 종류의 색
+  marks?: (day: Date) => string | undefined;
 }
 
 export const Calendar = ({
@@ -32,7 +36,10 @@ export const Calendar = ({
   initialMonth,
   minDate,
   maxDate,
+  size = "sheet",
+  marks,
 }: CalendarProps) => {
+  const metric = METRICS[size];
   const [month, setMonth] = useState(() =>
     startOfMonth(initialMonth ?? value ?? new Date())
   );
@@ -48,8 +55,8 @@ export const Calendar = ({
   );
 
   return (
-    <Wrapper>
-      <MonthRow>
+    <Wrapper $gap={metric.rowGap}>
+      <MonthRow $bottom={metric.monthRowBottom} $inset={metric.navInset}>
         <NavButton
           onPress={() => setMonth(m => addMonths(m, -1))}
           disabled={!canPrev}
@@ -77,7 +84,7 @@ export const Calendar = ({
 
       <Week importantForAccessibility="no-hide-descendants">
         {WEEKDAYS.map(w => (
-          <Cell key={w} $height={32}>
+          <Cell key={w} $height={metric.weekdayHeight}>
             <WeekdayLabel>{w}</WeekdayLabel>
           </Cell>
         ))}
@@ -86,23 +93,27 @@ export const Calendar = ({
       {weeks.map((week, i) => (
         <Week key={i}>
           {week.map((day, j) => {
-            if (!day) return <Cell key={`empty-${j}`} $height={DAY_HEIGHT} />;
+            if (!day) {
+              return <Cell key={`empty-${j}`} $height={metric.dayHeight} />;
+            }
             const selected = isSameDay(day, value);
             const isToday = isSameDay(day, today);
             const disabled = (!!min && day < min) || (!!max && day > max);
+            const mark = marks?.(day);
             return (
               <DayButton
                 key={day.getDate()}
                 onPress={() => onChange(day)}
-                hitSlop={DAY_HIT_SLOP}
+                hitSlop={metric.hitSlop}
                 disabled={disabled}
                 accessibilityRole="button"
                 accessibilityLabel={`${formatDate(day, { withYear: true })}${
                   isToday ? ", 오늘" : ""
-                }`}
+                }${mark ? ", 일정 있음" : ""}`}
                 accessibilityState={{ selected, disabled }}
+                $height={metric.dayHeight}
               >
-                <DayCircle $selected={selected}>
+                <DayCircle $selected={selected} $size={metric.circle}>
                   <DayLabel
                     $selected={selected}
                     $today={isToday}
@@ -110,6 +121,9 @@ export const Calendar = ({
                   >
                     {day.getDate()}
                   </DayLabel>
+                  {mark ? (
+                    <Dot $color={mark} $bottom={metric.dotBottom} />
+                  ) : null}
                 </DayCircle>
               </DayButton>
             );
@@ -122,18 +136,42 @@ export const Calendar = ({
 
 const ROW_GAP = 4;
 const DAY_HEIGHT = 32;
-// 위아래 줄과 겹치지 않게 줄 간격의 절반씩만
-const DAY_HIT_SLOP = { top: ROW_GAP / 2, bottom: ROW_GAP / 2 };
 
-const Wrapper = styled.View`
-  gap: ${ROW_GAP}px;
+// 위아래 줄과 겹치지 않게 줄 간격의 절반씩만 hitSlop
+// month: 칸이 44라 hitSlop 없이도 세로 44dp (48dp 미만, 시안 줄 간격 우선)
+const METRICS = {
+  sheet: {
+    rowGap: ROW_GAP,
+    dayHeight: DAY_HEIGHT,
+    circle: DAY_HEIGHT,
+    dotBottom: 2,
+    hitSlop: { top: ROW_GAP / 2, bottom: ROW_GAP / 2 },
+    weekdayHeight: 32,
+    monthRowBottom: 8,
+    navInset: 0,
+  },
+  // 시안 F01: 월 제목 → 요일 29.5 → 첫 줄 34 · 화살표 중심은 카드 끝에서 25 (카드 안쪽 여백 16.5)
+  month: {
+    rowGap: 0,
+    dayHeight: 44,
+    circle: 40,
+    dotBottom: 6,
+    hitSlop: undefined,
+    weekdayHeight: 24,
+    monthRowBottom: -6,
+    navInset: -16,
+  },
+} as const;
+
+const Wrapper = styled.View<{ $gap: number }>`
+  gap: ${({ $gap }) => $gap}px;
 `;
 
-const MonthRow = styled.View`
+const MonthRow = styled.View<{ $bottom: number; $inset: number }>`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin: 0px ${({ $inset }) => $inset}px ${({ $bottom }) => $bottom}px;
 `;
 
 const NavButton = styled.TouchableOpacity<{ $disabled: boolean }>`
@@ -165,21 +203,30 @@ const WeekdayLabel = styled.Text`
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-const DayButton = styled.Pressable`
+const DayButton = styled.Pressable<{ $height: number }>`
   flex: 1;
-  height: ${DAY_HEIGHT}px;
+  height: ${({ $height }) => $height}px;
   justify-content: center;
   align-items: center;
 `;
 
-const DayCircle = styled.View<{ $selected: boolean }>`
-  width: ${DAY_HEIGHT}px;
-  height: ${DAY_HEIGHT}px;
-  border-radius: ${DAY_HEIGHT / 2}px;
+const DayCircle = styled.View<{ $selected: boolean; $size: number }>`
+  width: ${({ $size }) => $size}px;
+  height: ${({ $size }) => $size}px;
+  border-radius: ${({ $size }) => $size / 2}px;
   justify-content: center;
   align-items: center;
   background-color: ${({ theme, $selected }) =>
     $selected ? theme.colors.brandSeed : "transparent"};
+`;
+
+const Dot = styled.View<{ $color: string; $bottom: number }>`
+  position: absolute;
+  bottom: ${({ $bottom }) => $bottom}px;
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: ${({ $color }) => $color};
 `;
 
 // 오늘: 갈색 글씨 + 중간 굵기 (선택과 겹치면 선택 우선)

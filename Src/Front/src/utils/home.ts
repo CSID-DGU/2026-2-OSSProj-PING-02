@@ -1,6 +1,6 @@
 import { startOfDay } from "@core/ui/calendar";
 import { isAdMessage } from "@services/ai/classifyMessage";
-import type { ContactEvent, ConversationSummary } from "@services";
+import type { ConversationSummary } from "@services";
 
 // 04 홈·도움 수준 화면이 같이 쓰는 선택 규칙 (모두 기기 안 규칙, AI 호출 없음)
 
@@ -63,7 +63,10 @@ export const selectGroupSummary = (items: ConversationSummary[]) =>
     )[0];
 
 // 다가오는 일정: 오늘 이후 가장 가까운 일정 하나
-export const selectUpcomingEvent = (events: ContactEvent[], now = new Date()) =>
+export const selectUpcomingEvent = <T extends { date: string }>(
+  events: T[],
+  now = new Date()
+): T | undefined =>
   events
     .filter(e => new Date(e.date).getTime() >= startOfDay(now).getTime())
     .sort((a, b) => a.date.localeCompare(b.date))[0];

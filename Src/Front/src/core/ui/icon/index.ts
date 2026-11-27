@@ -13,4 +13,8 @@ export {
   GroupChatIcon,
   ClipboardIcon,
   PersonAddIcon,
+  AvatarDefaultIcon,
+  SearchIcon,
+  CloseIcon,
+  PlusIcon,
 } from "./Icon";

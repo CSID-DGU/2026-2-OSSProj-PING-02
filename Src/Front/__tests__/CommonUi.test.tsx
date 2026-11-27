@@ -240,6 +240,29 @@ describe("Calendar", () => {
     unmount();
   });
 
+  test("월 화면(size=month): 점이 있는 날은 '일정 있음'으로 읽어 준다 (#80)", async () => {
+    const { root, unmount } = await render(
+      <Calendar
+        size="month"
+        initialMonth={new Date(2026, 10, 1)}
+        value={new Date(2026, 10, 22)}
+        onChange={() => {}}
+        marks={day => (day.getDate() === 29 ? "#295CB8" : undefined)}
+      />
+    );
+    const day = (label: string) =>
+      byRole(root, "button").find(n =>
+        String(n.props.accessibilityLabel).startsWith(label)
+      )!;
+    expect(day("2026년 11월 29일").props.accessibilityLabel).toBe(
+      "2026년 11월 29일 일요일, 일정 있음"
+    );
+    expect(day("2026년 11월 28일").props.accessibilityLabel).toBe(
+      "2026년 11월 28일 토요일"
+    );
+    unmount();
+  });
+
   test("시간 표기", () => {
     expect(formatTime(13 * 60)).toBe("오후 1시");
     expect(formatTime(0)).toBe("오전 12시");

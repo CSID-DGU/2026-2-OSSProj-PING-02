@@ -12,7 +12,8 @@ import {
   GroupChatIcon,
   PersonAddIcon,
 } from "@core/ui/icon";
-import { formatTime, isSameDay, minutesOfDay, WEEKDAYS } from "@core/ui/calendar";
+import { isSameDay } from "@core/ui/calendar";
+import EventCard from "@components/calendar/EventCard";
 import HomeHero from "@components/home/HomeHero";
 import NotificationBell from "@components/main/NotificationBell";
 import Notice from "@components/onboarding/Notice";
@@ -22,7 +23,7 @@ import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useOpenConversation } from "@hooks/useConversationDetail";
 import { useConversations } from "@hooks/useConversations";
 import { useHomeHelp } from "@hooks/useHomeHelp";
-import { services, type ContactEvent, type ConversationSummary } from "@services";
+import { services, type CalendarEvent, type ConversationSummary } from "@services";
 import {
   selectGroupSummary,
   selectMustCheck,
@@ -93,12 +94,12 @@ const HomeTab = ({ onOpenTab }: HomeTabProps) => {
 
 // 다가오는 일정: 화면에 올 때마다 다시 읽음 (실패하면 섹션을 숨김)
 const useUpcomingEvents = () => {
-  const [event, setEvent] = useState<ContactEvent | undefined>();
+  const [event, setEvent] = useState<CalendarEvent | undefined>();
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      services.conversation
-        .listEvents()
+      services.calendar
+        .list()
         .then(list => alive && setEvent(selectUpcomingEvent(list)))
         .catch(() => alive && setEvent(undefined));
       return () => {
@@ -124,7 +125,7 @@ const LoadingState = () => {
 // ── C01 기본 홈
 interface FilledHomeProps {
   items: ConversationSummary[];
-  event?: ContactEvent;
+  event?: CalendarEvent;
   onOpen: (item: ConversationSummary) => void;
   onOpenTab: (key: MainTabKey) => void;
 }
@@ -199,7 +200,12 @@ const FilledHome = ({ items, event, onOpen, onOpenTab }: FilledHomeProps) => {
             <s.SectionTitle accessibilityRole="header">다가오는 일정</s.SectionTitle>
             <SectionLink label="캘린더" onPress={() => onOpenTab("calendar")} />
           </s.SectionHeader>
-          <EventCard event={event} onPress={() => onOpenTab("calendar")} />
+          <EventCard
+            event={event}
+            tone={isSameDay(new Date(event.date), new Date()) ? "dark" : "default"}
+            top={13}
+            onPress={() => onOpenTab("calendar")}
+          />
         </>
       )}
 
@@ -249,37 +255,6 @@ const SectionLink = ({ label, onPress }: { label: string; onPress: () => void })
 const RowChevron = () => {
   const theme = useTheme();
   return <ChevronRightIcon size={21} color={theme.colors.iconSubtle} />;
-};
-
-// 일정 카드 (Card/일정 카드: 오늘이면 진한 갈색 원 버전)
-const EventCard = ({ event, onPress }: { event: ContactEvent; onPress: () => void }) => {
-  const date = new Date(event.date);
-  const today = isSameDay(date, new Date());
-  const when = `${WEEKDAYS[date.getDay()]}요일 ${formatTime(minutesOfDay(date))}`;
-  const description = event.place ? `${when} ${event.place}` : when;
-  return (
-    <s.RowCard
-      $variant={today ? "lineToday" : "line"}
-      $height={78}
-      $top={13}
-      $left={13}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${date.getMonth() + 1}월 ${date.getDate()}일 ${event.title}, ${description}`}
-    >
-      <s.DateCircle $today={today}>
-        <s.DateMonth $today={today}>{`${date.getMonth() + 1}월`}</s.DateMonth>
-        <s.DateDay $today={today}>{date.getDate()}</s.DateDay>
-      </s.DateCircle>
-      <s.RowTexts $left={12}>
-        <s.RowTitle numberOfLines={1}>{event.title}</s.RowTitle>
-        <s.RowDescription $top={5} numberOfLines={1}>
-          {description}
-        </s.RowDescription>
-      </s.RowTexts>
-      <RowChevron />
-    </s.RowCard>
-  );
 };
 
 // 오랜만에 안부 전하기 (C08) → 친구 탭

@@ -1,5 +1,6 @@
 import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
 import { services, STORAGE_KEYS } from "../src/services";
+import { selectUpcomingEvent } from "../src/utils/home";
 import {
   findText,
   press,
@@ -61,9 +62,10 @@ describe("홈·연락", () => {
       ).length
     ).toBe(1);
 
-    // 다가오는 일정: 가장 가까운 일정 (내일 상담 예약)
+    // 다가오는 일정: 캘린더(#80)의 가장 가까운 일정. 저장한 일정이 없으면 mock 친구 생일 중 가장 가까운 것
     await waitForText(root, "다가오는 일정");
-    expect(findText(root, "상담 예약").length).toBe(1);
+    const nearest = selectUpcomingEvent(await services.calendar.list())!;
+    expect(findText(root, nearest.title).length).toBeGreaterThan(0);
 
     expect(findText(root, "지금 확인하면 좋은 것").length).toBe(1);
     expect(findText(root, "오랜만에 안부 전하기").length).toBe(1);
