@@ -5,6 +5,12 @@ import {
 } from "../src/services/conversation/mockConversationService";
 import { services, STORAGE_KEYS } from "../src/services";
 import {
+  deferButtonLabel,
+  deferRemindAt,
+  formatDeferAt,
+  isDeferOptionAvailable,
+} from "../src/constants/contact";
+import {
   findText,
   press,
   pressBack,
@@ -116,7 +122,7 @@ const openDetail = async (name: string) => {
 describe("05 연락 D03 상세·답장", () => {
   beforeEach(() => seed());
 
-  test("1:1 질문: 입장 → 말투 → 후보 → 수정 → 복사, 보냈다고 표시하면 목록으로", async () => {
+  test("1:1 질문: 입장 → 말투 → 후보 → 수정 → 바로 보내기 팝업, 보내면 토스트 + 목록으로", async () => {
     const root = await openDetail("민지");
     // 프로필 카드: 전화번호·생일(MM.DD), 요약, 장문 안내
     await waitForText(root, "010-1234-5678");
@@ -144,13 +150,86 @@ describe("05 연락 D03 상세·답장", () => {
     await waitForText(root, "추천 답장을 내 말로 다듬어보세요.");
     expect(inputValue(root, "답장 내용")).toBe("이번 주말은 어려울 것 같아.");
     await type(root, "답장 내용", "이번 주말은 어려워. 다음에 보자!");
+    // 민지는 알림의 바로 답장이 되는 대화 → 바로 보내기 팝업 (자동 전송 없음)
+    const sendReply = jest.spyOn(services.messenger, "sendReply");
     await press(root, "수정 완료");
-    await waitForText(root, "답장을 복사했어요");
+    await waitForText(root, "수정한 답장을 지금 바로 보내볼까요?");
+    expect(findText(root, "아래 버튼만 누르면 자동으로 답장이 보내져요.").length).toBe(1);
+    expect(sendReply).not.toHaveBeenCalled();
 
-    await press(root, "보냈다고 표시하기");
+    await press(root, "바로 보내기");
+    await waitForText(root, "답장을 보냈어요");
+    expect(sendReply).toHaveBeenCalledWith("minji", "이번 주말은 어려워. 다음에 보자!");
     await waitForNoText(root, "최근 연락");
     expect(await repliedTo("minji")).toBe(true);
   }, 15000);
+
+  test("바로 답장이 안 되는 대화: 누르면 복사 + 메신저 열기 팝업, 연 뒤 보냈다고 표시하기", async () => {
+    const root = await openDetail("하늘");
+    const copyText = jest.spyOn(services.messenger, "copyText");
+    const openApp = jest.spyOn(services.messenger, "openApp");
+    await press(root, "답장 추천 받기");
+    await waitForText(root, "어떤 말투로 전할까요?");
+    await pressByRole(root, "radio", "다정하게");
+    await waitForText(root, "선택한 답장 복사하기");
+    await press(root, "선택한 답장 복사하기");
+
+    await waitForText(root, "선택한 답장을 지금 보내볼까요?");
+    expect(copyText).toHaveBeenCalledTimes(1);
+    // "선택한" 팝업은 시안대로 설명 없음
+    expect(
+      root.findAll(
+        n =>
+          typeof n.type === "string" &&
+          typeof n.props.children === "string" &&
+          n.props.children.includes("메신저에 붙여넣어")
+      ).length
+    ).toBe(0);
+    expect(findText(root, "보냈다고 표시하기").length).toBe(0);
+
+    await press(root, "메신저 열기");
+    await waitForNoText(root, "선택한 답장을 지금 보내볼까요?");
+    expect(openApp).toHaveBeenCalledWith("INSTAGRAM");
+    await press(root, "보냈다고 표시하기");
+    await waitForNoText(root, "최근 연락");
+    expect(await repliedTo("haneul")).toBe(true);
+  });
+
+  test("작성 완료 + 메신저 열기 팝업은 복사 안내 설명, 닫기는 그대로 둔다", async () => {
+    await setHelpMode("write");
+    services.messenger = createMockMessengerService({ directReplyIds: [] });
+    const root = await openDetail("시우");
+    await waitForText(root, "보낼 답장을 처음부터 직접 작성해보세요.");
+    await type(root, "답장 내용", "ㅋㅋ 귀엽다");
+    await press(root, "작성 완료");
+    await waitForText(root, "작성한 답장을 지금 보내볼까요?");
+    expect(
+      findText(
+        root,
+        "작성한 답장이 복사가 됐어요.\n메신저에 붙여넣어 답장을 보낼 수 있어요."
+      ).length
+    ).toBe(1);
+    await press(root, "닫기");
+    await waitForNoText(root, "작성한 답장을 지금 보내볼까요?");
+    expect(inputValue(root, "답장 내용")).toBe("ㅋㅋ 귀엽다");
+    expect(findText(root, "보냈다고 표시하기").length).toBe(0);
+  });
+
+  test("바로 보내기가 실패하면 토스트로 알리고 상세에 남는다", async () => {
+    services.messenger = createMockMessengerService({ failSend: true });
+    const root = await openDetail("민지");
+    await press(root, "답장 추천 받기");
+    await pressByRole(root, "radio", "수락");
+    await waitForText(root, "어떤 말투로 전할까요?");
+    await pressByRole(root, "radio", "짧게");
+    await waitForText(root, "선택한 답장 복사하기");
+    await press(root, "선택한 답장 복사하기");
+    await waitForText(root, "선택한 답장을 지금 바로 보내볼까요?");
+    await press(root, "바로 보내기");
+    await waitForText(root, "보내지 못했어요. 복사해서 메신저에서 보내 주세요");
+    expect(findText(root, "최근 연락").length).toBe(1);
+    expect(await repliedTo("minji")).toBeFalsy();
+  });
 
   test("뒤로가기는 답장 단계를 한 단계씩 되돌리고, 첫 단계에서 화면을 나간다", async () => {
     const root = await openDetail("민지");
@@ -180,8 +259,6 @@ describe("05 연락 D03 상세·답장", () => {
     await waitForText(root, "어떤 말투로 전할까요?");
     await pressByRole(root, "radio", "다정하게");
     await waitForText(root, "선택한 말투에 맞는 답장 3개가 준비됐어요.");
-    await press(root, "선택한 답장 복사하기");
-    await waitForText(root, "답장을 복사했어요");
   });
 
   test("도움 수준 '추천 수정'이면 후보 아래 버튼이 수정하기 / 직접 답장 쓰기", async () => {
@@ -297,21 +374,58 @@ describe("05 연락 D03 상세·답장", () => {
     expect(findText(root, "일정 추가").length).toBe(0);
   });
 
-  test("11 나중에 답하기: 1주 뒤로 보관하면 미뤄둔 답장 탭 시간 자리에 다시 볼 때", async () => {
+  test("나중에 답하기 시트: 기본 내일, 1주일 뒤로 미루면 상세에 남고 토스트, 미뤄둔 답장 탭에 보인다", async () => {
     const root = await openDetail("준호");
     await press(root, "나중에 답하기");
-    await waitForText(root, "언제 다시 볼까요?");
-    await pressBack();
-    await waitForNoText(root, "언제 다시 볼까요?");
-    expect(findText(root, "답장 추천 받기").length).toBe(1);
+    await waitForText(root, "언제 다시 알려드릴까요?");
+    expect(findText(root, "선택한 시간에 이 연락을 다시 알려드릴게요").length).toBe(1);
+    expect(findText(root, "내일 다시 알려주기").length).toBe(1);
+    await press(root, "취소");
+    await waitForNoText(root, "언제 다시 알려드릴까요?");
 
     await press(root, "나중에 답하기");
-    await pressByRole(root, "radio", "1주 뒤");
-    await press(root, "1주 뒤 다시 보기");
-    await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
+    await waitForText(root, "언제 다시 알려드릴까요?");
+    await pressByRole(root, "radio", "1주일 뒤");
+    await press(root, "1주일 뒤 다시 알려주기");
+    const at = deferRemindAt("in1week");
+    await waitForText(
+      root,
+      `${at.getMonth() + 1}월 ${at.getDate()}일 오전 9시에 다시 알려드릴게요`
+    );
+    // 시안대로 상세에 남음
+    expect(findText(root, "언제 다시 알려드릴까요?").length).toBe(0);
+    expect(findText(root, "답장 추천 받기").length).toBe(1);
+
+    await pressBack();
+    await waitForNoText(root, "최근 연락");
     await pressByRole(root, "tab", "미뤄둔 답장");
     await waitForText(root, "7일 뒤 다시 보기");
     expect(rowNames(root)).toEqual(["준호"]);
+  });
+
+  test("날짜와 시간 직접 선택: 취소하면 첫 시트로, 고른 시간으로 미루면 날짜로 토스트", async () => {
+    const root = await openDetail("준호");
+    await press(root, "나중에 답하기");
+    await waitForText(root, "언제 다시 알려드릴까요?");
+    await pressByRole(root, "button", "날짜와 시간 직접 선택");
+    await waitForText(root, "날짜와 시간을 선택해 주세요");
+    // 처음 값은 고른 칩(내일 오전 9시)
+    const tomorrow = deferRemindAt("tomorrow");
+    const day = `${tomorrow.getMonth() + 1}월 ${tomorrow.getDate()}일`;
+    expect(findText(root, `${day} 오전 9시에 다시 알려주기`).length).toBe(1);
+    await press(root, "취소");
+    await waitForText(root, "언제 다시 알려드릴까요?");
+
+    await pressByRole(root, "button", "날짜와 시간 직접 선택");
+    await waitForText(root, "날짜와 시간을 선택해 주세요");
+    await pressByRole(root, "radio", "오후 6시");
+    await press(root, `${day} 오후 6시에 다시 알려주기`);
+    // 직접 고른 날짜는 "내일" 대신 날짜로 (시안 "설정 완료")
+    await waitForText(root, `${day} 오후 6시에 다시 알려드릴게요`);
+    const deferred = (await services.conversation.list()).find(
+      i => i.conversation.id === "junho"
+    )?.deferred;
+    expect(new Date(deferred!.remindAt!).getHours()).toBe(18);
   });
 
   test("잘린 메시지: 장문 안내 → 붙여 넣어 정리하면 상세 요약이 정리한 내용으로", async () => {
@@ -423,6 +537,32 @@ describe("05 연락 D01 목록·D02 분석 대화방 관리", () => {
     await waitForNoText(root, "변경 사항 저장하기");
     expect(rowNames(root)).toContain("하늘");
     expect(await services.conversation.getAnalysisOffIds()).toEqual([]);
+  });
+});
+
+describe("나중에 답하기 시각", () => {
+  const at = (h: number, m = 0) => new Date(2026, 10, 27, h, m);
+
+  test("오늘 저녁은 오후 6시, 나머지는 오전 9시", () => {
+    expect(deferRemindAt("tonight", at(10))).toEqual(at(18));
+    expect(deferRemindAt("tomorrow", at(10))).toEqual(new Date(2026, 10, 28, 9));
+    expect(deferRemindAt("in3days", at(10))).toEqual(new Date(2026, 10, 30, 9));
+    // 달이 넘어가도
+    expect(deferRemindAt("in1week", at(10))).toEqual(new Date(2026, 11, 4, 9));
+  });
+
+  test("오후 6시가 지나면 오늘 저녁은 고를 수 없다", () => {
+    expect(isDeferOptionAvailable("tonight", at(17, 59))).toBe(true);
+    expect(isDeferOptionAvailable("tonight", at(18))).toBe(false);
+    expect(isDeferOptionAvailable("tomorrow", at(23))).toBe(true);
+  });
+
+  test("토스트 문구: 오늘·내일은 말로, 나머지와 직접 선택은 날짜로", () => {
+    expect(formatDeferAt(at(18), "tonight")).toBe("오늘 오후 6시");
+    expect(formatDeferAt(new Date(2026, 10, 28, 9), "tomorrow")).toBe("내일 오전 9시");
+    expect(formatDeferAt(new Date(2026, 10, 30, 9), "in3days")).toBe("11월 30일 오전 9시");
+    expect(formatDeferAt(new Date(2026, 10, 28, 18))).toBe("11월 28일 오후 6시");
+    expect(deferButtonLabel("in1week")).toBe("1주일 뒤 다시 알려주기");
   });
 });
 

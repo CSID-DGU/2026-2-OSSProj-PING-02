@@ -1,3 +1,4 @@
+import { formatTime, minutesOfDay } from "@core/ui/calendar";
 import { LINKED_APP_OPTIONS } from "./onboarding";
 import type { ImageSourcePropType } from "react-native";
 import type {
@@ -114,25 +115,59 @@ export const STANCE_DESCRIPTION: Record<ReplyStance, string> = {
 // 10 기본 말투 (09-A에서 입장만 고른 경우)
 export const DEFAULT_TONE: ReplyTone = "warm";
 
-// 11 / 나중에 답하기
-export type DeferOption = "tonight" | "in3days" | "in1week" | "none";
+// 05 연락 D03 나중에 답하기 시트 (Figma "나중에답하기 선택", 기본 "내일")
+// 오늘 저녁은 오후 6시, 나머지는 오전 9시 (팀 확정). 오후 6시가 지나면 "오늘 저녁"은 고를 수 없음
+export type DeferOption = "tonight" | "tomorrow" | "in3days" | "in1week";
 
 export const DEFER_OPTIONS: { value: DeferOption; label: string }[] = [
   { value: "tonight", label: "오늘 저녁" },
+  { value: "tomorrow", label: "내일" },
   { value: "in3days", label: "3일 뒤" },
-  { value: "in1week", label: "1주 뒤" },
-  { value: "none", label: "날짜 없이" },
+  { value: "in1week", label: "1주일 뒤" },
 ];
 
-export const deferToDate = (option: DeferOption, from = new Date()) => {
-  if (option === "none") return null;
-  const d = new Date(from);
-  if (option === "tonight") d.setHours(20, 0, 0, 0);
-  else {
-    d.setDate(d.getDate() + (option === "in3days" ? 3 : 7));
-    d.setHours(10, 0, 0, 0);
-  }
-  return d.toISOString();
+export const DEFAULT_DEFER_OPTION: DeferOption = "tomorrow";
+
+const DEFER_EVENING_HOUR = 18;
+const DEFER_MORNING_HOUR = 9;
+// 날짜와 시간 직접 선택의 시간 칩 (오전 9시 · 오후 6시)
+export const DEFER_TIME_PRESETS = [
+  DEFER_MORNING_HOUR * 60,
+  DEFER_EVENING_HOUR * 60,
+];
+
+const DEFER_DAYS: Record<DeferOption, number> = {
+  tonight: 0,
+  tomorrow: 1,
+  in3days: 3,
+  in1week: 7,
+};
+
+export const isDeferOptionAvailable = (option: DeferOption, now = new Date()) =>
+  option !== "tonight" || now.getHours() < DEFER_EVENING_HOUR;
+
+export const deferRemindAt = (option: DeferOption, now = new Date()) =>
+  new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + DEFER_DAYS[option],
+    option === "tonight" ? DEFER_EVENING_HOUR : DEFER_MORNING_HOUR
+  );
+
+// 시트 버튼 "내일 다시 알려주기"
+export const deferButtonLabel = (option: DeferOption) =>
+  `${DEFER_OPTIONS.find(o => o.value === option)!.label} 다시 알려주기`;
+
+// 다시 알려 줄 때: "오늘 오후 6시" / "내일 오전 9시" / "11월 30일 오전 9시"
+// 직접 고른 날짜는 시안대로 항상 날짜로 ("11월 25일 오후 6시")
+export const formatDeferAt = (date: Date, option?: DeferOption) => {
+  const day =
+    option === "tonight"
+      ? "오늘"
+      : option === "tomorrow"
+      ? "내일"
+      : `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  return `${day} ${formatTime(minutesOfDay(date))}`;
 };
 
 // 받은 시각 표시 (메시지가 온 때를 알려 줄 뿐, 답장 기한처럼 쓰지 않음)

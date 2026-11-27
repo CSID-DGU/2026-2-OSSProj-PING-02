@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, ScrollView, StyleSheet } from "react-native";
 import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native";
 import styled from "styled-components/native";
 import { Button } from "@core/ui/button";
+import { Dialog } from "@core/ui/dialog";
 import { UnderlineTabs } from "@core/ui/tabs";
 import { useToast } from "@core/ui/toast";
+import DeferSheet from "@components/contact/DeferSheet";
 import LoadState from "@components/contact/LoadState";
 import LongMessageNotice from "@components/contact/LongMessageNotice";
 import ProfileCard from "@components/contact/ProfileCard";
 import RelationTab from "@components/contact/RelationTab";
-import ReplySection from "@components/contact/ReplySection";
+import ReplySection, {
+  type ReplySendKind,
+} from "@components/contact/ReplySection";
 import ScheduleEmpty from "@components/contact/ScheduleEmpty";
 import SummaryBlock from "@components/contact/SummaryBlock";
 import TabScreen from "@components/main/TabScreen";
@@ -20,6 +24,8 @@ import { useHomeHelp } from "@hooks/useHomeHelp";
 import { useReplyFlow } from "@hooks/useReplyFlow";
 import {
   appsOf,
+  CONVERSATION_ERROR_CODE,
+  getErrorCode,
   services,
   type ConversationDetail as Detail,
   type MessengerApp,
@@ -44,6 +50,37 @@ interface ContactInfo {
   birthday: string | null;
 }
 
+interface SendDialogState {
+  mode: "direct" | "messenger";
+  kind: ReplySendKind;
+  text: string;
+}
+
+const SEND_WORD: Record<ReplySendKind, string> = {
+  selected: "선택한",
+  edited: "수정한",
+  written: "작성한",
+};
+
+// 시안 문구 그대로. "선택한 + 메신저 열기"만 설명 없음
+const sendDialogText = ({ mode, kind }: SendDialogState) => {
+  const word = SEND_WORD[kind];
+  return mode === "direct"
+    ? {
+        title: `${word} 답장을 지금 바로 보내볼까요?`,
+        description: "아래 버튼만 누르면 자동으로 답장이 보내져요.",
+        confirmLabel: "바로 보내기",
+      }
+    : {
+        title: `${word} 답장을 지금 보내볼까요?`,
+        description:
+          kind === "selected"
+            ? undefined
+            : `${word} 답장이 복사가 됐어요.\n메신저에 붙여넣어 답장을 보낼 수 있어요.`,
+        confirmLabel: "메신저 열기",
+      };
+};
+
 const ConversationDetail = () => {
   const navigation = useAuthNavigation();
   const { params } = useRoute<RouteProp<AppParamList, "ConversationDetail">>();
@@ -54,7 +91,7 @@ const ConversationDetail = () => {
 
   if (state.status !== "ready") {
     return (
-      <TabScreen title="연락" onBack={goBack} divider={false}>
+      <TabScreen title="연락" onBack={goBack} divider={false} background="surface">
         <LoadState
           status={state.status}
           loadingLabel="연락을 불러오는 중"
@@ -90,6 +127,23 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
   const [tab, setTab] = useState<DetailTab>("recent");
   const [copied, setCopied] = useState(false);
   const [contact, setContact] = useState<ContactInfo | null>(null);
+  const [direct, setDirect] = useState(false);
+  const [sendDialog, setSendDialog] = useState<SendDialogState | null>(null);
+  const [deferOpen, setDeferOpen] = useState(false);
+  const [deferSaving, setDeferSaving] = useState(false);
+  const sending = useRef(false);
+
+  // 알림의 바로 답장을 쓸 수 있는지 (보내기 팝업 종류)
+  useEffect(() => {
+    let alive = true;
+    services.messenger
+      .canReplyDirectly(conversation.id)
+      .then(value => alive && setDirect(value))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [conversation.id]);
 
   const flow = useReplyFlow({
     conversationId: conversation.id,
@@ -132,6 +186,7 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
     }, [tab, flow])
   );
 
+  // 입력 상자 안 복사 아이콘 (시안에 토스트 없음, 팀 확정)
   const copy = async (text: string) => {
     try {
       await services.messenger.copyText(text.trim());
@@ -139,6 +194,71 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
       setCopied(true);
     } catch {
       toast.show("복사하지 못했어요. 다시 시도해 주세요");
+    }
+  };
+
+  // 보내기 팝업 (Figma "Dialog_선택한 답장 복사하기 이후 메신저 열기 / 바로 보내기 팝업창")
+  // - 바로 답장이 되는 대화: "바로 보내기" 팝업 (자동 전송 없음, 팝업에서 눌러야 보냄)
+  // - 안 되는 대화: 누르는 순간 복사 → "메신저 열기" 팝업
+  const send = async (text: string, kind: ReplySendKind) => {
+    if (direct) {
+      setSendDialog({ mode: "direct", kind, text });
+      return;
+    }
+    try {
+      await services.messenger.copyText(text.trim());
+      setSendDialog({ mode: "messenger", kind, text });
+    } catch {
+      toast.show("복사하지 못했어요. 다시 시도해 주세요");
+    }
+  };
+
+  // 팝업 버튼을 누른 뒤 (시안 없음, 팀 확정) TODO(Figma 문구 확인): 토스트 문구
+  // 메신저 열기 → 앱을 열고, 돌아오면 "보냈다고 표시하기"
+  const openMessenger = async () => {
+    setSendDialog(null);
+    setCopied(true);
+    await services.messenger.openApp(conversation.app).catch(() => {});
+  };
+
+  // 바로 보내기 → 보낸 뒤 토스트 + 목록으로. 실패하면 토스트만 (상세에 남음)
+  const sendDirectly = async () => {
+    if (!sendDialog || sending.current) return;
+    const text = sendDialog.text.trim();
+    setSendDialog(null);
+    sending.current = true;
+    try {
+      await services.messenger.sendReply(conversation.id, text);
+    } catch (error) {
+      sending.current = false;
+      // 알림이 사라졌으면 다음부터는 메신저 열기 팝업으로
+      if (getErrorCode(error) === CONVERSATION_ERROR_CODE.replyUnavailable) {
+        setDirect(false);
+      }
+      toast.show("보내지 못했어요. 복사해서 메신저에서 보내 주세요");
+      return;
+    }
+    // 보내기는 끝났으니 답장함 표시가 실패해도 보낸 것으로 안내
+    await services.conversation.markReplied(conversation.id).catch(() => {});
+    toast.show("답장을 보냈어요");
+    navigation.popToTop();
+  };
+
+  // 나중에 답하기: 저장하면 시안대로 상세에 남고 토스트만 ("내일 오전 9시에 다시 알려드릴게요")
+  // TODO(네이티브): 다시 알려 줄 때 로컬 알림 예약 (지금은 저장만)
+  const defer = async (remindAt: Date, label: string) => {
+    setDeferSaving(true);
+    try {
+      await services.conversation.deferReply(
+        conversation.id,
+        remindAt.toISOString()
+      );
+      toast.show(`${label}에 다시 알려드릴게요`);
+    } catch {
+      toast.show("잠시 문제가 생겼어요. 조금 뒤에 다시 해 주세요");
+    } finally {
+      setDeferSaving(false);
+      setDeferOpen(false);
     }
   };
 
@@ -172,7 +292,7 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
   const replyNeeded = group && analysis.needsReply && mentions.length > 0;
 
   return (
-    <TabScreen title="연락" onBack={back} divider={false}>
+    <TabScreen title="연락" onBack={back} divider={false} background="surface">
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -275,14 +395,9 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
                 flow={flow}
                 mode={mode}
                 startLabel={replyNeeded ? "답장 필요 건에 답장하기" : "답장 추천 받기"}
-                onDefer={() =>
-                  navigation.navigate("ReplyDefer", {
-                    conversationId: conversation.id,
-                  })
-                }
+                onDefer={() => setDeferOpen(true)}
                 onCopy={copy}
-                // TODO(#77 다음 덩어리): 보내기 팝업(메신저 열기 / 바로 보내기)으로 바꿈
-                onComplete={copy}
+                onSend={send}
               />
             </Block>
             {copied && (
@@ -295,6 +410,21 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
           </>
         )}
       </ScrollView>
+
+      <DeferSheet
+        visible={deferOpen}
+        onClose={() => setDeferOpen(false)}
+        onConfirm={defer}
+        saving={deferSaving}
+      />
+      {sendDialog && (
+        <Dialog
+          visible
+          {...sendDialogText(sendDialog)}
+          onConfirm={sendDialog.mode === "direct" ? sendDirectly : openMessenger}
+          onClose={() => setSendDialog(null)}
+        />
+      )}
     </TabScreen>
   );
 };

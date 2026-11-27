@@ -21,14 +21,16 @@ import type { ReplyFlow } from "@hooks/useReplyFlow";
 //   추천 선택(오늘은 미루기·아직 안 고름 포함): 선택한 답장 복사하기 / 선택한 답장 수정하기
 //   추천 수정: 선택한 답장 수정하기 / 직접 답장 쓰기
 //   직접 쓰기: 처음부터 직접 쓰기 상자 + 작성 완료 (복사는 상자 안 아이콘)
+// "선택한 답장 복사하기"·"수정 완료"·"작성 완료"는 onSend → 부모가 보내기 팝업을 띄움
+export type ReplySendKind = "selected" | "edited" | "written";
+
 interface ReplySectionProps {
   flow: ReplyFlow;
   mode: HelpMode | null;
   startLabel: string;
   onDefer: () => void;
   onCopy: (text: string) => void;
-  // 수정 완료·작성 완료 (보내기 팝업은 다음 덩어리)
-  onComplete: (text: string) => void;
+  onSend: (text: string, kind: ReplySendKind) => void;
 }
 
 const ReplySection = ({
@@ -37,7 +39,7 @@ const ReplySection = ({
   startLabel,
   onDefer,
   onCopy,
-  onComplete,
+  onSend,
 }: ReplySectionProps) => {
   const { step } = flow;
 
@@ -148,7 +150,7 @@ const ReplySection = ({
             fullWidth
             typo="labelButtonCompact"
             onPress={() =>
-              editMode ? flow.editSelected() : onCopy(selected.text)
+              editMode ? flow.editSelected() : onSend(selected.text, "selected")
             }
           >
             {editMode ? "선택한 답장 수정하기" : "선택한 답장 복사하기"}
@@ -207,7 +209,7 @@ const ReplySection = ({
             typo="labelButtonCompact"
             disabled={empty}
             accessibilityHint={empty ? "내용을 적으면 누를 수 있어요" : undefined}
-            onPress={() => onComplete(step.text)}
+            onPress={() => onSend(step.text, write ? "written" : "edited")}
           >
             {write ? "작성 완료" : "수정 완료"}
           </Button>

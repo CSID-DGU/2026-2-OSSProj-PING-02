@@ -38,8 +38,6 @@ export type TabStackParamList = {
         stance?: Stance;
       }
     | { personId: string; text: string };
-  // 11 나중에 답하기
-  ReplyDefer: { conversationId: string };
   // 08 "메시지가 잘린 상태 보기" (시안 없음)
   TruncatedMessage: { conversationId: string };
   // 05 친구

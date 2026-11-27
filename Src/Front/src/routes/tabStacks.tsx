@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AnalysisRooms from "@pages/contact/AnalysisRooms";
 import ConversationDetail from "@pages/contact/ConversationDetail";
 import ReplyEdit from "@pages/contact/ReplyEdit";
-import ReplyDefer from "@pages/contact/ReplyDefer";
 import TruncatedMessage from "@pages/contact/TruncatedMessage";
 import FriendDetail from "@pages/friend/FriendDetail";
 import FirstWords from "@pages/friend/FirstWords";
@@ -43,7 +42,6 @@ export const createTabStack = (
       <Stack.Screen name="AnalysisRooms" component={AnalysisRooms} />
       <Stack.Screen name="ConversationDetail" component={ConversationDetail} />
       <Stack.Screen name="ReplyEdit" component={ReplyEdit} />
-      <Stack.Screen name="ReplyDefer" component={ReplyDefer} />
       <Stack.Screen name="TruncatedMessage" component={TruncatedMessage} />
 
       {/* Friend (05 친구) */}
