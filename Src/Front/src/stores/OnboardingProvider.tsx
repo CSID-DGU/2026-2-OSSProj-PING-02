@@ -81,6 +81,14 @@ const syncCollection = (apps: LinkedApp[]) => {
   services.collection.setApps(collectPackagesFor(apps)).catch(() => {});
 };
 
+// 09에서 고른 연락처 → 친구 목록 (services.friends, 사용자별 기기 저장소)
+// - 한 번 가져온 연락처는 다시 가져오지 않음 (친구 화면에서 지우거나 합친 사람이 되살아나지 않게)
+// - 실패해도 온보딩은 그대로 진행 (다음에 진행 상황을 읽을 때 다시 시도)
+const syncFriends = (friends: Contact[]) => {
+  if (friends.length === 0) return;
+  services.friends.importContacts(friends).catch(() => {});
+};
+
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 // 호출할 때마다 services에서 꺼냄 (테스트·실제 구현으로 바꿔 끼워도 반영되게)
@@ -136,6 +144,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
             setData(next);
             // 이미 온보딩을 마친 사용자·다시 로그인한 사용자도 그 사람의 연동 앱으로 수집 목록을 맞춤 (#83)
             syncCollection(next.linkedApps);
+            // 이미 온보딩을 마친 사용자도 고른 연락처를 친구 목록으로
+            syncFriends(next.friends);
           }
           setLoadedKey(storageKey);
         })
@@ -169,6 +179,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       setData(next);
       // 05 연동 앱을 바꾸면 알림을 모을 앱 목록도 바로 맞춤 (#83)
       if (patch.linkedApps) syncCollection(patch.linkedApps);
+      // 09에서 고른 연락처를 친구 목록으로
+      if (patch.friends) syncFriends(patch.friends);
       if (!storageKey) return;
 
       if (!loadedOkRef.current) {

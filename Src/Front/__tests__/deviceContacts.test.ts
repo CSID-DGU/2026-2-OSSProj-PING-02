@@ -2,6 +2,7 @@ import type { ContactsNative } from "../src/native/Contacts";
 import { createDeviceContactsService } from "../src/services/contacts/ContactsService";
 import {
   createDevicePermissionService,
+  POST_NOTIFICATIONS,
   READ_CONTACTS,
   type AndroidPermissionApi,
   type NotificationAccessApi,
@@ -85,15 +86,65 @@ describe("연락처 권한", () => {
     expect((await service.checkAll()).contacts).toBe("granted");
   });
 
-  test("연락처 말고 다른 권한은 지금처럼 mock이 처리한다", async () => {
+  test("알림 접근(설정 화면 권한)은 넘겨주지 않으면 mock이 처리한다", async () => {
     const { api, calls } = fakeAndroid([]);
-    const fallback = createMockPermissionService();
-    const service = createDevicePermissionService(api, fallback);
+    const service = createDevicePermissionService(api, createMockPermissionService());
     const all = await service.checkAll();
     expect(all.notificationListener).toBe("denied");
-    expect((await service.request("postNotifications")).status).toBe("granted");
     await service.openSettings("notificationListener");
     expect(calls.filter(c => c.startsWith("request") || c === "settings")).toEqual([]);
+  });
+});
+
+describe("앱 알림 권한 (#88, POST_NOTIFICATIONS)", () => {
+  const fakeAndroid = (results: string[]) => {
+    const granted = new Set<string>();
+    const calls: string[] = [];
+    const api: AndroidPermissionApi = {
+      async check(p) {
+        calls.push(`check:${p}`);
+        return granted.has(p);
+      },
+      async request(p) {
+        calls.push(`request:${p}`);
+        const next = results.shift() ?? "denied";
+        if (next === "granted") granted.add(p);
+        return next;
+      },
+      async openSettings() {
+        calls.push("settings");
+      },
+    };
+    return { api, calls };
+  };
+
+  test("Android 13 이상: 시스템 팝업으로 묻고, 허용하면 granted (연락처와 같은 방식)", async () => {
+    const { api, calls } = fakeAndroid(["granted"]);
+    const service = createDevicePermissionService(api, createMockPermissionService(), undefined, 34);
+    expect((await service.checkAll()).postNotifications).toBe("denied");
+    expect(await service.request("postNotifications")).toEqual({
+      status: "granted",
+      openedSettings: false,
+    });
+    expect(calls).toContain(`request:${POST_NOTIFICATIONS}`);
+    expect((await service.checkAll()).postNotifications).toBe("granted");
+  });
+
+  test("Android 13 이상: 다시 묻지 않음이면 blocked, 설정 열기는 앱 정보 화면", async () => {
+    const { api, calls } = fakeAndroid(["never_ask_again"]);
+    const service = createDevicePermissionService(api, createMockPermissionService(), undefined, 33);
+    expect((await service.request("postNotifications")).status).toBe("blocked");
+    expect((await service.checkAll()).postNotifications).toBe("blocked");
+    await service.openSettings("postNotifications");
+    expect(calls).toContain("settings");
+  });
+
+  test("Android 12 이하: 묻지 않아도 켜져 있어서 팝업 없이 granted", async () => {
+    const { api, calls } = fakeAndroid([]);
+    const service = createDevicePermissionService(api, createMockPermissionService(), undefined, 32);
+    expect((await service.checkAll()).postNotifications).toBe("granted");
+    expect((await service.request("postNotifications")).status).toBe("granted");
+    expect(calls.filter(c => c.includes(POST_NOTIFICATIONS))).toEqual([]);
   });
 });
 

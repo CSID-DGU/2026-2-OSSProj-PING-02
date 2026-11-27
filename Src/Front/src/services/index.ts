@@ -7,7 +7,7 @@ import { createHttpAuthService } from "./auth/httpAuthService";
 import { createTokenStore } from "./auth/tokenStore";
 import { API_CONFIG, AUTH_FEATURES } from "./config";
 import { createHttpClient } from "./http/httpClient";
-import { Linking, PermissionsAndroid, type Permission } from "react-native";
+import { Linking, PermissionsAndroid, Platform, type Permission } from "react-native";
 import {
   createDeviceContactsService,
   createMockContactsService,
@@ -19,6 +19,8 @@ import {
   createMockMessengerService,
 } from "./conversation/mockConversationService";
 import { createMockFriendService } from "./friend/mockFriendService";
+import { createDeviceFriendService } from "./friend/deviceFriendService";
+import type { FriendService } from "./friend/FriendService";
 import { createMockNetworkService } from "./network/NetworkService";
 import {
   createMockPermissionService,
@@ -55,8 +57,8 @@ import Messenger, { isMessengerAvailable } from "@native/Messenger";
 // 개발 옵션: 권한 거부 → 다시 묻지 않음 → 설정 열기 흐름을 보려면 "deny"
 const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 
-// 권한: 연락처는 실제(PermissionsAndroid, #70), 알림 접근은 실제(NotificationStore 설정 화면, #83),
-// 앱 알림은 아직 mock. 네이티브 모듈이 없으면(Jest) 모두 mock
+// 권한: 연락처·앱 알림은 실제(PermissionsAndroid, #70·#88), 알림 접근은 실제(NotificationStore 설정 화면, #83).
+// 네이티브 모듈이 없으면(Jest) 모두 mock
 const mockPermission = createMockPermissionService(DEV_PERMISSION_SCENARIO);
 const permission = isContactsAvailable()
   ? createDevicePermissionService(
@@ -71,7 +73,8 @@ const permission = isContactsAvailable()
             isGranted: () => NotificationStore.isPermissionGranted(),
             openSettings: () => NotificationStore.openPermissionSettings(),
           }
-        : undefined
+        : undefined,
+      typeof Platform.Version === "number" ? Platform.Version : Number(Platform.Version)
     )
   : mockPermission;
 
@@ -135,11 +138,30 @@ const conversation =
         ai,
         aiReplies,
         network,
-        // TODO(친구): 친구 이름·별명도 넘겨 마스킹 (연락처 연동 #70 이후)
-        getMaskNames: async () => maskNames.get(),
+        // AI로 보내기 전에 가릴 이름: 사용자 본인 + 친구 이름·별명·계정 이름 (대화방·보낸 사람 이름은 서비스가 더함)
+        getMaskNames: async () => [
+          ...maskNames.get(),
+          ...(await friends.getMaskNames().catch(() => [])),
+        ],
+        // 1:1 대화의 보낸 사람 → 친구 (연락 상세 "친구 정보 보기")
+        getPersonLookup: () => friends.getPersonLookup(),
+        // 친구 화면에서 연락 분석을 끈 사람의 메시지는 분석·AI 요청에서 뺌 (#88)
+        getAnalysisOffLookup: () => friends.getAnalysisOffLookup(),
       })
     : // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
       createMockConversationService();
+
+// 친구: 기기 알림의 보낸 사람 + 온보딩 09에서 고른 연락처, 사용자별 기기 저장소 (실기기)
+// 네이티브 알림 모듈이 없으면(Jest) 예시 친구 mock
+// 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
+const friends: FriendService =
+  USE_DEVICE_CONVERSATIONS && isNotificationStoreAvailable()
+    ? createDeviceFriendService({
+        storage: userStorage,
+        conversation,
+        getRetentionDays: () => NotificationStore.getRetentionDays(),
+      })
+    : createMockFriendService();
 
 const createAuthService = () =>
   httpClient
@@ -164,8 +186,7 @@ export const services = {
   messenger: isMessengerAvailable()
     ? createDeviceMessengerService(Messenger)
     : createMockMessengerService(),
-  // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
-  friends: createMockFriendService(),
+  friends,
   storage,
   userStorage,
   ai,

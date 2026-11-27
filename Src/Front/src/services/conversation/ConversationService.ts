@@ -60,4 +60,6 @@ export const CONVERSATION_ERROR_CODE = {
   copyFailed: "COPY_FAILED",
   // 고른 답장 화면 갈래(입장 먼저 / 말투 바로)와 AI의 결정 판단이 다름 → 화면이 맞는 갈래로 바꿔 감
   replyStepMismatch: "REPLY_STEP_MISMATCH",
+  // 친구 화면에서 연락 분석을 끈 사람 → AI로 보내지 않음 (#88)
+  analysisOff: "ANALYSIS_OFF",
 } as const;

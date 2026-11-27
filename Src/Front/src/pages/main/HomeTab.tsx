@@ -208,7 +208,7 @@ const FilledHome = ({ items, event, onOpen, onOpenTab }: FilledHomeProps) => {
           지금 확인하면 좋은 것
         </s.SectionTitle>
       </s.SectionHeader>
-      <ReconnectCard top={13} onPress={() => onOpenTab("friends")} />
+      <ReconnectCard top={13} />
       <QuickActions onOpenTab={onOpenTab} />
     </>
   );
@@ -225,7 +225,7 @@ const EmptyHome = ({ onOpenTab }: { onOpenTab: (key: MainTabKey) => void }) => (
     <s.EmptyDescription>
       새 알림이 오면 필요한 연락부터 조용히 정리해드릴게요.
     </s.EmptyDescription>
-    <ReconnectCard top={15.5} onPress={() => onOpenTab("friends")} />
+    <ReconnectCard top={15.5} />
     <QuickActions onOpenTab={onOpenTab} />
   </>
 );
@@ -282,15 +282,16 @@ const EventCard = ({ event, onPress }: { event: ContactEvent; onPress: () => voi
   );
 };
 
-// 오랜만에 안부 전하기 (C08) → 친구 탭
-const ReconnectCard = ({ top, onPress }: { top: number; onPress: () => void }) => {
+// 오랜만에 안부 전하기 (C08) → 06 친구 E05 첫마디 보내기 (홈 탭 안에 쌓임)
+const ReconnectCard = ({ top }: { top: number }) => {
   const theme = useTheme();
+  const navigation = useAuthNavigation();
   return (
     <s.RowCard
       $variant="white"
       $top={top}
       $left={24}
-      onPress={onPress}
+      onPress={() => navigation.navigate("FirstWordsPick")}
       accessibilityRole="button"
       accessibilityLabel="오랜만에 안부 전하기"
     >

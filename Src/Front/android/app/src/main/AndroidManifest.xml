@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 온보딩 08·09 연락처로 친구 고르기 (#70). 이름·전화번호만 읽고 기기 밖으로 보내지 않음 -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- 06 앱 알림 (#88): Android 13부터 시스템 팝업으로 묻는 권한 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- 알림 저장 대상 앱을 고를 때 런처 앱 목록과 앱 이름을 읽기 위함 (Android 11+ 패키지 가시성) -->
     <queries>

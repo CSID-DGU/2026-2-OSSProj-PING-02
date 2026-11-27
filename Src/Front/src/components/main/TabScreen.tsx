@@ -6,22 +6,35 @@ import NotificationBell from "./NotificationBell";
 
 // 탭 화면 공통 틀: 가운데 제목 앱바(오른쪽 🔔) + 내용 (탭바는 MainTabs가 그림)
 // Figma 07·12 앱바의 햄버거·프로필은 기능이 정해지지 않아 생략 (TODO(디자인))
+// onBack: 탭 안 상세 화면도 같은 앱바를 쓸 때 (예: 05 연락 D02 분석 대화방 관리)
+// divider: 앱바 아래 구분선 (05 연락 D01·D02 시안은 없음)
+// background: 본문 바탕. 05 연락 시안은 흰색("surface"), 나머지 탭은 크림("base")
 interface TabScreenProps {
   title: string;
   children: ReactNode;
+  onBack?: () => void;
+  divider?: boolean;
+  background?: "base" | "surface";
 }
 
-const TabScreen = ({ title, children }: TabScreenProps) => {
+const TabScreen = ({
+  title,
+  children,
+  onBack,
+  divider = true,
+  background = "base",
+}: TabScreenProps) => {
   const insets = useSafeAreaInsets();
   return (
     <Wrapper $top={insets.top}>
       <Header
         title={title}
         titleAlign="center"
-        divider
+        divider={divider}
+        onBack={onBack}
         right={<NotificationBell />}
       />
-      <Body>{children}</Body>
+      <Body $surface={background === "surface"}>{children}</Body>
     </Wrapper>
   );
 };
@@ -33,9 +46,10 @@ const Wrapper = styled.View<{ $top: number }>`
   background-color: ${({ theme }) => theme.colors.surfaceDefault};
 `;
 
-const Body = styled.View`
+const Body = styled.View<{ $surface: boolean }>`
   flex: 1;
-  background-color: ${({ theme }) => theme.colors.backgroundBase};
+  background-color: ${({ theme, $surface }) =>
+    $surface ? theme.colors.surfaceDefault : theme.colors.backgroundBase};
 `;
 
 export default TabScreen;

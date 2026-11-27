@@ -87,7 +87,8 @@
 - **복사하고 메신저 열기 (#69)**: `services.messenger`는 Kotlin `Messenger` 모듈(`android/.../messenger/MessengerModule.kt`, JS `src/native/Messenger.ts`) 위의 `deviceMessengerService`. 네이티브 모듈이 없으면(Jest) mock
   - 복사는 `ClipboardManager`(라이브러리 없음). 앱 열기 순서: 알림에 담긴 동작으로 그 대화방(`ConversationIntents`, 메모리에만, 앱 재시작하면 남은 알림으로 다시 채움) → 알림 보낸 앱 첫 화면 → (첫마디) 문자는 기본 문자 앱, 나머지는 `LINKED_APP_OPTIONS` 패키지. 못 열면 `APP_NOT_INSTALLED`
   - 복사가 되면 앱이 안 열려도 "복사했어요" 안내를 보여 줌. 바로 답장(RemoteInput)은 아직 없음 → `canReplyDirectly`는 `false`
-- AI 마스킹 이름: `services.maskNames`(로그인한 사용자 이름 + 성 뺀 이름, `SessionProvider`가 로그인·로그아웃 때 바꿈)를 `getMaskNames`로 넘김. 친구 이름은 연락처 연동(#70) 뒤
+- AI 마스킹 이름 (#88): 사용자 본인(`services.maskNames`) + 친구 이름(`services.friends.getMaskNames`: 친구·NEW 이름, 계정 이름, 인스타 아이디, 성 뺀 이름) + 그 대화방 이름 + 보낸 사람 이름(성 뺀 이름 포함). 기관·번호 발신자 이름은 요약에 필요해 가리지 않음. 전화번호는 마스킹 모듈이 가림. 모든 AI 요청은 `requestAiReply`를 거침
+- **친구 (실제, feat/real-friends)**: 실기기에서 `services.friends`는 `deviceFriendService` (예시 친구 mock은 Jest·네이티브 모듈이 없을 때만). 1:1 대화를 보낸 사람(단톡·기관·번호 발신자 제외)은 NEW로, 온보딩 09에서 고른 연락처는 친구 + 문자 계정(전화번호)으로 만들어 `userStorage`의 `malssiat.friends` 한 칸에 저장. 계정 id = "앱:보낸 사람 id"(문자 `tel:번호`(+82 → 0), 인스타 `ig:id`, 카카오톡은 사람 id가 없어 `name:이름`). 한 번 가져온 연락처는 다시 가져오지 않고, 지운 NEW는 그 뒤에 새 메시지가 와야 다시 생김. 기기 대화의 1:1 `personId`는 친구 서비스로 채움(연락 상세 "친구 정보 보기"). 친구 화면에서 연락 분석을 끈 계정(#88 C8)은 1:1이면 대화방 분석(답장 필요·태그·요약)과 AI 요청(답장 후보·긴 메시지 요약 → `ANALYSIS_OFF` 오류)을 하지 않고, 단톡이면 그 사람 메시지만 분석·AI 본문에서 뺌. 메시지는 그대로 보임 연락처 가져오기는 `OnboardingProvider`가 `friends`를 저장·불러올 때(`syncFriends`)
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
 - **기기 저장소 (앱을 껐다 켜도 남음)**: `services.storage`는 keychain 암호화 저장소(`storage/secureKeyValueStorage.ts`, 키마다 한 칸, 모드별 `malssiat.kv.mock|http.<키>`). 새 패키지·네이티브 빌드 없음
   - 온보딩 진행 상황·선택 값(연동 앱·받을 알림·친구·AI 메모리): `services.storage`에 사용자 id를 붙인 키 (`OnboardingProvider`)
@@ -98,7 +99,7 @@
 - mock 회원·친구 편집 등 mock 서비스 안의 데이터는 여전히 메모리라 앱을 완전히 끄면 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
 - **기기 연락처 (#70)**: `services.contacts`는 Kotlin `Contacts` 모듈(`android/.../contacts/ContactsModule.kt`, JS `src/native/Contacts.ts`)로 `ContactsContract`에서 id·이름·전화번호만 읽음(대표 번호 하나, 가나다순). 네이티브 모듈이 없으면(Jest) mock 42명. 연락처와 고른 친구는 기기에만 두고 서버로 보내지 않음
-  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)가 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근은 #83에서 실제(`NotificationStore` 설정 화면), 앱 알림은 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
+  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)·앱 알림(`POST_NOTIFICATIONS`, #88, Android 12 이하는 묻지 않고 granted, Manifest에 선언)이 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근은 #83에서 실제(`NotificationStore` 설정 화면). "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
 - AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. `services.ai`는 API 모드가 `http`면 실서버(`createHttpAiReplyService`, 인증과 같은 `httpClient`로 토큰 갱신), 아니면 mock
   - **결정 여부는 AI가 판단**: 응답의 `needsDecision`이 true면 답장 9개(입장 `ACCEPT/HOLD/DECLINE` × 말투 `SHORT/WARM/POLITE`), false면 말투 3개. AI 결과가 있으면 그 판단으로 `question` 태그를 정해 답장 화면 갈래(09-A 입장 먼저 / 09-B 말투 바로)가 AI를 따름. 목록처럼 AI 결과가 없을 때만 기기 규칙(`classifyNeedsDecision`)
   - **갈래가 엇갈리면 (#81)**: AI 분석 전에 기기 규칙으로 들어간 화면과 AI 판단이 다르면 `getReplyCandidates`가 `REPLY_STEP_MISMATCH`를 던지고, `ReplyStance`/`ReplyTone`이 `navigation.replace`로 반대쪽 화면으로 감(뒤로가기는 이전 화면). 단톡(`ReplyGroup`)은 분석 전에도 "답장 만들기"를 누를 수 있어 이 경로로 처리
@@ -131,7 +132,9 @@
 - #59 공통 칩(`ChoiceGroup` chip)을 온보딩 11·02-4 시안 값으로 바꿈 (높이 28 · 바탕 seed100 · 테두리 brown700 · 가로 3 세로 4 · 글자 `captionChip` 10/13.5). 연락 말투·미루기·필터 칩도 같이 바뀜. 터치 영역은 세로로만 48dp
 - #59 글자 크기는 PNG로 재지 말고 Figma 텍스트 스타일 이름으로 확인 (06·10·11·12 반영 완료)
 - 04 연락: 앱바 햄버거·프로필 생략, "Label" 자리는 화면 이름, ○/● 카드는 `RadioCard`(Card 조합), 09-C는 ○ 3줄+버튼 2개 → 안내 줄 + ○ 2개 + 버튼 1개로 합침, 09-C 질문 있을 때 제목·설명(임시), 10 "복사하고 메신저 열기" 추가, 08 "친구 정보 보기" 텍스트 버튼 추가
-- 05 친구: 14 "연결된 계정" 카드(합치기·따로 보기)·얼려두기 버튼, 15 "직접 쓰기" 버튼, 15 두 번째 후보 "연락이 늦었어…" → 사과 없는 문장으로 바꿈, 16(잘린 메시지) "{앱} 열어서 복사하기" 추가, 관계 메모·생일 편집 시안 없음
+- 05 친구: 15 "직접 쓰기" 버튼, 15 두 번째 후보 "연락이 늦었어…" → 사과 없는 문장으로 바꿈, 16(잘린 메시지) "{앱} 열어서 복사하기" 추가 (#79에서 예전 14 상세의 합치기·따로 보기 카드·얼려두기·생일은 화면에서 뺌, 서비스는 남김)
+- #79 06 친구 시안 없는 부분(제안 확인받음): E02 "새 친구 추가하기" → 친구로 등록 후 기본 정보, "다른 친구에게 연결하기"·시트 "다른 친구에게 연결" → E04-1 시트, "연결 해지하기" → 확인 팝업 후 NEW로(계정 하나면 비활성), "연결 안 됨" 앱 줄 → 다른 NEW의 그 앱 계정 연결(시트 제목 "{앱} 계정 연결" 임시), "연결이 필요한 계정" 후보 줄 모양, 원문 ">" → 최근 대화(08), 원문 없을 때 문구, 상세 검색창 → 목록 검색칸 포커스, E04 "다른 사람이에요"는 다시 묻지 않음("모르겠어요"·X는 다음에 다시), E04 팝업은 공통 Dialog 배치와 달라 Modal + Button 조합(`components/friend/SameNamePopup`)
+- #79 상태 칩 색(토큰에 없음): 연결 안 됨 → `backgroundSubtle`/`textPrimary`, 연락처 기반 → `surfaceBrown`/`textSecondary`
 - 인증(백엔드 기준): 01-3 이메일 칸 도움말 "찾기에 쓰여요", 01-4 아이디 찾기는 이메일만 받고 메일로 아이디(다이얼로그에 아이디 표시 안 함), 01-5 비밀번호 찾기는 임시 비밀번호 대신 코드 + 새 비밀번호 2단계
 
 팀 결정 필요
@@ -152,6 +155,8 @@
 
 ## 다음 작업
 
+- 진행: **실기기에서 실제로 동작 (#88)** `feat/real-friends` (worktree `C:\dev\ping-real`, `feat/#79-friends` 기준, `node_modules`는 ping-friends 것을 junction으로 연결). 끝난 것: 실제 친구 서비스(A1)·연락 1:1 ↔ 친구 연결(C2)·AI 마스킹에 친구 이름(C3)·앱 알림 권한 POST_NOTIFICATIONS(A3)·친구 분석 끄기(C8). 내일: ① C8 분석을 끈 친구의 답장 화면 안내 — Notice "이 친구는 연락 분석을 꺼 두었어요" + 직접 쓰기 안내 (지금은 공통 오류 "답장 후보를 준비하지 못했어요", 오류 코드 `ANALYSIS_OFF`) ② #77 머지 뒤: C5 연락 상세 프로필 ✏️ → 친구 상세, C1 연락 관계·별/하트·관계 설명을 친구 정보로 합치기, C4 같은 사람의 여러 메신저 대화를 한 줄로. 네이티브 필요(만들지 않음): 친구 빨간 점 "안 읽음"(알림 DB 읽음 표시), 원문 "최근 자동 삭제 날짜"(삭제 기록), 카카오톡 같은 이름 구분
+- 진행: **06 친구 최종 시안 반영** `feat/#79-friends` (worktree `C:\dev\ping-friends`). 끝난 것: E01 목록, 아이콘·캐릭터 에셋, 글자 토큰, E05 첫마디 보내기(`FriendList` 공용 + `FirstWordsPick`, 홈 카드·도움 수준·NEW 빈 상태에서 진입), E02·E03 상세(기본 정보 자동 저장 · 연결 계정 · 원문 관리) + E03-3/4 연결 관리 시트 + E04 동일 인물 팝업 + E04-1 친구에게 연결 시트. 공통: `ChoiceGroup` pill(#77 9aa7e3b와 같은 코드), `TabScreen`·`FooterLayout` background·`TextArea` typo(#77 520748a·9aa7e3b와 같은 코드), `UnderlineTabs` typo·`BottomSheet` titleTypo·height, 글자 `titleSheet`. 에뮬레이터 비교 완료(바탕 흰색, E04-1 시트 60% 고정, 하위 탭 위치·관계 설명 글자(D03과 같은 captionRegular)·"연결 해지하기" 색은 그대로 두기로 함). 남은 것: 빨간 점 실제 데이터(TODO(API))
 - 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 남은 것: 07(아이콘)·08·09는 민재 #73 머지 후 + 에셋(연락처 책 PNG·아바타·돋보기 SVG)과 함께. 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영
 - 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)

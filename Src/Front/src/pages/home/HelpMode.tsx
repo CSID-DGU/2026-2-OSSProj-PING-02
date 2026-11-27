@@ -19,7 +19,7 @@ import * as s from "./Help_styled";
 
 // 04 홈 C03 추천 선택 · C04 추천 수정 · C05 직접 쓰기 (같은 구성, 문구만 다름)
 // 줄 3개 중 하나를 고르고 아래 버튼으로 이동 (팀 확정)
-// - 꼭 챙길 연락 N개 / 미뤄둔 답장 → 연락 탭, 오랜만에 안부 전하기 → 친구 탭
+// - 꼭 챙길 연락 N개 / 미뤄둔 답장 → 연락 탭, 오랜만에 안부 전하기 → 06 친구 E05 첫마디 보내기
 // - 개수가 0인 줄은 숨김, 안부 줄은 항상 보임
 // TODO(05 연락): 모드에 따라 답장 화면(후보 선택·뼈대 수정·직접 쓰기)을 바꾸는 일은 05 연락 작업에서
 type RowKey = "mustCheck" | "deferred" | "reconnect";
@@ -66,9 +66,9 @@ const HelpMode = () => {
   const selected = rows.some(r => r.key === picked) ? picked! : rows[0].key;
 
   const go = () =>
-    navigation.navigate("Home", {
-      screen: selected === "reconnect" ? "friends" : "contacts",
-    });
+    selected === "reconnect"
+      ? navigation.navigate("FirstWordsPick")
+      : navigation.navigate("Home", { screen: "contacts" });
 
   return (
     <s.Screen $top={insets.top}>

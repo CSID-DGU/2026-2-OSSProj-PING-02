@@ -3,6 +3,7 @@ import { Animated, Modal, StyleSheet } from "react-native";
 import styled from "styled-components/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../button";
+import type { fonts } from "../../styles/fonts";
 
 // Figma: 05 연락 Screens D03 "날짜와 시간 직접 선택", "나중에 답하기 선택", "인원 설정",
 //        "메신저 연결 관리" 시트 (720px 시안 → dp는 ÷2)
@@ -12,6 +13,8 @@ export interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
   title?: string;
+  // 제목 글자 (기본 headingDialog 18/26). #79 친구 연결 관리 시트는 titleSheet 16/28
+  titleTypo?: keyof typeof fonts;
   description?: string;
   children?: ReactNode;
   // 아래 고정 영역 (BottomSheetActions 등). 내용이 길어도 스크롤되지 않음
@@ -21,6 +24,8 @@ export interface BottomSheetProps {
   dismissOnBackdrop?: boolean;
   // 화면 대비 최대 높이 (기본 90%)
   maxHeight?: `${number}%`;
+  // 화면 대비 고정 높이 (#79 친구 E04-1: 약 60%). 내용이 적어도 이 높이로, 버튼은 아래에 붙고 내용은 스크롤
+  height?: `${number}%`;
   testID?: string;
 }
 
@@ -30,12 +35,14 @@ export const BottomSheet = ({
   visible,
   onClose,
   title,
+  titleTypo,
   description,
   children,
   footer,
   scrollable = true,
   dismissOnBackdrop = true,
   maxHeight = "90%",
+  height,
   testID,
 }: BottomSheetProps) => {
   const insets = useSafeAreaInsets();
@@ -72,18 +79,21 @@ export const BottomSheet = ({
         <Sheet
           testID={testID}
           accessibilityViewIsModal
-          style={{ maxHeight, transform: [{ translateY }] }}
+          style={{ maxHeight, height, transform: [{ translateY }] }}
           $bottom={insets.bottom}
         >
           <Handle importantForAccessibility="no" />
           {(title || description) && (
             <Head>
-              {title && <Title accessibilityRole="header">{title}</Title>}
+              {title && <Title accessibilityRole="header" $typo={titleTypo}>
+                  {title}
+                </Title>}
               {description && <Description>{description}</Description>}
             </Head>
           )}
           {scrollable ? (
             <Scroll
+              $fill={!!height}
               bounces={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.scrollContent}
@@ -91,7 +101,7 @@ export const BottomSheet = ({
               {children}
             </Scroll>
           ) : (
-            <Fill>{children}</Fill>
+            <Fill $fill={!!height}>{children}</Fill>
           )}
           {footer && <Footer>{footer}</Footer>}
         </Sheet>
@@ -168,8 +178,8 @@ const Head = styled.View`
   padding: 24px 20px 16px;
 `;
 
-const Title = styled.Text`
-  ${({ theme }) => theme.fonts.headingDialog};
+const Title = styled.Text<{ $typo?: keyof typeof fonts }>`
+  ${({ theme, $typo }) => theme.fonts[$typo ?? "headingDialog"]};
   color: ${({ theme }) => theme.colors.textPrimary};
   text-align: center;
 `;
@@ -180,12 +190,14 @@ const Description = styled.Text`
   text-align: center;
 `;
 
-const Scroll = styled.ScrollView`
-  flex-grow: 0;
+// $fill: 고정 높이(height)일 때 남는 공간을 내용이 채움
+const Scroll = styled.ScrollView<{ $fill: boolean }>`
+  flex-grow: ${({ $fill }) => ($fill ? 1 : 0)};
 `;
 
-const Fill = styled.View`
+const Fill = styled.View<{ $fill: boolean }>`
   flex-shrink: 1;
+  ${({ $fill }) => ($fill ? "flex-grow: 1;" : "")}
 `;
 
 const Footer = styled.View`

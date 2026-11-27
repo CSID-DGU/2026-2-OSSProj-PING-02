@@ -1,7 +1,7 @@
 import type { PermissionKey, PermissionService, PermissionStatus } from "./PermissionService";
 
-// 기기 권한 (#70: 연락처 실제, #83: 알림 접근 실제. 앱 알림은 fallback(mock) 그대로. 배터리 최적화는 #59에서 뺌)
-// 연락처(READ_CONTACTS)는 RN 내장 PermissionsAndroid로 시스템 팝업, 설정은 Linking.openSettings(앱 정보 화면)
+// 기기 권한 (#70: 연락처, #83: 알림 접근, #88: 앱 알림 모두 실제. 배터리 최적화는 #59에서 뺌)
+// 연락처(READ_CONTACTS)·앱 알림(POST_NOTIFICATIONS)은 RN 내장 PermissionsAndroid로 시스템 팝업, 설정은 Linking.openSettings(앱 정보 화면)
 
 /** PermissionsAndroid에서 쓰는 부분만 (테스트에서 가짜로 바꿀 수 있게) */
 export interface AndroidPermissionApi {
@@ -20,22 +20,33 @@ export interface NotificationAccessApi {
 }
 
 export const READ_CONTACTS = "android.permission.READ_CONTACTS";
+// 06 앱 알림 (#88). Android 13(API 33)부터 시스템 팝업으로 묻는 권한. 그 전에는 설치하면 켜져 있음
+export const POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
+const POST_NOTIFICATIONS_SINCE_SDK = 33;
 
 const REAL: Partial<Record<PermissionKey, string>> = {
   contacts: READ_CONTACTS,
+  postNotifications: POST_NOTIFICATIONS,
 };
 
 export const createDevicePermissionService = (
   android: AndroidPermissionApi,
   fallback: PermissionService,
   // 있으면 04 알림 접근(notificationListener)도 실제로 확인·설정 열기. 없으면 fallback(mock)
-  notificationAccess?: NotificationAccessApi
+  notificationAccess?: NotificationAccessApi,
+  // Android SDK 버전 (Platform.Version). 33 미만이면 앱 알림은 묻지 않고 켜진 것으로 봄
+  sdkVersion: number = POST_NOTIFICATIONS_SINCE_SDK
 ): PermissionService => {
+  // 이 기기에서 묻지 않아도 켜져 있는 권한
+  const alwaysGranted = (key: PermissionKey) =>
+    key === "postNotifications" && sdkVersion < POST_NOTIFICATIONS_SINCE_SDK;
+
   // Android는 "다시 묻지 않음" 상태를 check로 알려 주지 않음 (켜짐/꺼짐만).
   // 요청 결과가 never_ask_again이었던 권한은 켜질 때까지 blocked로 기억해, 화면이 설정 안내를 바로 보여 주게 함
   const blocked = new Set<PermissionKey>();
 
   const statusOf = async (key: PermissionKey): Promise<PermissionStatus> => {
+    if (alwaysGranted(key)) return "granted";
     const granted = await android.check(REAL[key]!);
     if (granted) {
       blocked.delete(key);
@@ -70,6 +81,7 @@ export const createDevicePermissionService = (
       }
       const permission = REAL[key];
       if (!permission) return fallback.request(key);
+      if (alwaysGranted(key)) return { status: "granted", openedSettings: false };
       const result = await android.request(permission);
       if (result === "granted") {
         blocked.delete(key);

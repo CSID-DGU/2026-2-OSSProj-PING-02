@@ -1,6 +1,6 @@
 // AI로 보내기 전에 가릴 이름 목록 (#69). 기기 안에서만 쓰고 서버로 보내지 않음
-// - 지금은 로그인한 사용자 본인 이름만. SessionProvider가 로그인·로그아웃 때 바꿈
-// - 친구 이름은 연락처 연동(#70) 이후 별도
+// - 로그인한 사용자 본인 이름. SessionProvider가 로그인·로그아웃 때 바꿈
+// - 친구 이름은 services.friends.getMaskNames, 대화방 이름은 기기 대화 서비스가 더함 (services/index.ts)
 // - 보낸 사람 이름은 requestAiReply가 따로 더함
 
 const HANGUL_ONLY = /^[가-힣]+$/;

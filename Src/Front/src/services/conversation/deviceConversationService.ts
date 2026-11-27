@@ -9,6 +9,7 @@ import {
 import type { AiReplyStore, SavedAiReply } from "../ai/AiReplyStore";
 import { classifyNeedsDecision, looksLikeInstitution } from "../ai/classifyMessage";
 import { requestAiReply, type ConversationMessage } from "../ai/requestAiReply";
+import { toMaskNames } from "../ai/maskNames";
 import type { NetworkService } from "../network/NetworkService";
 import type { KeyValueStorage } from "../storage/KeyValueStorage";
 import {
@@ -95,7 +96,15 @@ export interface DeviceConversationDeps {
   network?: NetworkService;
   /** 가릴 이름 (사용자 본인·친구 이름·별명). 보낸 사람 이름은 requestAiReply가 자동으로 더함 */
   getMaskNames?: () => Promise<string[]>;
+  /** 1:1 대화의 보낸 사람(앱 + 보낸 사람 id) → 친구 id (services.friends). 없으면 personId 없음 */
+  getPersonLookup?: () => Promise<PersonLookup>;
+  /** 친구 화면에서 연락 분석을 끈 보낸 사람인지 (services.friends). 끈 사람의 메시지는 분석·AI 요청에서 뺌 */
+  getAnalysisOffLookup?: () => Promise<AnalysisOffLookup>;
 }
+
+export type AnalysisOffLookup = (app: MessengerApp, senderId: string) => boolean;
+
+export type PersonLookup = (app: MessengerApp, senderId: string) => string | null;
 
 interface StoredState {
   /** 대화방 id → 답장한 시각(ms). 그 뒤에 온 메시지가 있으면 다시 답장 필요 */
@@ -136,17 +145,36 @@ const toMessage = (key: string, row: StoredNotification): Message => ({
   truncated: false,
 });
 
-const toConversation = (key: string, rows: StoredNotification[]): Conversation => {
+/** 알림 한 줄의 보낸 사람 id (문자 tel·인스타 ig, 카카오톡은 이름) */
+const senderIdOfRow = (row: StoredNotification) => row.senderId ?? `name:${row.sender}`;
+
+/** 분석을 끈 대화방: 메시지는 그대로 보이고 분석(답장 필요·태그·요약)은 없음 */
+const notAnalyzed = (key: string): Analysis => ({
+  conversationId: key,
+  status: "done",
+  needsReply: false,
+  mentionsMe: false,
+  tags: [],
+  priority: "low",
+  highlightedMessageIds: [],
+});
+
+const toConversation = (
+  key: string,
+  rows: StoredNotification[],
+  lookup?: PersonLookup
+): Conversation => {
   const last = rows[rows.length - 1];
   const group = rows.some(r => r.isGroupConversation);
+  const app = PACKAGE_TO_APP[last.packageName];
   return {
     id: key,
-    app: PACKAGE_TO_APP[last.packageName],
+    app,
     kind: group ? "group" : "direct",
     // 이름을 모르는 단톡방은 앱 이름으로 대신 보여 줌
     title: last.conversationTitle || (group ? `${last.appName} 단체방` : last.sender),
-    // TODO(친구): senderId로 친구와 연결
-    personId: null,
+    // 1:1 대화는 보낸 사람으로 친구를 찾음 (단톡은 사람이 여럿이라 없음)
+    personId: !group && lookup ? lookup(app, senderIdOfRow(last)) : null,
     lastMessageAt: iso(last.messageTime),
   };
 };
@@ -213,7 +241,29 @@ export const createDeviceConversationService = ({
   aiReplies,
   network,
   getMaskNames = async () => [],
+  getPersonLookup,
+  getAnalysisOffLookup,
 }: DeviceConversationDeps): ConversationService => {
+  // AI로 보내기 전에 가릴 이름: 사용자·친구 이름(getMaskNames) + 이 대화방 이름 (1:1이면 상대를 저장한 이름)
+  // 기관·번호 발신자 방 이름은 개인정보가 아니고 요약에 필요해서 둠
+  const namesFor = async (rows: StoredNotification[]) => {
+    const titles = [...new Set(rows.map(r => r.conversationTitle).filter(Boolean))].filter(
+      t => !looksLikeInstitution(t)
+    );
+    return [...(await getMaskNames().catch(() => [])), ...titles.flatMap(toMaskNames)];
+  };
+
+  // 분석을 끈 보낸 사람의 메시지 (친구 화면 "이 친구의 연락을 분석해요"·계정 스위치, #88)
+  const offLookup = async (): Promise<AnalysisOffLookup> =>
+    getAnalysisOffLookup ? getAnalysisOffLookup().catch(() => () => false) : () => false;
+  const isOffRow = (off: AnalysisOffLookup) => (row: StoredNotification) => {
+    const app = PACKAGE_TO_APP[row.packageName];
+    return !!app && off(app, senderIdOfRow(row));
+  };
+
+  const personLookup = async (): Promise<PersonLookup | undefined> =>
+    getPersonLookup ? getPersonLookup().catch(() => undefined) : undefined;
+
   const readState = async (): Promise<StoredState> => {
     const raw = await storage.getItem(STATE_KEY);
     if (!raw) return emptyState();
@@ -262,17 +312,30 @@ export const createDeviceConversationService = ({
     key: string,
     rows: StoredNotification[],
     state: StoredState,
-    forDetail = false
+    forDetail = false,
+    lookup?: PersonLookup,
+    off: AnalysisOffLookup = () => false
   ): Promise<ConversationSummary> => {
-    const conversation = toConversation(key, rows);
+    const conversation = toConversation(key, rows, lookup);
     const last = rows[rows.length - 1];
     const handledAt = Math.max(state.replied[key] ?? 0, state.checked[key] ?? 0);
+    // 분석을 끈 사람의 메시지는 분석에서 뺌 (1:1이면 대화방 전체, 단톡이면 그 사람 메시지만)
+    const analyzed = rows.filter(r => !isOffRow(off)(r));
+    if (analyzed.length === 0) {
+      return {
+        conversation,
+        lastMessage: toMessage(key, last),
+        analysis: notAnalyzed(key),
+        deferred: state.deferred[key],
+        replied: (state.replied[key] ?? 0) >= last.messageTime,
+      };
+    }
     const saved = await latestAiReply(key, last.messageTime);
     const analysis: Analysis = {
-      ...analyzeLocally(conversation.kind, rows, handledAt, saved?.summary, saved?.needsDecision),
+      ...analyzeLocally(conversation.kind, analyzed, handledAt, saved?.summary, saved?.needsDecision),
       conversationId: key,
     };
-    if (forDetail && !saved && canAskAi(rows, analysis)) {
+    if (forDetail && !saved && canAskAi(analyzed, analysis)) {
       analysis.status = "pending";
     }
     return {
@@ -292,16 +355,24 @@ export const createDeviceConversationService = ({
     const running = inFlight.get(key);
     if (running) return running;
 
-    const rows = await loadRows(key);
+    const [rows, off] = await Promise.all([loadRows(key), offLookup()]);
     const last = rows[rows.length - 1];
     const cached = await latestAiReply(key, last.messageTime);
     if (cached) return cached;
+    // 분석을 끈 사람의 메시지는 AI로 보내지 않음 (#88)
+    const sendable = rows.filter(r => !isOffRow(off)(r));
+    if (sendable.length === 0) {
+      throw new ServiceError(
+        CONVERSATION_ERROR_CODE.analysisOff,
+        "연락 분석을 꺼 둔 친구라 답장 후보를 만들지 않아요"
+      );
+    }
     // 기다리는 사이 다른 호출이 먼저 보냈을 수 있음
     const started = inFlight.get(key);
     if (started) return started;
 
     // 안내 문구("사진을 보냈습니다." 등)는 대화 내용이 아니라서 AI에 보내지 않음
-    const messages: ConversationMessage[] = rows
+    const messages: ConversationMessage[] = sendable
       .filter(r => !r.isPlaceholder)
       .slice(-AI_MESSAGE_LIMIT)
       .map(r => ({ sender: r.sender, text: r.text }));
@@ -314,7 +385,7 @@ export const createDeviceConversationService = ({
 
     const request = (async () =>
       requestAiReply(
-        { conversationId: key, messages, names: await getMaskNames() },
+        { conversationId: key, messages, names: await namesFor(rows) },
         { ai, store: aiReplies, network }
       ))();
     inFlight.set(key, request);
@@ -328,9 +399,11 @@ export const createDeviceConversationService = ({
   const service: ConversationService = {
     onChange: listener => source.onSaved?.(listener) ?? (() => {}),
     async list() {
-      const [rows, state] = await Promise.all([
+      const [rows, state, lookup, off] = await Promise.all([
         source.getNotifications({ limit: LIST_LIMIT }),
         readState(),
+        personLookup(),
+        offLookup(),
       ]);
       const groups = new Map<string, StoredNotification[]>();
       for (const row of rows) {
@@ -341,7 +414,9 @@ export const createDeviceConversationService = ({
         groups.set(key, list);
       }
       const summaries = await Promise.all(
-        [...groups.entries()].map(([key, list]) => summarize(key, [...list].sort(byTimeAsc), state))
+        [...groups.entries()].map(([key, list]) =>
+          summarize(key, [...list].sort(byTimeAsc), state, false, lookup, off)
+        )
       );
       return summaries.sort((a, b) =>
         b.conversation.lastMessageAt.localeCompare(a.conversation.lastMessageAt)
@@ -349,9 +424,14 @@ export const createDeviceConversationService = ({
     },
 
     async get(key) {
-      const [rows, state] = await Promise.all([loadRows(key), readState()]);
+      const [rows, state, lookup, off] = await Promise.all([
+        loadRows(key),
+        readState(),
+        personLookup(),
+        offLookup(),
+      ]);
       const detail: ConversationDetail = {
-        ...(await summarize(key, rows, state, true)),
+        ...(await summarize(key, rows, state, true, lookup, off)),
         messages: rows.map(r => toMessage(key, r)),
         // TODO(캘린더): 메시지에서 일정 뽑기
         events: [],
@@ -409,13 +489,19 @@ export const createDeviceConversationService = ({
       if (!trimmed) {
         throw new ServiceError(CONVERSATION_ERROR_CODE.analysisFailed, "요약할 내용이 없습니다.");
       }
-      const rows = await loadRows(key);
+      const [rows, off] = await Promise.all([loadRows(key), offLookup()]);
       const last = rows[rows.length - 1];
+      if (isOffRow(off)(last) && toConversation(key, rows).kind === "direct") {
+        throw new ServiceError(
+          CONVERSATION_ERROR_CODE.analysisOff,
+          "연락 분석을 꺼 둔 친구라 요약하지 않아요"
+        );
+      }
       const saved = await requestAiReply(
         {
           conversationId: key,
           messages: [{ sender: last.sender || toConversation(key, rows).title, text: trimmed }],
-          names: await getMaskNames(),
+          names: await namesFor(rows),
         },
         { ai, store: aiReplies, network }
       );

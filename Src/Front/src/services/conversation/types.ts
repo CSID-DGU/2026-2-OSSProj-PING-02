@@ -15,7 +15,17 @@ export interface Person {
   birthday?: string;
   // 얼려둔 관계: 사용자가 잠시 쉬어 두기로 한 친구
   frozen: boolean;
+  // 05 연락 D03 프로필 카드. 연락처에 없는 친구(알림으로만 잡힌 친구)는 없음 → "전화번호가 없어요"
+  // TODO(06 친구): 기기 연락처(ContactsService)와 연결. 지금은 mock 데이터에만 있음
+  phone?: string;
+  // 06 친구: 관계 (친구 탭 칩·필터). NEW(아직 친구로 등록 안 한 발신자, isFriend false)는 없음
+  relation?: FriendRelation;
+  // 06 친구: 별(직장)/하트(그 밖) 색칠 = 중요한 관계. 꼭 챙길 연락 기준 (디자이너 댓글)
+  favorite?: boolean;
 }
+
+// 06 친구 관계 (05 연락 #77의 ContactRelation과 같은 값, 합칠 때 하나로)
+export type FriendRelation = "friend" | "family" | "work" | "etc";
 
 // account: 메신저별 계정 (알림의 발신자 이름으로 구분)
 // 같은 사람의 앱별 계정은 personId로 묶음 (합치기 = personId 바꾸기, 분리 = 새 person)
@@ -24,6 +34,8 @@ export interface Account {
   personId: string | null; // 아직 친구와 연결 안 된 발신자는 null
   app: MessengerApp;
   senderName: string;
+  // 06 친구 E04: 인스타그램 아이디처럼 이름과 따로 보이는 계정 아이디 (없으면 이름만)
+  handle?: string;
 }
 
 export type ConversationKind = "direct" | "group";
