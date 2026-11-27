@@ -8,8 +8,9 @@ import styled from "styled-components/native";
 
 // Figma: 05 연락 Screens D01 연락 목록(전체/꼭 챙길 연락/미뤄둔 답장),
 //        D03 연락 상세(최근 연락/관계/관련 일정), 06 친구(전체/NEW/친구/가족/직장/기타)
-// 칸 높이 48dp · 선택 밑줄 2dp(칸 폭의 70%) · 아래 바탕선 2dp
-// 선택: 굵은 글씨 + 진한 색 + 밑줄 (색만으로 구분하지 않음)
+// 칸 높이 32dp(시안, 위아래 hitSlop 8로 터치 48dp) · 선택 밑줄 2dp(칸 폭의 70%) · 아래 바탕선 2dp
+// 글자: 선택·기본 모두 Navigation/Label(labelTab 11/16), 색만 다름 (#77 디자이너 확인)
+// 선택: 진한 색 + 밑줄 (색만으로 구분하지 않음)
 export interface UnderlineTab<K extends string> {
   key: K;
   label: string;
@@ -59,6 +60,7 @@ export const UnderlineTabs = <K extends string>({
         accessibilityRole="tab"
         accessibilityLabel={tab.accessibilityLabel ?? tab.label}
         accessibilityState={{ selected }}
+        hitSlop={TAB_HIT_SLOP}
         $scrollable={scrollable}
       >
         <Label $selected={selected} numberOfLines={1}>
@@ -90,6 +92,8 @@ export const UnderlineTabs = <K extends string>({
   );
 };
 
+const TAB_HIT_SLOP = { top: 8, bottom: 8 };
+
 const Wrapper = styled.View``;
 
 // 아래 바탕선. 선택 밑줄이 이 위에 겹쳐 그려짐
@@ -108,16 +112,15 @@ const Row = styled.View`
 
 const Item = styled.Pressable<{ $scrollable: boolean }>`
   ${({ $scrollable }) => ($scrollable ? "padding: 0px 16px;" : "flex: 1;")}
-  height: 48px;
+  height: 32px;
   justify-content: center;
   align-items: center;
 `;
 
 const Label = styled.Text<{ $selected: boolean }>`
-  ${({ theme, $selected }) =>
-    $selected ? theme.fonts.titleSection : theme.fonts.bodyMedium};
+  ${({ theme }) => theme.fonts.labelTab};
   color: ${({ theme, $selected }) =>
-    $selected ? theme.colors.textPrimary : theme.colors.textTertiary};
+    $selected ? theme.colors.textPrimary : theme.colors.textSecondary};
 `;
 
 const Indicator = styled.View<{ $selected: boolean; $scrollable: boolean }>`

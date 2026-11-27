@@ -4,7 +4,7 @@ import {
   createMockMessengerService,
 } from "../src/services/conversation/mockConversationService";
 import { createMockFriendService } from "../src/services/friend/mockFriendService";
-import { formatSince } from "../src/constants/friend";
+import { formatFriendTime, formatSince } from "../src/constants/friend";
 import { mergeMemos, services, STORAGE_KEYS } from "../src/services";
 import {
   findText,
@@ -27,7 +27,9 @@ const LONG_NAME = "고등학교 축구부에서 함께 뛰던 이도현";
 const since = (minutesAgo: number) =>
   formatSince(new Date(Date.now() - minutesAgo * 60_000).toISOString());
 const MINJI = since(60); // 민지 대화: 60분 전
-const YERIN = since(10); // 예린 대화: 10분 전
+// 06 목록 시간 (시안 형식)
+const listTime = (minutesAgo: number) =>
+  formatFriendTime(new Date(Date.now() - minutesAgo * 60_000).toISOString());
 
 const seed = async () => {
   const login = await services.auth.login(
@@ -45,11 +47,14 @@ const seed = async () => {
   services.friends = createMockFriendService({ latency: 50 });
 };
 
+// 06 목록이 보이는지: 밑줄 탭 "NEW"
+const LIST_READY = "NEW";
+
 const openFriends = async () => {
   const root = await renderApp();
   await waitForText(root, "오늘의 도움 수준");
   await pressByRole(root, "tab", "친구");
-  await waitForText(root, "다시 연락하고 싶은 관계를 천천히 살펴봐요.");
+  await waitForText(root, LIST_READY);
   return root;
 };
 
@@ -89,29 +94,91 @@ const hasTextContaining = (root: Instance, text: string) =>
 
 beforeEach(seed);
 
-describe("13 친구 목록", () => {
-  test("최근 연락 순서, 얼려둔 관계는 맨 아래, 긴 이름은 한 줄 말줄임", async () => {
+// 하단 탭 "홈"·"연락"이 선택됐는지 (친구 화면의 관계 탭과 이름이 겹치지 않는 것만)
+const tabSelected = (root: Instance, label: string) =>
+  root.findAll(
+    n =>
+      n.props.accessibilityRole === "tab" &&
+      n.props.accessibilityLabel === label &&
+      n.props.accessibilityState?.selected === true
+  ).length > 0;
+
+const favoriteChecked = (root: Instance, name: string) =>
+  root
+    .findAll(
+      n =>
+        n.props.accessibilityRole === "checkbox" &&
+        n.props.accessibilityLabel === `${name} 중요한 친구로 표시` &&
+        typeof n.props.onPress === "function"
+    )
+    .at(-1)?.props.accessibilityState?.checked;
+
+describe("06 E01 친구 목록", () => {
+  test("연락 최신순, NEW도 함께, 관계 칩·메신저·시간·확인할 연락을 읽어 줌, 긴 이름은 한 줄", async () => {
     const root = await openFriends();
     await waitForText(root, "민지");
 
     const labels = friendCardLabels(root);
-    expect(labels[0]).toBe(`예린, 최근 연락: ${YERIN}`);
-    expect(labels.at(-1)).toBe("지연, 얼려둔 관계");
-    expect(labels).toContain(`${LONG_NAME}, 최근 연락: 2개월 전`);
+    // 예린(10분 전) → 민지(60분 전) … 얼려둔 지연도 순서대로 (맨 아래로 보내지 않음)
+    expect(labels[0]).toBe(`예린, 직장, 카카오톡, ${listTime(10)}`);
+    expect(labels[1]).toBe(
+      `민지, 친구, 카카오톡, 인스타그램, ${listTime(60)}, 확인할 연락 있음`
+    );
+    expect(labels).toContain("유영서, NEW, 카카오톡, 문자 메신저, 일주일 전");
+    expect(labels.at(-1)?.startsWith("지연, 친구")).toBe(true);
 
-    const longName = findText(root, LONG_NAME);
-    expect(longName[0].props.numberOfLines).toBe(1);
+    expect(findText(root, LONG_NAME)[0].props.numberOfLines).toBe(1);
   });
 
-  test("이름 검색: 앱 계정 이름으로도 찾고, 없으면 안내", async () => {
+  test("탭으로 NEW·관계별로 보고, 검색은 지금 탭 안에서 앱 계정 이름으로도 찾음", async () => {
     const root = await openFriends();
     await waitForText(root, "민지");
 
+    await pressByRole(root, "tab", "NEW");
+    expect(friendCardLabels(root).map(l => l.split(",")[0])).toEqual(["유영서"]);
+    // NEW는 별·하트가 없음
+    expect(favoriteChecked(root, "유영서")).toBeUndefined();
+
+    await pressByRole(root, "tab", "직장");
+    expect(friendCardLabels(root).map(l => l.split(",")[0])).toEqual(["예린"]);
+
+    await pressByRole(root, "tab", "전체");
     await type(root, "친구 이름 검색", "minji_daily");
-    expect(friendCardLabels(root)).toEqual([`민지, 최근 연락: ${MINJI}`]);
+    expect(friendCardLabels(root).map(l => l.split(",")[0])).toEqual(["민지"]);
 
     await type(root, "친구 이름 검색", "없는사람");
     await waitForText(root, "‘없는사람’ 친구를 찾지 못했어요");
+  });
+
+  test("별·하트를 눌러 중요한 친구 표시를 켜고 끔 (직장은 별, 그 밖은 하트)", async () => {
+    const root = await openFriends();
+    await waitForText(root, "민지");
+    expect(favoriteChecked(root, "민지")).toBe(true);
+    expect(favoriteChecked(root, "준호")).toBe(false);
+
+    await pressByRole(root, "checkbox", "준호 중요한 친구로 표시");
+    await waitUntil(() => favoriteChecked(root, "준호") === true, "준호 색칠");
+    await pressByRole(root, "checkbox", "민지 중요한 친구로 표시");
+    await waitUntil(() => favoriteChecked(root, "민지") === false, "민지 색칠 끔");
+  });
+
+  test("NEW가 없으면 빈 상태: 답장하러 가기 → 연락 탭, 연락하러 가기 → 홈 탭", async () => {
+    services.friends = createMockFriendService({ latency: 50, noNew: true });
+    const root = await openFriends();
+    await waitForText(root, "민지");
+
+    await pressByRole(root, "tab", "NEW");
+    await waitForText(
+      root,
+      "새롭게 발견된 친구가 없어요.\n기존 친구들에게 답장을 해보거나,\n먼저 연락을 해볼까요?"
+    );
+    await press(root, "답장하러 가기");
+    await waitUntil(() => tabSelected(root, "연락"), "연락 탭으로");
+
+    await pressByRole(root, "tab", "친구");
+    await waitForText(root, "답장하러 가기");
+    await press(root, "연락하러 가기");
+    await waitUntil(() => tabSelected(root, "홈"), "홈 탭으로");
   });
 
   test("불러오지 못하면 다시 불러오기, 친구가 없으면 빈 상태", async () => {
@@ -125,7 +192,10 @@ describe("13 친구 목록", () => {
     services.friends = createMockFriendService({ latency: 50, empty: true });
     await press(root, "다시 불러오기");
     await waitForText(root, "아직 친구가 없어요");
-    expect(findText(root, "친구 이름 검색").length).toBe(0);
+    // 친구가 없으면 검색창도 숨김
+    expect(
+      root.findAll(n => n.props.accessibilityLabel === "친구 이름 검색").length
+    ).toBe(0);
   });
 });
 
@@ -150,7 +220,7 @@ describe("14 친구 상세", () => {
     await openFriend(root, "준호");
     await pressBack();
     await waitForNoText(root, "관계 기록은 평가가 아니라 다시 시작하기 위한 메모예요.");
-    expect(findText(root, "다시 연락하고 싶은 관계를 천천히 살펴봐요.").length).toBe(1);
+    expect(findText(root, LIST_READY).length).toBeGreaterThan(0);
   });
 
   test("다른 앱 계정을 같은 사람으로 합치고, 확인 팝업을 거쳐 따로 볼 수 있다", async () => {
@@ -213,27 +283,22 @@ describe("14 친구 상세", () => {
 
     // 준호는 민지에 합쳐져 목록에서 빠짐
     await pressBack();
-    await waitForText(root, "다시 연락하고 싶은 관계를 천천히 살펴봐요.");
+    await waitForText(root, LIST_READY);
     await waitUntil(
       () => !friendCardLabels(root).some(label => label.startsWith("준호,")),
       "준호가 목록에서 빠짐"
     );
   });
 
-  test("얼려두면 목록 아래로 가고, 다시 꺼낼 수 있다", async () => {
+  // 06 목록은 연락 최신순이라 얼려둬도 자리가 바뀌지 않음 (디자이너 댓글)
+  test("얼려두고 다시 꺼낼 수 있다", async () => {
     const root = await openFriends();
     await openFriend(root, "준호");
     await press(root, "잠시 얼려두기");
     await waitForText(root, "얼려둔 관계예요");
 
-    // 목록으로 돌아오면 다시 불러와서 준호가 얼려둔 관계로 아래쪽에
     await pressBack();
-    await waitUntil(
-      () =>
-        friendCardLabels(root).slice(-2).join("|") ===
-        "준호, 얼려둔 관계|지연, 얼려둔 관계",
-      "얼려둔 친구가 목록 아래로"
-    );
+    await waitForText(root, LIST_READY);
 
     await openFriend(root, "지연");
     await press(root, "다시 꺼내기");

@@ -9,6 +9,8 @@ export interface FriendSummary {
   accounts: Account[];
   // 마지막으로 연락을 주고받은 때 (없으면 null)
   lastContactAt: string | null;
+  // 06 목록 아바타 빨간 점 (디자이너 댓글): 확인 안 한 연락이 있거나, 답장이 필요한데 아직 답장을 만들지 않음
+  attention: boolean;
 }
 
 // 14 친구 상세
@@ -31,7 +33,10 @@ export interface MergeCandidate {
 }
 
 export interface FriendService {
+  // 06 목록: 친구 + NEW(새로 발견한 발신자), 연락 최신순 (디자이너 댓글)
   list(): Promise<FriendSummary[]>;
+  // 06 목록 별/하트 색칠
+  setFavorite(personId: string, favorite: boolean): Promise<void>;
   get(personId: string): Promise<FriendDetail>;
   // 15 첫마디 제안 (부담 없는 안부, 자동 전송 없음)
   getFirstWords(personId: string): Promise<string[]>;

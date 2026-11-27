@@ -13,4 +13,5 @@ export {
   GroupChatIcon,
   ClipboardIcon,
   PersonAddIcon,
+  AvatarDefaultIcon,
 } from "./Icon";

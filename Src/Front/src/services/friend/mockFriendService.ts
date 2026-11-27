@@ -23,6 +23,8 @@ interface MockOptions {
   failList?: boolean;
   // true면 친구가 한 명도 없음 (빈 상태 확인용)
   empty?: boolean;
+  // true면 NEW(새로 발견한 발신자)가 없음 (06 NEW 빈 상태 확인용)
+  noNew?: boolean;
 }
 
 const latest = (dates: (string | undefined)[]) =>
@@ -40,15 +42,23 @@ export const createMockFriendService = ({
   latency = 400,
   failList = false,
   empty = false,
+  noNew = false,
 }: MockOptions = {}): FriendService => {
   // 메모리 안에서만 바뀌는 사본 (앱을 끄면 처음 상태로)
-  let persons: Person[] = empty ? [] : PERSONS.map(p => ({ ...p }));
-  let accounts: Account[] = empty ? [] : ACCOUNTS.map(a => ({ ...a }));
+  let persons: Person[] = empty
+    ? []
+    : PERSONS.filter(p => !noNew || p.isFriend).map(p => ({ ...p }));
+  let accounts: Account[] = empty
+    ? []
+    : ACCOUNTS.filter(
+        a => !a.personId || persons.some(p => p.id === a.personId)
+      ).map(a => ({ ...a }));
   const contacted: Record<string, string> = empty ? {} : { ...CONTACTED_AT };
   let splitCount = 0;
 
+  // NEW(isFriend false)도 06 목록·상세에 나옴
   const findPerson = (id: string) => {
-    const person = persons.find(p => p.id === id && p.isFriend);
+    const person = persons.find(p => p.id === id);
     if (!person) {
       throw new ServiceError(FRIEND_ERROR_CODE.notFound, "친구를 찾을 수 없습니다.");
     }
@@ -69,6 +79,9 @@ export const createMockFriendService = ({
         ...mine.map(a => contacted[a.id]),
         ...conversations.map(s => s.conversation.lastMessageAt),
       ]),
+      // TODO(API): 안 읽은 메시지(알림 DB 읽음 표시)와 AI 답장 생성 여부(services.aiReplies)로 교체
+      //   지금 mock은 "1:1 대화가 답장이 필요함"만 봄
+      attention: conversations.some(s => s.analysis.needsReply),
     };
   };
 
@@ -78,14 +91,18 @@ export const createMockFriendService = ({
       if (failList) {
         throw new ServiceError("NETWORK_ERROR", "불러오지 못했습니다.");
       }
-      // 최근에 연락한 순서, 얼려둔 관계는 맨 아래
+      // 06: 친구 + NEW, 연락 최신순 (디자이너 댓글. 예전 "얼려둔 관계는 맨 아래"는 뺌)
       return persons
-        .filter(p => p.isFriend)
         .map(summarize)
-        .sort((a, b) => {
-          if (a.person.frozen !== b.person.frozen) return a.person.frozen ? 1 : -1;
-          return (b.lastContactAt ?? "").localeCompare(a.lastContactAt ?? "");
-        });
+        .sort((a, b) =>
+          (b.lastContactAt ?? "").localeCompare(a.lastContactAt ?? "")
+        );
+    },
+
+    async setFavorite(personId, favorite) {
+      await delay(150);
+      findPerson(personId);
+      persons = persons.map(p => (p.id === personId ? { ...p, favorite } : p));
     },
 
     async get(personId) {
