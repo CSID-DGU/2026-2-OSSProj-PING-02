@@ -93,6 +93,8 @@
   - 권한: `services.permission`은 연락처(`READ_CONTACTS`)만 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근·앱 알림·배터리는 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
 - AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. `services.ai`는 API 모드가 `http`면 실서버(`createHttpAiReplyService`, 인증과 같은 `httpClient`로 토큰 갱신), 아니면 mock
   - **결정 여부는 AI가 판단**: 응답의 `needsDecision`이 true면 답장 9개(입장 `ACCEPT/HOLD/DECLINE` × 말투 `SHORT/WARM/POLITE`), false면 말투 3개. AI 결과가 있으면 그 판단으로 `question` 태그를 정해 답장 화면 갈래(09-A 입장 먼저 / 09-B 말투 바로)가 AI를 따름. 목록처럼 AI 결과가 없을 때만 기기 규칙(`classifyNeedsDecision`)
+  - **갈래가 엇갈리면 (#81)**: AI 분석 전에 기기 규칙으로 들어간 화면과 AI 판단이 다르면 `getReplyCandidates`가 `REPLY_STEP_MISMATCH`를 던지고, `ReplyStance`/`ReplyTone`이 `navigation.replace`로 반대쪽 화면으로 감(뒤로가기는 이전 화면). 단톡(`ReplyGroup`)은 분석 전에도 "답장 만들기"를 누를 수 있어 이 경로로 처리
+  - **응답 형식 검사 (#81)**: `parseAiReplyResponse`가 9개(입장×말투 빠짐·겹침 없이)/3개(입장 없음)와 빈 문장을 확인. 서버 응답이 JSON이 아니거나 틀리면 저장하지 않고 `AI_RESPONSE_INVALID`. 예전 형식(`label`)으로 저장된 결과는 없는 것으로 보고 다시 받음. AI 요청의 401 갱신은 `httpClient.refreshAfterUnauthorized`(이미 갱신됐으면 다시 갱신하지 않음)
 
 ## 팀 Git 규칙
 
