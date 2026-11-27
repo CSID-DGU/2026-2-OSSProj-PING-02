@@ -7,7 +7,13 @@ import { createHttpAuthService } from "./auth/httpAuthService";
 import { createTokenStore } from "./auth/tokenStore";
 import { API_CONFIG, AUTH_FEATURES } from "./config";
 import { createHttpClient } from "./http/httpClient";
-import { createMockContactsService } from "./contacts/ContactsService";
+import { Linking, PermissionsAndroid, type Permission } from "react-native";
+import {
+  createDeviceContactsService,
+  createMockContactsService,
+} from "./contacts/ContactsService";
+import Contacts, { isContactsAvailable } from "@native/Contacts";
+import { createDevicePermissionService } from "./permission/devicePermissionService";
 import {
   createMockConversationService,
   createMockMessengerService,
@@ -42,6 +48,19 @@ import Messenger, { isMessengerAvailable } from "@native/Messenger";
 //   network: createMockNetworkService("cellular")
 // 개발 옵션: 권한 거부 → 다시 묻지 않음 → 설정 열기 흐름을 보려면 "deny"
 const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
+
+// 권한: 연락처는 실제(PermissionsAndroid, #70), 나머지는 아직 mock. 네이티브 모듈이 없으면(Jest) 모두 mock
+const mockPermission = createMockPermissionService(DEV_PERMISSION_SCENARIO);
+const permission = isContactsAvailable()
+  ? createDevicePermissionService(
+      {
+        check: p => PermissionsAndroid.check(p as Permission),
+        request: p => PermissionsAndroid.request(p as Permission),
+        openSettings: () => Linking.openSettings(),
+      },
+      mockPermission
+    )
+  : mockPermission;
 
 // 연락 데이터: 기기에 쌓인 알림(Kotlin 알림 수집 모듈의 로컬 DB)을 씀. 네이티브 모듈이 없으면(Jest) mock
 // 화면만 작업하면서 예시 대화를 보고 싶으면 false로 바꿈 (커밋 전에 되돌리기)
@@ -90,10 +109,13 @@ const createAuthService = () =>
 export const services = {
   auth: createAuthService(),
   tokens,
-  permission: createMockPermissionService(DEV_PERMISSION_SCENARIO),
+  permission,
   model: createMockModelService(),
   network,
-  contacts: createMockContactsService(),
+  // 기기 연락처 (Kotlin Contacts 모듈, #70). 네이티브 모듈이 없으면(Jest) mock 42명
+  contacts: isContactsAvailable()
+    ? createDeviceContactsService(Contacts)
+    : createMockContactsService(),
   conversation,
   // 복사·메신저 열기: Kotlin Messenger 모듈 (#69). 네이티브 모듈이 없으면(Jest) mock
   messenger: isMessengerAvailable()
