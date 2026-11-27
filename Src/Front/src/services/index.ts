@@ -26,7 +26,8 @@ import {
   type MockPermissionScenario,
 } from "./permission/mockPermissionService";
 import { createKeychainStorage } from "./storage/keychainStorage";
-import { createMemoryStorage } from "./storage/memoryStorage";
+import { createSecureKeyValueStorage } from "./storage/secureKeyValueStorage";
+import { createUserScopedStorage } from "./storage/userScopedStorage";
 import {
   createHttpAiReplyService,
   createMockAiReplyService,
@@ -88,8 +89,11 @@ const httpClient =
       })
     : null;
 
-// 기기 저장소 (mock은 메모리). AI 답장 결과도 같은 저장소에 둠
-const storage = createMemoryStorage();
+// 기기 저장소: 암호화 저장소라 앱을 껐다 켜도 남음. mock과 실서버 데이터가 섞이지 않게 모드별로 따로
+// - storage: 온보딩 진행 상황 (키에 사용자 id를 직접 붙여 씀, OnboardingProvider)
+// - userStorage: 연락 상태·AI 답장 결과 (로그인한 사용자별로 자동으로 나눔, SessionProvider가 사용자 지정)
+const storage = createSecureKeyValueStorage(`malssiat.kv.${API_CONFIG.mode}`);
+const userStorage = createUserScopedStorage(storage);
 const network = createMockNetworkService();
 // AI 답장 (POST /v1/ai/reply). API 모드가 http면 실서버, 아니면 mock
 // 요약·답장을 만드는 데 시간이 걸려서 시간 제한은 공통(timeoutMs)이 아니라 AI 서비스 기본값(35초)을 씀
@@ -111,13 +115,14 @@ const ai = httpClient
       },
     })
   : createMockAiReplyService();
-const aiReplies = createKeyValueAiReplyStore(storage);
+// AI 답장 결과는 사용자별 저장소에 (#48)
+const aiReplies = createKeyValueAiReplyStore(userStorage);
 
 const conversation =
   USE_DEVICE_CONVERSATIONS && isNotificationStoreAvailable()
     ? createDeviceConversationService({
         source: NotificationStore,
-        storage,
+        storage: userStorage,
         ai,
         aiReplies,
         network,
@@ -150,6 +155,7 @@ export const services = {
   // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
   friends: createMockFriendService(),
   storage,
+  userStorage,
   ai,
   aiReplies,
   maskNames,
@@ -184,6 +190,7 @@ export * from "./conversation/types";
 export * from "./conversation/ConversationService";
 export * from "./friend/FriendService";
 export * from "./storage/KeyValueStorage";
+export * from "./storage/userScopedStorage";
 export * from "./ai/AiReplyService";
 export * from "./ai/AiReplyStore";
 export * from "./ai/classifyMessage";

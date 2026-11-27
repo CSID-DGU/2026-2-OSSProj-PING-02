@@ -20,5 +20,6 @@ module.exports = {
   resetGenericPassword: jest.fn(async (options = {}) =>
     items.delete(options.service ?? "default")
   ),
+  getAllGenericPasswordServices: jest.fn(async () => [...items.keys()]),
   __reset: () => items.clear(),
 };

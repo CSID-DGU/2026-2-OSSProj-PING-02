@@ -87,7 +87,13 @@
   - 복사가 되면 앱이 안 열려도 "복사했어요" 안내를 보여 줌. 바로 답장(RemoteInput)은 아직 없음 → `canReplyDirectly`는 `false`
 - AI 마스킹 이름: `services.maskNames`(로그인한 사용자 이름 + 성 뺀 이름, `SessionProvider`가 로그인·로그아웃 때 바꿈)를 `getMaskNames`로 넘김. 친구 이름은 연락처 연동(#70) 뒤
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
-- mock 저장소는 메모리라 앱을 완전히 끄면 진행 상황·mock 회원이 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
+- **기기 저장소 (앱을 껐다 켜도 남음)**: `services.storage`는 keychain 암호화 저장소(`storage/secureKeyValueStorage.ts`, 키마다 한 칸, 모드별 `malssiat.kv.mock|http.<키>`). 새 패키지·네이티브 빌드 없음
+  - 온보딩 진행 상황·선택 값(연동 앱·받을 알림·친구·AI 메모리): `services.storage`에 사용자 id를 붙인 키 (`OnboardingProvider`)
+  - 연락 상태(답장함·확인함·나중에 답하기)·AI 답장 결과: `services.userStorage`(사용자별로 나눔). `SessionProvider`가 세션을 바꿀 때 `setUserId`로 사용자를 지정, 로그인 전·로그아웃 뒤에는 읽어도 없고 쓰기는 버림
+  - 로그아웃해도 지우지 않음 (같은 계정으로 다시 로그인하면 이어서 씀)
+  - **칸(키)마다 Keystore 키가 따로 생김** → 키 이름에 대화방 id처럼 늘어나는 값을 넣지 말고 칸 하나에 묶음. AI 답장은 사용자당 `malssiat.aiReplies` 한 칸(30일·대화방당 5개·전체 100개, 예전 대화방별 칸은 처음 읽을 때 옮기고 지움). #47(SQLCipher 알림 DB)이 머지되면 그 DB로 옮김 (`AiReplyStore.ts` TODO)
+  - 온보딩 진행 상황을 못 읽으면 다시 시도(0.5·1.5·3초), 그래도 못 읽으면 저장하지 않음 (저장된 완료 상태를 덮어쓰지 않게)
+- mock 회원·친구 편집 등 mock 서비스 안의 데이터는 여전히 메모리라 앱을 완전히 끄면 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
 - **기기 연락처 (#70)**: `services.contacts`는 Kotlin `Contacts` 모듈(`android/.../contacts/ContactsModule.kt`, JS `src/native/Contacts.ts`)로 `ContactsContract`에서 id·이름·전화번호만 읽음(대표 번호 하나, 가나다순). 네이티브 모듈이 없으면(Jest) mock 42명. 연락처와 고른 친구는 기기에만 두고 서버로 보내지 않음
   - 권한: `services.permission`은 연락처(`READ_CONTACTS`)만 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근·앱 알림·배터리는 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
@@ -140,7 +146,7 @@
 - 권한(알림 접근·앱 알림·배터리)·모델 다운로드·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70에서 구현)
 - 연락: `MessengerService`의 `canReplyDirectly`·`sendReply`(바로 답장, 정책 확인 후), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
 - 친구: `services.friends`(`FriendService`)를 기기 안 암호화 DB의 person·account로 교체, 15 첫마디 후보는 가린 메모로 외부 AI
-- 저장소: 온보딩 진행 상황·AI 답장 결과는 AsyncStorage/암호화 저장소(지금 메모리 `services.storage`), 친구 목록은 기기 안 암호화 DB (로그인 토큰은 keychain 완료)
+- 저장소: 친구 목록·대화 상태가 커지면 기기 안 암호화 DB로 (로그인 토큰·온보딩·연락 상태·AI 답장은 keychain 완료)
 
 ## 다음 작업
 

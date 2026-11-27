@@ -122,7 +122,10 @@ describe("requestAiReply", () => {
         };
       },
     };
-    const store = createKeyValueAiReplyStore(createMemoryStorage());
+    // 결과 시각(now: 1000)이 보관 기간 안에 들도록 저장소 시계도 맞춤
+    const store = createKeyValueAiReplyStore(createMemoryStorage(), {
+      now: () => 1000,
+    });
     return { sent, ai, store };
   };
 
