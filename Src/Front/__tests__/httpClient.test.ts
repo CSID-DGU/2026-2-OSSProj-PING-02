@@ -131,6 +131,30 @@ test("401이면 갱신은 한 번만 보내고, 새 토큰으로 다시 요청�
   expect(tokens.get()?.refreshToken).toBe("refresh-2");
 });
 
+test("refreshAfterUnauthorized: 그사이 이미 갱신됐으면 다시 갱신하지 않고, 아니면 한 번만 갱신한다 (#81)", async () => {
+  let refreshCount = 0;
+  const { client, tokens } = setup(async url => {
+    if (url.endsWith("/auth/refresh")) {
+      refreshCount += 1;
+      return json(200, { accessToken: "access-3", refreshToken: "refresh-3", expiresIn: 1800 });
+    }
+    return json(404);
+  });
+
+  // access-1로 보낸 요청이 401을 받는 사이 다른 요청이 access-2로 갱신해 둔 경우
+  tokens.set({ accessToken: "access-2", refreshToken: "refresh-2", expiresIn: 1800 });
+  expect((await client.refreshAfterUnauthorized("access-1")).accessToken).toBe("access-2");
+  expect(refreshCount).toBe(0);
+
+  // 지금 토큰으로 보낸 요청이 401 → 갱신 (동시에 여러 번 불러도 한 번만)
+  const next = await Promise.all([
+    client.refreshAfterUnauthorized("access-2"),
+    client.refreshAfterUnauthorized("access-2"),
+  ]);
+  expect(next.map(t => t.accessToken)).toEqual(["access-3", "access-3"]);
+  expect(refreshCount).toBe(1);
+});
+
 test("갱신 토큰이 만료되면 토큰을 지운다 (로그인 화면으로)", async () => {
   const { client, tokens } = setup(url =>
     url.endsWith("/auth/refresh")

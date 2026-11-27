@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { createServer, IncomingMessage, Server } from 'http';
 import request from 'supertest';
 import { register, startApp, TestContext, usernameOf } from './support/app';
+import { DECISION_REPLIES, FAKE_SUMMARY, fakeModelOutput, GENERAL_REPLIES } from './support/fake-ai-replies';
 
 // 응답·로그·DB 어디에도 나오면 안 되는 본문 표시. 마스킹된 메시지 안에 넣어 보낸다.
 const MARKER = '본문표시_Z9K4';
@@ -10,7 +11,12 @@ const MARKER = '본문표시_Z9K4';
 type Mode = 'ok' | 'invalid' | 'error500' | 'error200' | 'leak401' | 'slow';
 
 /** OpenRouter 대신 요청을 받는 가짜 서버. 받은 요청 본문을 기록해 두고, mode 에 따라 응답한다. */
-const fake = { mode: 'ok' as Mode, requests: [] as Array<{ headers: IncomingMessage['headers']; body: any }> };
+const fake = {
+  mode: 'ok' as Mode,
+  // 앱이 needsDecision 을 보내지 않았을 때 가짜 모델이 내릴 판단
+  decide: true,
+  requests: [] as Array<{ headers: IncomingMessage['headers']; body: any }>,
+};
 let server: Server;
 
 beforeAll(async () => {
@@ -18,7 +24,8 @@ beforeAll(async () => {
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
-      fake.requests.push({ headers: req.headers, body: JSON.parse(raw || '{}') });
+      const parsed = JSON.parse(raw || '{}');
+      fake.requests.push({ headers: req.headers, body: parsed });
       const send = (status: number, body: unknown) => {
         res.writeHead(status, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(body));
@@ -26,7 +33,7 @@ beforeAll(async () => {
       switch (fake.mode) {
         case 'ok':
           return send(200, {
-            choices: [{ message: { content: JSON.stringify({ summary: '상대가 저녁을 제안했어요.', replies: ['좋아!', '확인하고 알려줄게', '이번엔 어려워'] }) } }],
+            choices: [{ message: { content: fakeModelOutput(parsed.messages?.[1]?.content ?? '', fake.decide) } }],
             usage: { prompt_tokens: 10, completion_tokens: 20 },
           });
         case 'invalid':
@@ -78,6 +85,7 @@ function captureOutput() {
 
 beforeEach(async () => {
   fake.mode = 'ok';
+  fake.decide = true;
   fake.requests = [];
   ctx = await startApp();
   captureOutput();
@@ -114,31 +122,40 @@ const ask = (accessToken: string, payload: Record<string, unknown> = body()) =>
   http().post('/v1/ai/reply').set('Authorization', `Bearer ${accessToken}`).send(payload);
 
 describe('정상 흐름', () => {
-  it('요약 1줄과 라벨이 붙은 답장 3개를 돌려준다', async () => {
+  it('결정이 필요하면 요약과 입장 × 말투 9개를 정해진 순서로 돌려준다 (모델이 섞어 줘도 정렬)', async () => {
     const res = await ask(await token());
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      summary: '상대가 저녁을 제안했어요.',
-      replies: [
-        { label: '수락', text: '좋아!' },
-        { label: '보류', text: '확인하고 알려줄게' },
-        { label: '거절', text: '이번엔 어려워' },
-      ],
-    });
+    expect(res.body).toEqual({ summary: FAKE_SUMMARY, needsDecision: true, replies: DECISION_REPLIES });
   });
 
-  it('정해야 할 답이 없으면 짧게·다정하게·공손하게 라벨이 붙는다', async () => {
+  it('결정이 필요 없으면 말투 3개 {tone, text} 이고 stance 는 없다', async () => {
     const res = await ask(await token(), body({ needsDecision: false }));
-    expect(res.body.replies.map((r: { label: string }) => r.label)).toEqual(['짧게', '다정하게', '공손하게']);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ summary: FAKE_SUMMARY, needsDecision: false, replies: GENERAL_REPLIES });
+    expect(res.body.replies.some((r: object) => 'stance' in r)).toBe(false);
   });
 
-  it('입장(stance)을 보내면 말투 라벨이 붙고, 프롬프트에 그 입장을 유지하라고 들어간다', async () => {
-    const res = await ask(await token(), body({ stance: 'DECLINE' }));
+  it.each([
+    [true, DECISION_REPLIES],
+    [false, GENERAL_REPLIES],
+  ])('needsDecision 을 보내지 않으면 AI 가 판단한다 (판단: %s)', async (decide, replies) => {
+    fake.decide = decide;
+    const res = await ask(await token(), body({ needsDecision: undefined }));
     expect(res.status).toBe(200);
-    expect(res.body.replies.map((r: { label: string }) => r.label)).toEqual(['짧게', '다정하게', '공손하게']);
-    const user = fake.requests[0].body.messages[1].content;
-    expect(user).toContain("'거절' 입장으로 정했다");
-    expect(user).toContain('짧게 → 다정하게 → 공손하게');
+    expect(res.body).toEqual({ summary: FAKE_SUMMARY, needsDecision: decide, replies });
+    expect(fake.requests[0].body.messages[1].content).toContain('판단해서 needsDecision에 쓰고');
+  });
+
+  it('needsDecision 을 보내면 프롬프트에 그 값을 쓰라고 들어간다', async () => {
+    await ask(await token(), body({ needsDecision: true }));
+    expect(fake.requests[0].body.messages[1].content).toContain('needsDecision은 true로 쓰고 판단을 바꾸지 않는다');
+  });
+
+  it('출력 토큰 기본값(1500)과 공통 JSON 스키마로 보낸다', async () => {
+    await ask(await token());
+    const r = fake.requests[0].body;
+    expect(r.max_tokens).toBe(1500);
+    expect(r.response_format.json_schema.schema.required).toEqual(['summary', 'needsDecision', 'replies']);
   });
 
   it('OpenRouter 로 가는 요청에 ZDR 옵션이 항상 들어가고, 키는 서버가 넣으며, 사용자 정보는 없다', async () => {
@@ -179,19 +196,12 @@ describe('인증과 입력 검사', () => {
     ['빈 text', { text: '   ' }],
     ['관계 값 오류', { relation: 'BOSS' }],
     ['needsDecision 이 불리언이 아님', { needsDecision: 'yes' }],
-    ['입장 값 오류', { stance: 'MAYBE' }],
+    // 9개를 한 번에 주므로 입장(stance)은 더 받지 않는다 (#65)
+    ['입장(stance)을 보냄', { stance: 'ACCEPT' }],
   ])('%s 이면 400 VALIDATION_FAILED', async (_label, over) => {
     const res = await ask(await token(), body(over));
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_FAILED');
-    expect(fake.requests).toHaveLength(0);
-  });
-
-  it('정해야 할 답이 없는 메시지(needsDecision: false)에 입장을 보내면 400 이고 외부로 보내지 않는다', async () => {
-    const res = await ask(await token(), body({ needsDecision: false, stance: 'ACCEPT' }));
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VALIDATION_FAILED');
-    expect(res.body.error.details).toEqual([{ field: 'stance', reason: 'requiresNeedsDecision' }]);
     expect(fake.requests).toHaveLength(0);
   });
 

@@ -9,7 +9,12 @@ import RadioCard from "@components/contact/RadioCard";
 import { DEFAULT_TONE, STANCE_OPTIONS } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useLoad } from "@hooks/useLoad";
-import { services, type ReplyStance as Stance } from "@services";
+import {
+  CONVERSATION_ERROR_CODE,
+  getErrorCode,
+  services,
+  type ReplyStance as Stance,
+} from "@services";
 import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
@@ -30,7 +35,13 @@ const ReplyStance = () => {
           stance: o.value,
         })
       ),
-    ]);
+    ]).catch(error => {
+      // AI가 입장 선택이 필요 없는 메시지로 판단함 → 말투 선택(09-B)으로 바꿔 감 (뒤로가기는 이전 화면으로)
+      if (getErrorCode(error) === CONVERSATION_ERROR_CODE.replyStepMismatch) {
+        navigation.replace("ReplyTone", { conversationId });
+      }
+      throw error;
+    });
     // 이 화면에서 바로 이어지는 질문: 나를 언급한 메시지 > 마지막 메시지
     const question =
       detail.messages.find(m =>
@@ -43,7 +54,7 @@ const ReplyStance = () => {
         text: byStance[i][0].text,
       })),
     };
-  }, [conversationId]);
+  }, [conversationId, navigation]);
   const { state, retry } = useLoad(load);
 
   const writeMyself = () =>
