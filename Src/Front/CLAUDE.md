@@ -152,6 +152,13 @@
 
 ## 다음 작업
 
+- **내일 할 일 (순서대로)**
+  1. **Figma 맞추기**
+     - #79 친구: 하위 탭 라벨 위치, 관계 설명 글자, 연결 해지 글자색, 상태 칩 색 토큰
+     - #59·#77·#80에서 시안 색을 "가장 가까운 토큰"으로 대체한 곳 다시 확인 (남은 TODO "디자이너 확인 필요" 목록·코드의 `TODO(Figma 스타일 확인)`)
+  2. **전체 합친 테스트 APK**: 로컬 브랜치 `test/all-in-one`에 열린 브랜치(#77·#79·#80 등)를 모두 merge → `cd android && ./gradlew assembleRelease` → 실기기 테스트 (push하지 않는 로컬 확인용. 에뮬레이터는 PC 메모리 부족으로 쓰지 않음)
+  3. **#77 머지 뒤 캘린더 D03 관련 일정 탭**: `feat/#80-calendar`에 main merge → 아래 "07 캘린더" 남은 것·"#77 머지 뒤 할 것" 반영
+
 - 진행: **07 캘린더** `feat/#80-calendar` (worktree `C:\dev\ping-calendar`, 시안 `docs/figma/calendar`). 끝난 것: F01 월 화면·F02 일정 상세(수정·삭제)·F03 새 일정 추가·인원 설정 시트, 홈 다가오는 일정 연결. 남은 것: **05 연락 D03 관련 일정 탭**(다가오는/지난 일정, "+ 일정 추가", "새 일정이 발견됐어요" 카드)은 #77 머지 뒤 main을 merge해서 붙이기 (서비스 `listForConversation`·`findSuggestions`·`dismissSuggestion`, 컴포넌트 `EventCard tone="dark"`·`NewEventSheet initialPeople`는 준비됨)
   - 데이터(팀 확정): 백엔드에 일정 API가 없어 `services.calendar`가 사용자별 암호화 저장소(`userStorage`)에 저장. 친구 생일은 `services.friends`의 생일로 만든 읽기 전용 일정(연도가 없어 "생일"만, #79가 실제 데이터가 되면 따라감). 새 일정 발견은 `findEventsInMessages`(기기 안 규칙, `TODO(AI 일정)`: AI 응답에 일정이 생기면 이 함수만 교체)
   - 점 색 토큰 `eventOccasion` #295CB8 · `eventBirthday` #E2425C · `eventOther` = brandSprout (팀 확정). 직접 추가한 일정 종류는 제목 낱말로(`eventKindOf`)
