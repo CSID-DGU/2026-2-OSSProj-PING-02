@@ -1,155 +1,339 @@
-import { useRoute, type RouteProp } from "@react-navigation/native";
+import { useCallback, useEffect, useState } from "react";
+import { BackHandler, ScrollView, StyleSheet } from "react-native";
+import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native";
+import styled from "styled-components/native";
 import { Button } from "@core/ui/button";
-import { Card } from "@core/ui/card";
-import AuthLayout from "@components/auth/AuthLayout";
-import AuthIntro from "@components/auth/AuthIntro";
+import { UnderlineTabs } from "@core/ui/tabs";
+import { useToast } from "@core/ui/toast";
 import LoadState from "@components/contact/LoadState";
-import Notice from "@components/onboarding/Notice";
-import { formatRemind, replyStepFor, withWa } from "@constants/contact";
+import LongMessageNotice from "@components/contact/LongMessageNotice";
+import ProfileCard from "@components/contact/ProfileCard";
+import RelationTab from "@components/contact/RelationTab";
+import ReplySection from "@components/contact/ReplySection";
+import ScheduleEmpty from "@components/contact/ScheduleEmpty";
+import SummaryBlock from "@components/contact/SummaryBlock";
+import TabScreen from "@components/main/TabScreen";
+import { RELATION_OPTIONS } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useConversationDetail } from "@hooks/useConversationDetail";
-import { services } from "@services";
+import { useHomeHelp } from "@hooks/useHomeHelp";
+import { useReplyFlow } from "@hooks/useReplyFlow";
+import {
+  appsOf,
+  services,
+  type ConversationDetail as Detail,
+  type MessengerApp,
+} from "@services";
 import type { AppParamList } from "@routes/types";
-import * as s from "./Contact_styled";
 
-// 04 / 08 1:1 연락 상세 (와이어프레임 구조·문구, 색·컴포넌트는 design-system)
-// - 요약: 분석이 끝났을 때만. 분석 실패는 요약 없이 받은 메시지만 (기본 카드)
-// - 답장 후보는 요약이 있을 때만. 없으면 직접 답장 쓰기
-// TODO(디자인): 시안 앱바 제목 "Label" 자리는 화면 이름("연락")으로 둠
+// 05 연락 D03 연락 상세 (1:1) · D05 단체방 (Figma "05 연락 최종")
+// 앱바: ← 가운데 "연락" + 🔔 / 프로필 카드 / 탭(최근 연락·관계·관련 일정)
+// 최근 연락: 장문 안내(잘린 메시지가 있을 때) → 요약(원문 확인하기) → 답장하기
+// 예전 08·09-A·09-B·09-C·10 화면을 이 한 화면의 구역으로 합침 (팀 확정)
+type DetailTab = "recent" | "relation" | "schedule";
+
+const TABS: { key: DetailTab; label: string }[] = [
+  { key: "recent", label: "최근 연락" },
+  { key: "relation", label: "관계" },
+  { key: "schedule", label: "관련 일정" },
+];
+
+interface ContactInfo {
+  apps: MessengerApp[];
+  phone: string | null;
+  birthday: string | null;
+}
+
 const ConversationDetail = () => {
   const navigation = useAuthNavigation();
-  const { params } =
-    useRoute<RouteProp<AppParamList, "ConversationDetail">>();
+  const { params } = useRoute<RouteProp<AppParamList, "ConversationDetail">>();
   const { conversationId } = params;
-  const { state, retry, reload } =
-    useConversationDetail(conversationId);
+  const { state, retry, reload } = useConversationDetail(conversationId);
+
+  const goBack = () => navigation.goBack();
 
   if (state.status !== "ready") {
     return (
-      <AuthLayout title="연락">
+      <TabScreen title="연락" onBack={goBack} divider={false}>
         <LoadState
           status={state.status}
           loadingLabel="연락을 불러오는 중"
           errorTitle="연락을 불러오지 못했어요"
           onRetry={retry}
         />
-      </AuthLayout>
+      </TabScreen>
     );
   }
 
-  const { conversation, messages, analysis, deferred } = state.detail;
-  const summaryReady = analysis.status === "done" && !!analysis.summary;
-  const analyzing = analysis.status === "pending";
-  const truncated = messages.some(m => m.truncated);
+  return (
+    <DetailBody
+      key={conversationId}
+      detail={state.detail}
+      onReload={reload}
+      onLeave={goBack}
+    />
+  );
+};
 
-  const openCandidates = () =>
-    navigation.navigate(replyStepFor(analysis.tags), { conversationId });
-  const writeMyself = () =>
-    navigation.navigate("ReplyEdit", { conversationId, text: "" });
-  const stopDeferring = async () => {
+interface DetailBodyProps {
+  detail: Detail;
+  onReload: () => void;
+  onLeave: () => void;
+}
+
+const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
+  const navigation = useAuthNavigation();
+  const toast = useToast();
+  const { mode } = useHomeHelp();
+  const { conversation, messages, analysis, lastMessage } = detail;
+  const group = conversation.kind === "group";
+  const [tab, setTab] = useState<DetailTab>("recent");
+  const [copied, setCopied] = useState(false);
+  const [contact, setContact] = useState<ContactInfo | null>(null);
+
+  const flow = useReplyFlow({
+    conversationId: conversation.id,
+    needsStance: analysis.tags.includes("question"),
+    startWithWrite: mode === "write",
+  });
+
+  // 1:1 친구: 전화번호·생일·연결된 메신저 (TODO(06 친구): 기기 연락처와 연결)
+  useEffect(() => {
+    if (group || !conversation.personId) return;
+    let alive = true;
+    services.friends
+      .get(conversation.personId)
+      .then(friend => {
+        if (!alive) return;
+        const apps = appsOf(friend.accounts);
+        setContact({
+          apps: apps.length > 0 ? apps : [conversation.app],
+          phone: friend.person.phone ?? null,
+          birthday: friend.person.birthday ?? null,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [group, conversation.personId, conversation.app]);
+
+  // 앱바 ←와 안드로이드 뒤로가기가 같은 동작: 답장 단계를 한 단계씩 되돌리고, 첫 단계면 나감
+  const back = () => {
+    if (tab === "recent" && flow.back()) return;
+    onLeave();
+  };
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () =>
+        tab === "recent" ? flow.back() : false
+      );
+      return () => sub.remove();
+    }, [tab, flow])
+  );
+
+  const copy = async (text: string) => {
     try {
-      await services.conversation.cancelDeferred(conversationId);
-    } finally {
-      reload();
+      await services.messenger.copyText(text.trim());
+      toast.show("답장을 복사했어요");
+      setCopied(true);
+    } catch {
+      toast.show("복사하지 못했어요. 다시 시도해 주세요");
     }
   };
 
+  // 메신저에서 보낸 뒤 사용자가 직접 표시 (앱은 실제로 보냈는지 알 수 없음)
+  // "Figma와 다르게 간 부분"(팀 확정): 시안에 없지만 기존 텍스트 버튼으로 작게 남김
+  const markSent = async () => {
+    try {
+      await services.conversation.markReplied(conversation.id);
+      navigation.popToTop();
+    } catch {
+      toast.show("잠시 문제가 생겼어요. 조금 뒤에 다시 해 주세요");
+    }
+  };
+
+  const relationLabel = RELATION_OPTIONS.find(
+    o => o.value === conversation.relation
+  )?.label;
+  const truncated = messages.some(m => m.truncated);
+  const summaryBody =
+    analysis.status === "done" && analysis.summary
+      ? analysis.summary
+      : analysis.status === "pending"
+      ? "정리하는 중이에요…"
+      : lastMessage.text;
+
+  // D05: 나를 언급한 메시지 (없으면 "나를 언급한 질문은 없어요", 디자이너 확인)
+  const mentions = messages.filter(m =>
+    analysis.highlightedMessageIds.includes(m.id)
+  );
+  const mentionBody = mentions.map(m => `${m.senderName}: ${m.text}`).join("\n");
+  const replyNeeded = group && analysis.needsReply && mentions.length > 0;
+
   return (
-    <AuthLayout title="연락" gap={12} paddingBottom={32}>
-      <AuthIntro
-        title={`${withWa(conversation.title)}의 연락`}
-        description={
-          summaryReady
-            ? "메시지를 짧게 정리해드렸어요."
-            : "받은 메시지를 그대로 보여 드려요."
-        }
-      />
-
-      {deferred && (
-        <Notice title={formatRemind(deferred.remindAt)}>
-          <s.Muted>그 전에는 재촉하지 않고 조용히 기다릴게요.</s.Muted>
-          <Button variant="text" onPress={stopDeferring}>
-            미뤄두기 그만하기
-          </Button>
-        </Notice>
-      )}
-
-      <s.Cards>
-        {summaryReady && (
-          <Card accessibilityLabel={`요약. ${analysis.summary}`}>
-            <s.BlockTitle>요약</s.BlockTitle>
-            <s.BlockBody>{analysis.summary}</s.BlockBody>
-          </Card>
-        )}
-        {analyzing && (
-          <Card>
-            <s.BlockTitle>요약</s.BlockTitle>
-            <s.BlockBody>정리하는 중이에요…</s.BlockBody>
-          </Card>
-        )}
-        {analysis.status === "failed" && (
-          // 분석 실패: 요약 없이 기본 카드. 실패를 탓하지 않는 문장으로
-          <s.Muted>
-            이번 메시지는 정리하지 못했어요. 받은 메시지는 그대로 볼 수 있어요.
-          </s.Muted>
-        )}
-
-        <Card>
-          <s.BlockTitle>받은 메시지</s.BlockTitle>
-          {messages.map(m => (
-            <s.BlockBody key={m.id}>
-              {m.truncated ? `${m.text}…` : m.text}
-            </s.BlockBody>
-          ))}
-        </Card>
-      </s.Cards>
-
-      <s.Actions>
-        {summaryReady ? (
-          <Button variant="primary" fullWidth onPress={openCandidates}>
-            답장 후보 살펴보기
-          </Button>
-        ) : (
-          <Button variant="primary" fullWidth onPress={writeMyself}>
-            직접 답장 쓰기
-          </Button>
-        )}
-        {/* 알림에 앞부분만 온 메시지가 있을 때만 */}
-        {truncated && (
-          <Button
-            variant="secondary"
-            fullWidth
-            onPress={() =>
-              navigation.navigate("TruncatedMessage", { conversationId })
+    <TabScreen title="연락" onBack={back} divider={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Top>
+          <ProfileCard
+            name={conversation.title}
+            relationLabel={relationLabel}
+            apps={contact?.apps ?? [conversation.app]}
+            contact={
+              group
+                ? undefined
+                : { phone: contact?.phone ?? null, birthday: contact?.birthday ?? null }
             }
-          >
-            메시지가 잘린 상태 보기
-          </Button>
+          />
+        </Top>
+        <TabsSlot>
+          <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
+        </TabsSlot>
+
+        {tab === "relation" && (
+          <RelationTab conversation={conversation} onSaved={onReload} />
         )}
-        <Button
-          variant="secondary"
-          fullWidth
-          onPress={() => navigation.navigate("ReplyDefer", { conversationId })}
-        >
-          나중에 답하기
-        </Button>
-        {/* 친구로 연결된 1:1 대화만 → 05 / 14 친구 상세
-            TODO(디자이너 공유): 08 시안에 없는 텍스트 버튼 */}
-        {conversation.kind === "direct" && conversation.personId && (
-          <Button
-            variant="text"
-            onPress={() =>
-              navigation.navigate("FriendDetail", {
-                personId: conversation.personId!,
-              })
-            }
-          >
-            친구 정보 보기
-          </Button>
+        {tab === "schedule" && <ScheduleEmpty name={conversation.title} />}
+        {tab === "recent" && (
+          <>
+            {truncated && (
+              <Block $top={12}>
+                <LongMessageNotice
+                  onPress={() =>
+                    navigation.navigate("TruncatedMessage", {
+                      conversationId: conversation.id,
+                    })
+                  }
+                />
+              </Block>
+            )}
+
+            {group ? (
+              <>
+                <Block $top={truncated ? 18 : 30}>
+                  <BigTitle accessibilityRole="header">요약</BigTitle>
+                </Block>
+                <Block $top={4}>
+                  <SummaryBlock
+                    title="전체 대화"
+                    titleSize="sub"
+                    body={summaryBody}
+                    app={conversation.app}
+                    receivedAt={conversation.lastMessageAt}
+                    messages={messages}
+                  />
+                </Block>
+                <Block $top={20}>
+                  <SummaryBlock
+                    title="나를 언급한 내용"
+                    titleSize="sub"
+                    body={mentionBody || "나를 언급한 질문은 없어요"}
+                    app={conversation.app}
+                    receivedAt={
+                      mentions.at(-1)?.receivedAt ?? conversation.lastMessageAt
+                    }
+                    messages={mentions}
+                  />
+                </Block>
+                {replyNeeded && (
+                  <>
+                    <Block $top={20}>
+                      <BigTitle accessibilityRole="header">요약</BigTitle>
+                    </Block>
+                    <Block $top={4}>
+                      <SummaryBlock
+                        title="답장 필요"
+                        titleSize="sub"
+                        cardTitle="직접 질문 건"
+                        body={mentionBody}
+                        app={conversation.app}
+                        receivedAt={mentions.at(-1)!.receivedAt}
+                        messages={mentions}
+                      />
+                    </Block>
+                  </>
+                )}
+              </>
+            ) : (
+              <Block $top={truncated ? 18 : 30}>
+                <SummaryBlock
+                  title="요약"
+                  titleSize="section"
+                  body={summaryBody}
+                  app={conversation.app}
+                  receivedAt={conversation.lastMessageAt}
+                  messages={messages}
+                />
+              </Block>
+            )}
+
+            <Block $top={20}>
+              <ReplySection
+                flow={flow}
+                mode={mode}
+                startLabel={replyNeeded ? "답장 필요 건에 답장하기" : "답장 추천 받기"}
+                onDefer={() =>
+                  navigation.navigate("ReplyDefer", {
+                    conversationId: conversation.id,
+                  })
+                }
+                onCopy={copy}
+                // TODO(#77 다음 덩어리): 보내기 팝업(메신저 열기 / 바로 보내기)으로 바꿈
+                onComplete={copy}
+              />
+            </Block>
+            {copied && (
+              <Block $top={4}>
+                <Button variant="text" onPress={markSent}>
+                  보냈다고 표시하기
+                </Button>
+              </Block>
+            )}
+            {/* 친구로 연결된 1:1만 → 05 / 14 친구 상세. #30부터 있던 시안 밖 텍스트 버튼 (유지, 확인 필요)
+                TODO(디자이너 공유) */}
+            {!group && conversation.personId && (
+              <Block $top={12}>
+                <Button
+                  variant="text"
+                  onPress={() =>
+                    navigation.navigate("FriendDetail", {
+                      personId: conversation.personId!,
+                    })
+                  }
+                >
+                  친구 정보 보기
+                </Button>
+              </Block>
+            )}
+          </>
         )}
-      </s.Actions>
-    </AuthLayout>
+      </ScrollView>
+    </TabScreen>
   );
 };
+
+const styles = StyleSheet.create({ content: { paddingBottom: 24 } });
+
+const Top = styled.View`
+  padding-top: 2px;
+`;
+
+const TabsSlot = styled.View`
+  margin-top: 16px;
+  padding: 0px 16px;
+`;
+
+const Block = styled.View<{ $top: number }>`
+  margin-top: ${({ $top }) => $top}px;
+`;
+
+const BigTitle = styled.Text`
+  padding-left: 26px;
+  ${({ theme }) => theme.fonts.titleHomeSection};
+  color: ${({ theme }) => theme.colors.textPrimary};
+`;
 
 export default ConversationDetail;

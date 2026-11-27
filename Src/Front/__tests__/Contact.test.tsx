@@ -17,7 +17,7 @@ import {
   type Instance,
 } from "../test-utils/app";
 
-// 04 연락 흐름 테스트 (08 → 09-A·B·C → 10 → 11, 잘린 메시지)
+// 05 연락 흐름 테스트 (D01 목록·D02 분석 대화방·D03 상세·답장·D05 단체방, 잘린 메시지)
 // 로그인 + 온보딩 완료 상태에서 연락 탭으로 시작. 테스트마다 연락·메신저 mock을 새로 만듦
 const USER_ID = "mock-user-demo";
 
@@ -32,6 +32,8 @@ const seed = async () => {
     `${STORAGE_KEYS.onboarding}.${USER_ID}`,
     JSON.stringify({ completed: true, lastStep: "OnboardingDone" })
   );
+  // 오늘의 도움 수준은 테스트마다 "아직 안 고름"으로 (setHelpMode로 바꾼 값이 남지 않게)
+  await services.storage.removeItem(`${STORAGE_KEYS.homeHelp}.${USER_ID}`);
   services.conversation = createMockConversationService({ latency: 50 });
   services.messenger = createMockMessengerService();
 };
@@ -91,169 +93,231 @@ const isDisabled = (root: Instance, text: string) =>
     .map(n => n.props.accessibilityState?.disabled ?? n.props.disabled)
     .at(-1);
 
-describe("연락 흐름", () => {
+// 오늘의 도움 수준 저장 (기기 날짜 기준 오늘)
+const setHelpMode = (mode: "pick" | "edit" | "write") => {
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(now.getDate()).padStart(2, "0")}`;
+  return services.storage.setItem(
+    `${STORAGE_KEYS.homeHelp}.${USER_ID}`,
+    JSON.stringify({ date, mode })
+  );
+};
+
+const openDetail = async (name: string) => {
+  const root = await openContacts();
+  await openCard(root, name);
+  await waitForText(root, "최근 연락");
+  return root;
+};
+
+describe("05 연락 D03 상세·답장", () => {
   beforeEach(() => seed());
 
-  test("1:1 질문: 08 → 09-A 입장 → 10 말투 조절 → 확인 팝업을 거쳐 보낸다", async () => {
-    const root = await openContacts();
-    await openCard(root, "민지");
-
-    // 08: 요약 + 받은 메시지 + 잘린 메시지 버튼
-    await waitForText(root, "민지와의 연락");
+  test("1:1 질문: 입장 → 말투 → 후보 → 수정 → 복사, 보냈다고 표시하면 목록으로", async () => {
+    const root = await openDetail("민지");
+    // 프로필 카드: 전화번호·생일(MM.DD), 요약, 장문 안내
+    await waitForText(root, "010-1234-5678");
+    expect(findText(root, "05.18").length).toBe(1);
     await waitForText(root, "민지가 이번 주말에 만날 수 있는지 물었어요.");
-    await waitForText(root, "답장 후보 살펴보기");
-    expect(findText(root, "메시지가 잘린 상태 보기").length).toBe(1);
-    await press(root, "답장 후보 살펴보기");
+    // 목록(스택 아래)과 상세에 하나씩
+    expect(findText(root, "인식에 실패한 장문 메시지가 있어요").length).toBe(2);
 
-    // 09-A: 미리 골라 두지 않음 → 고르기 전에는 계속 버튼이 비활성
+    await press(root, "답장 추천 받기");
     await waitForText(root, "어떻게 답하고 싶으세요?");
-    await waitForText(root, "거절");
-    expect(isDisabled(root, "선택한 입장으로 계속")).toBe(true);
+    expect(findText(root, "이번엔 어렵다고 전하고 싶어요.").length).toBe(1);
     await pressByRole(root, "radio", "거절");
-    await press(root, "선택한 입장으로 계속");
 
-    // 10: 고른 입장의 다정한 문장 → 말투를 짧게 바꾸면 문장이 바뀜
-    await waitForText(root, "보내기 전에 말투를 다듬어보세요");
-    await waitForText(root, "확인하고 보내기");
-    expect(inputValue(root, "답장 내용")).toBe(
-      "연락 줘서 고마워. 이번 주말은 조금 어려울 것 같아. 다음에 편한 날 보자."
-    );
+    await waitForText(root, "어떤 말투로 전할까요?");
+    // 말투 상자 설명 = 그 말투의 실제 답장
+    expect(findText(root, "이번 주말은 어려울 것 같아.").length).toBe(1);
     await pressByRole(root, "radio", "짧게");
-    await waitUntil(
-      () => inputValue(root, "답장 내용") === "이번 주말은 어려울 것 같아.",
-      "짧은 말투로 바뀜"
-    );
 
-    // 바로 보내기는 확인 팝업 필수: "조금 더 볼게요"면 보내지 않음
-    await press(root, "확인하고 보내기");
-    await waitForText(root, "이 답장을 보낼까요?");
-    await press(root, "조금 더 볼게요");
-    await waitForNoText(root, "이 답장을 보낼까요?");
-    expect(findText(root, "보내기 전에 말투를 다듬어보세요").length).toBe(1);
+    await waitForText(root, "선택한 입장과 말투에 맞는 답장 3개가 준비됐어요.");
+    expect(findText(root, "후보3").length).toBe(1);
+    // 추천 선택(기본): 복사하기 / 수정하기
+    expect(findText(root, "선택한 답장 복사하기").length).toBe(1);
+    await press(root, "선택한 답장 수정하기");
 
-    await press(root, "확인하고 보내기");
-    await press(root, "보내기");
-    // 보내면 목록으로 돌아가고 답장한 연락으로 저장
-    await waitForNoText(root, "보내기 전에 말투를 다듬어보세요");
+    await waitForText(root, "추천 답장을 내 말로 다듬어보세요.");
+    expect(inputValue(root, "답장 내용")).toBe("이번 주말은 어려울 것 같아.");
+    await type(root, "답장 내용", "이번 주말은 어려워. 다음에 보자!");
+    await press(root, "수정 완료");
+    await waitForText(root, "답장을 복사했어요");
+
+    await press(root, "보냈다고 표시하기");
+    await waitForNoText(root, "최근 연락");
     expect(await repliedTo("minji")).toBe(true);
-    // 화면 6개를 거치는 긴 흐름이라 단독으로도 약 5초 → 전체 실행 때 기본 5초 제한에 걸려서 늘림
   }, 15000);
 
-  test("바로 답장이 안 되면 보내기 버튼 없이 안내하고, 복사하고 메신저 열기로 보낸다 (09-B)", async () => {
-    const root = await openContacts();
-    await openCard(root, "하늘");
-    // 가리기 모델 상태를 불러온 뒤에 답장 후보 버튼이 나타남
-    await waitForText(root, "답장 후보 살펴보기");
-    await press(root, "답장 후보 살펴보기");
-
-    await waitForText(root, "어떤 말투가 편하세요?");
-    await waitForText(root, "안부·축하 메시지");
+  test("뒤로가기는 답장 단계를 한 단계씩 되돌리고, 첫 단계에서 화면을 나간다", async () => {
+    const root = await openDetail("민지");
+    await press(root, "답장 추천 받기");
+    await pressByRole(root, "radio", "수락");
+    await waitForText(root, "어떤 말투로 전할까요?");
     await pressByRole(root, "radio", "다정하게");
-    await press(root, "선택한 말투로 계속");
+    await waitForText(root, "선택한 답장 복사하기");
 
-    await waitForText(
-      root,
-      "알림이 남아 있지 않아 여기서 바로 보낼 수는 없어요."
-    );
-    expect(findText(root, "확인하고 보내기").length).toBe(0);
-    await press(root, "복사하고 인스타그램 열기");
+    await pressBack();
+    await waitForText(root, "어떤 말투로 전할까요?");
+    // 앱바 ←도 같은 동작
+    await pressByRole(root, "button", "뒤로 가기");
+    await waitForText(root, "어떻게 답하고 싶으세요?");
+    await pressBack();
+    await waitForText(root, "답장 추천 받기");
+    await pressBack();
+    await waitForNoText(root, "최근 연락");
+  });
+
+  test("입장이 필요 없는 안부는 바로 말투, 설명은 '선택한 말투에'", async () => {
+    const root = await openDetail("하늘");
+    // 연락처에 없는 친구
+    await waitForText(root, "전화번호가 없어요");
+    expect(findText(root, "?").length).toBe(1);
+    await press(root, "답장 추천 받기");
+    await waitForText(root, "어떤 말투로 전할까요?");
+    await pressByRole(root, "radio", "다정하게");
+    await waitForText(root, "선택한 말투에 맞는 답장 3개가 준비됐어요.");
+    await press(root, "선택한 답장 복사하기");
     await waitForText(root, "답장을 복사했어요");
-    await press(root, "보냈다고 표시하기");
-    await waitForNoText(root, "보냈다고 표시하기");
-    expect(await repliedTo("haneul")).toBe(true);
   });
 
-  test("단톡은 08 없이 09-C로 가고, 나를 언급한 메시지를 강조한다", async () => {
-    const root = await openContacts();
-    await openCard(root, "2026 봄학기 오픈소스 프로젝트 PING 운영진 방");
-
-    await waitForText(root, "나에게 온 질문이 있어요");
-    expect(findText(root, "단체 대화 요약").length).toBe(1);
-    expect(findText(root, "나를 언급한 메시지가 1개 있어요.").length).toBe(1);
-    // 언급한 메시지 줄: "나를 언급" 글자 + 굵은 글씨 (색만으로 구분하지 않음)
-    const mentioned = root.findAll(
-      n =>
-        typeof n.type === "string" &&
-        typeof n.props.accessibilityLabel === "string" &&
-        n.props.accessibilityLabel.startsWith("나를 언급. 도윤:")
-    );
-    expect(mentioned.length).toBe(1);
-    expect(findText(mentioned[0], "나를 언급").length).toBe(1);
-    expect(findText(root, "민지와의 연락").length).toBe(0);
-
-    // 확인만: 고르기 전에는 버튼 비활성 → 고르면 목록으로
-    expect(isDisabled(root, "확인했어요")).toBe(true);
-    await pressByRole(root, "radio", "답장 없이 확인만 할게요.");
-    await press(root, "확인했어요");
-    await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
-    await waitForNoText(root, "나에게 온 질문이 있어요");
+  test("도움 수준 '추천 수정'이면 후보 아래 버튼이 수정하기 / 직접 답장 쓰기", async () => {
+    await setHelpMode("edit");
+    const root = await openDetail("하늘");
+    await press(root, "답장 추천 받기");
+    await waitForText(root, "어떤 말투로 전할까요?");
+    await pressByRole(root, "radio", "짧게");
+    await waitForText(root, "직접 답장 쓰기");
+    expect(findText(root, "선택한 답장 복사하기").length).toBe(0);
+    await press(root, "직접 답장 쓰기");
+    await waitForText(root, "보낼 답장을 처음부터 직접 작성해보세요.");
+    expect(inputValue(root, "답장 내용")).toBe("");
   });
 
-  test("정보만 있는 단톡은 언급이 없다고 알려 주고, 원하면 답장을 만들 수 있다", async () => {
-    const root = await openContacts();
-    await openCard(root, "대학교 친구들");
-
-    await waitForText(root, "지금은 답장이 꼭 필요하지 않아요");
-    await waitForText(root, "나를 언급한 질문은 없어요.");
-    await pressByRole(root, "radio", "그래도 짧은 답장을 만들고 싶어요.");
-    await press(root, "답장 만들기");
-    await waitForText(root, "어떤 말투가 편하세요?");
+  test("도움 수준 '직접 쓰기'면 처음부터 직접 쓰기 상자, 비어 있으면 작성 완료를 못 누름", async () => {
+    await setHelpMode("write");
+    const root = await openDetail("시우");
+    await waitForText(root, "보낼 답장을 처음부터 직접 작성해보세요.");
+    expect(findText(root, "답장 추천 받기").length).toBe(0);
+    expect(findText(root, "나중에 답하기").length).toBe(1);
+    expect(isDisabled(root, "작성 완료")).toBe(true);
+    await type(root, "답장 내용", "ㅋㅋ 귀엽다");
+    expect(isDisabled(root, "작성 완료")).toBe(false);
+    await pressByRole(root, "button", "답장 복사하기");
+    await waitForText(root, "답장을 복사했어요");
   });
 
-  test("11 나중에 답하기: 3일 뒤로 보관하면 목록에 다시 볼 때가 붙고, 뒤로가기는 08로", async () => {
-    const root = await openContacts();
-    await openCard(root, "준호");
-    await waitForText(root, "준호와의 연락");
+  test("답장 준비 실패: 다시 시도하기로 이어지고, 직접 답장 쓰기도 할 수 있다", async () => {
+    const base = createMockConversationService({ latency: 50 });
+    let fail = true;
+    services.conversation = {
+      ...base,
+      getReplyCandidates: (...args) =>
+        fail
+          ? Promise.reject(new Error("AI 실패"))
+          : base.getReplyCandidates(...args),
+    };
+    const root = await openDetail("하늘");
+    await press(root, "답장 추천 받기");
+    await waitForText(root, "다시 시도하기");
+    expect(findText(root, "아직 말씨가 답장을 준비하고 있어요.").length).toBe(1);
+    expect(findText(root, "직접 답장 쓰기").length).toBe(1);
+    fail = false;
+    await press(root, "다시 시도하기");
+    await waitForText(root, "어떤 말투로 전할까요?");
+  });
+
+  test("답장 준비 미완료: 기다리는 동안 직접 답장 쓰기만", async () => {
+    const base = createMockConversationService({ latency: 50 });
+    services.conversation = {
+      ...base,
+      getReplyCandidates: () => new Promise(() => {}),
+    };
+    const root = await openDetail("하늘");
+    await press(root, "답장 추천 받기");
+    await waitForText(root, "아직 말씨가 답장을 준비하고 있어요.");
+    expect(findText(root, "다시 시도하기").length).toBe(0);
+    await press(root, "직접 답장 쓰기");
+    await waitForText(root, "보낼 답장을 처음부터 직접 작성해보세요.");
+  });
+
+  test("원문 확인하기를 누르면 받은 메시지를 펼친다", async () => {
+    const root = await openDetail("준호");
+    expect(findText(root, "생일 축하해! 잘 지내지?").length).toBe(0);
+    await pressByRole(root, "button", "요약 원문 확인하기");
+    await waitForText(root, "생일 축하해! 잘 지내지?");
+  });
+
+  test("D05 단체방: 전체 대화·나를 언급한 내용·답장 필요, 답장은 1:1과 같은 흐름", async () => {
+    const root = await openDetail("2026 봄학기 오픈소스 프로젝트 PING 운영진 방");
+    expect(findText(root, "전체 대화").length).toBe(1);
+    expect(findText(root, "나를 언급한 내용").length).toBe(1);
+    expect(findText(root, "직접 질문 건").length).toBe(1);
+    // 단체방은 전화번호·생일 줄 없음, 관계 칩 "직장"
+    expect(findText(root, "전화번호가 없어요").length).toBe(0);
+    expect(findText(root, "직장").length).toBe(1);
+
+    await pressByRole(root, "button", "나를 언급한 내용 원문 확인하기");
+    await waitForText(root, "@말씨 다음 주 발표 자료 금요일까지 올려줄 수 있어?");
+
+    await press(root, "답장 필요 건에 답장하기");
+    await waitForText(root, "어떻게 답하고 싶으세요?");
+  });
+
+  test("D05 언급이 없는 단체방: '나를 언급한 질문은 없어요', 답장 필요 구역 없음", async () => {
+    const root = await openDetail("대학교 친구들");
+    await waitForText(root, "나를 언급한 질문은 없어요");
+    expect(findText(root, "답장 필요").length).toBe(0);
+    expect(findText(root, "답장 추천 받기").length).toBe(1);
+  });
+
+  test("관계 탭: 관계를 저장하면 토스트, 목록 꼭 챙길 연락에 반영", async () => {
+    const root = await openDetail("하늘");
+    await pressByRole(root, "tab", "관계");
+    await waitForText(root, "관계 종류");
+    await pressByRole(root, "radio", "직장");
+    await type(root, "관계 설명", "같은 팀 동료예요.");
+    await press(root, "저장하기");
+    await waitForText(root, "관계 정보를 저장했어요");
+
+    await pressBack();
+    await waitForNoText(root, "최근 연락");
+    await pressByRole(root, "tab", "꼭 챙길 연락");
+    await waitUntil(() => rowNames(root).includes("하늘"), "하늘이 꼭 챙길 연락에");
+  });
+
+  test("관련 일정 탭은 빈 상태만 (일정 추가 없음)", async () => {
+    const root = await openDetail("준호");
+    await pressByRole(root, "tab", "관련 일정");
+    await waitForText(root, "아직 연결된 일정이 없어요");
+    expect(findText(root, "아직 지난 일정이 없어요").length).toBe(1);
+    expect(findText(root, "일정 추가").length).toBe(0);
+  });
+
+  test("11 나중에 답하기: 1주 뒤로 보관하면 미뤄둔 답장 탭 시간 자리에 다시 볼 때", async () => {
+    const root = await openDetail("준호");
     await press(root, "나중에 답하기");
-
     await waitForText(root, "언제 다시 볼까요?");
-    expect(findText(root, "선택: 3일 뒤").length).toBe(1);
-    // 안드로이드 뒤로가기 → 08
     await pressBack();
     await waitForNoText(root, "언제 다시 볼까요?");
-    expect(findText(root, "준호와의 연락").length).toBe(1);
+    expect(findText(root, "답장 추천 받기").length).toBe(1);
 
     await press(root, "나중에 답하기");
     await pressByRole(root, "radio", "1주 뒤");
-    expect(findText(root, "선택: 1주 뒤").length).toBe(1);
     await press(root, "1주 뒤 다시 보기");
-    // 미뤄둔 답장 탭: 시간 자리에 다시 볼 때
     await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
     await pressByRole(root, "tab", "미뤄둔 답장");
     await waitForText(root, "7일 뒤 다시 보기");
     expect(rowNames(root)).toEqual(["준호"]);
   });
 
-  test("분석 실패: 요약 없이 기본 카드, 직접 답장 쓰기에는 말투 조절이 없다", async () => {
-    const root = await openContacts();
-    await openCard(root, "시우");
-    await waitForText(
-      root,
-      "이번 메시지는 정리하지 못했어요. 받은 메시지는 그대로 볼 수 있어요."
-    );
-    expect(findText(root, "요약").length).toBe(0);
-    expect(findText(root, "답장 후보 살펴보기").length).toBe(0);
-
-    await press(root, "직접 답장 쓰기");
-    await waitForText(root, "편하게 답장을 써 보세요");
-    expect(findText(root, "말투 조절").length).toBe(0);
-    // 빈 답장은 보낼 수 없음
-    await waitForText(root, "확인하고 보내기");
-    expect(isDisabled(root, "확인하고 보내기")).toBe(true);
-    await type(root, "답장 내용", "ㅋㅋ 귀엽다");
-    expect(isDisabled(root, "확인하고 보내기")).toBe(false);
-  });
-
-  test("잘린 메시지(16): 붙여 넣은 내용을 정리하고 답장 후보로, 돌아오면 정리한 내용", async () => {
-    const root = await openContacts();
-    await openCard(root, "민지");
-    await waitForText(root, "메시지가 잘린 상태 보기");
-    await press(root, "메시지가 잘린 상태 보기");
-
+  test("잘린 메시지: 장문 안내 → 붙여 넣어 정리하면 상세 요약이 정리한 내용으로", async () => {
+    const root = await openDetail("민지");
+    await press(root, "인식에 실패한 장문 메시지가 있어요");
     await waitForText(root, "긴 메시지를 붙여넣어 주세요");
-    expect(
-      findText(root, "분석할 내용만 사용하고 원문은 저장하지 않아요.").length
-    ).toBe(1);
     expect(isDisabled(root, "요약하고 답장 찾기")).toBe(true);
     await type(
       root,
@@ -261,11 +325,11 @@ describe("연락 흐름", () => {
       "이번 주말에 성수에서 밥 먹자. 토요일 1시 어때?"
     );
     await press(root, "요약하고 답장 찾기");
-
-    // 민지는 묻는 말 → 09-A
-    await waitForText(root, "어떻게 답하고 싶으세요?");
-    await pressBack();
-    await waitForText(root, "정리한 내용");
+    await waitForText(
+      root,
+      "붙여 넣은 내용을 정리했어요: 이번 주말에 성수에서 밥 먹자. 토요일 1시 어때?"
+    );
+    expect(findText(root, "긴 메시지를 붙여넣어 주세요").length).toBe(0);
   });
 });
 

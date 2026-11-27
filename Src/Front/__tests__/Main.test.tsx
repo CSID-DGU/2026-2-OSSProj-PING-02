@@ -8,7 +8,6 @@ import {
   renderApp,
   waitForNoText,
   waitForText,
-  waitUntil,
   type Instance,
 } from "../test-utils/app";
 
@@ -176,7 +175,7 @@ describe("홈·연락", () => {
     await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
     await waitForText(root, "민지");
     await pressByRole(root, "button", "민지");
-    await waitForText(root, "민지와의 연락");
+    await waitForText(root, "최근 연락");
     expect(selectedTab(root)).toEqual(["연락"]);
 
     // 앱바 🔔 → 알림 센터(자리만), 뒤로가기로 상세에 돌아옴
@@ -185,11 +184,11 @@ describe("홈·연락", () => {
     expect(selectedTab(root)).toEqual(["연락"]);
     await pressBack();
     await waitForNoText(root, "알림 센터를 준비하고 있어요");
-    expect(findText(root, "민지와의 연락").length).toBe(1);
+    expect(findText(root, "최근 연락").length).toBe(1);
 
     // 선택된 탭을 다시 누르면 그 탭 첫 화면(목록)으로
     await pressByRole(root, "tab", "연락");
-    await waitForNoText(root, "민지와의 연락");
+    await waitForNoText(root, "최근 연락");
     expect(selectedTab(root)).toEqual(["연락"]);
 
     // 홈이 아닌 탭에서 뒤로가기 → 홈 탭
@@ -201,14 +200,10 @@ describe("홈·연락", () => {
     const root = await renderApp();
     await waitForText(root, "하늘이 안부를 물었어요.");
     await pressByRole(root, "button", "하늘, 하늘이 안부를 물었어요.");
-    await waitUntil(
-      () => findText(root, "답장 후보 살펴보기").length > 0 ||
-        findText(root, "직접 답장 쓰기").length > 0,
-      "연락 상세 표시"
-    );
+    await waitForText(root, "최근 연락");
     expect(selectedTab(root)).toEqual(["홈"]);
     await pressBack();
-    await waitForNoText(root, "직접 답장 쓰기");
+    await waitForNoText(root, "최근 연락");
     expect(selectedTab(root)).toEqual(["홈"]);
     expect(findText(root, "오늘 챙길 연락").length).toBe(1);
   });

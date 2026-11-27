@@ -74,6 +74,8 @@ export const fonts = {
   captionChip: fontGenerator(10, fontFamily.regular, 13.5), // #59 공통 칩 글자 (135%)
   labelNotice: fontGenerator(12, fontFamily.semiBold, 19), // #77 연락 D01 장문 안내 제목
   labelMenu: fontGenerator(10, fontFamily.medium, 20), // #77 연락 D01 관계 필터 메뉴 항목
+  titleProfile: fontGenerator(16, fontFamily.bold, 26), // #77 연락 D03 프로필 카드 이름
+  bodyReply: fontGenerator(12, fontFamily.regular, 21), // #77 연락 D03 답장 입력 글자
 };
 
 export const FontList = Object.keys(fonts);

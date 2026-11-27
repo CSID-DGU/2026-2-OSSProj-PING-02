@@ -15,6 +15,9 @@ export interface Person {
   birthday?: string;
   // 얼려둔 관계: 사용자가 잠시 쉬어 두기로 한 친구
   frozen: boolean;
+  // 05 연락 D03 프로필 카드. 연락처에 없는 친구(알림으로만 잡힌 친구)는 없음 → "전화번호가 없어요"
+  // TODO(06 친구): 기기 연락처(ContactsService)와 연결. 지금은 mock 데이터에만 있음
+  phone?: string;
 }
 
 // account: 메신저별 계정 (알림의 발신자 이름으로 구분)
@@ -44,6 +47,8 @@ export interface Conversation {
   relation?: ContactRelation;
   // 친구 탭에서 별/하트를 켠 친구 (꼭 챙길 연락 기준)
   favorite?: boolean;
+  // 05 연락 D03 관계 탭 "관계 설명" (TODO(06 친구): 친구 메모와 합치기)
+  relationNote?: string;
 }
 
 // message: 알림으로 받은 메시지 (원문은 기기에만)

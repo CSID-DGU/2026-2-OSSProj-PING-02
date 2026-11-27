@@ -1,0 +1,66 @@
+import styled from "styled-components/native";
+
+// 05 연락 D01·D03 "인식에 실패한 장문 메시지가 있어요" 안내 (누르면 D04 긴 메시지 보완)
+// 시안(÷2): 좌우 16 · 높이 약 58 · 모서리 12 · 안쪽 위아래 12 좌 15 · "!" 17 → 9 → 제목
+// 글자: 제목 labelNotice 12/19 · 설명 captionQuick 10/15 (디자이너 확인)
+// TODO(알림): 잘린 메시지가 10개 쌓이거나 새로 감지될 때 알려 주기 (디자이너 의견, 이번 범위 밖)
+interface LongMessageNoticeProps {
+  onPress: () => void;
+}
+
+const LongMessageNotice = ({ onPress }: LongMessageNoticeProps) => (
+  <Box
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel="인식에 실패한 장문 메시지가 있어요. 원문을 말씨앗에 보내주세요."
+  >
+    <TitleRow>
+      {/* TODO(에셋): 노란 "!" 아이콘 (Figma에서 내보내면 교체) */}
+      <Mark>
+        <MarkText>!</MarkText>
+      </Mark>
+      <Title>인식에 실패한 장문 메시지가 있어요</Title>
+    </TitleRow>
+    <Body>원문을 말씨앗에 보내주세요.</Body>
+  </Box>
+);
+
+const Box = styled.Pressable`
+  margin: 0px 16px;
+  padding: 12px 15px;
+  border-radius: 12px;
+  background-color: ${({ theme }) => theme.colors.surfaceSeed};
+`;
+
+const TitleRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+`;
+
+const Mark = styled.View`
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  justify-content: center;
+  align-items: center;
+  background-color: ${({ theme }) => theme.colors.brandSeed};
+`;
+
+const MarkText = styled.Text`
+  ${({ theme }) => theme.fonts.labelCompact};
+  color: ${({ theme }) => theme.colors.textOnDark};
+`;
+
+const Title = styled.Text`
+  flex-shrink: 1;
+  ${({ theme }) => theme.fonts.labelNotice};
+  color: ${({ theme }) => theme.colors.textPrimary};
+`;
+
+const Body = styled.Text`
+  ${({ theme }) => theme.fonts.captionQuick};
+  color: ${({ theme }) => theme.colors.textSecondary};
+`;
+
+export default LongMessageNotice;

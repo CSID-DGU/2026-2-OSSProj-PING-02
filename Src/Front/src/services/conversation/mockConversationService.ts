@@ -13,6 +13,7 @@ import {
 } from "./mockConversationData";
 import type {
   Analysis,
+  Conversation,
   ConversationDetail,
   ConversationSummary,
   DeferredReply,
@@ -42,6 +43,10 @@ export const createMockConversationService = ({
   const deferred = new Map<string, DeferredReply>();
   const replied = new Set<string>();
   let analysisOff = new Set<string>();
+  const relations = new Map<
+    string,
+    Pick<Conversation, "relation" | "relationNote">
+  >();
 
   const find = (id: string) => {
     const seed = seeds.find(s => s.conversation.id === id);
@@ -57,7 +62,7 @@ export const createMockConversationService = ({
   const summarize = (id: string): ConversationSummary => {
     const seed = find(id);
     return {
-      conversation: seed.conversation,
+      conversation: { ...seed.conversation, ...relations.get(id) },
       lastMessage: seed.messages[seed.messages.length - 1],
       analysis: analyses.get(id)!,
       deferred: deferred.get(id),
@@ -91,6 +96,12 @@ export const createMockConversationService = ({
     async setAnalysisOffIds(ids) {
       await delay(300);
       analysisOff = new Set(ids);
+    },
+
+    async saveRelation(id, { relation, note }) {
+      await delay(300);
+      find(id);
+      relations.set(id, { relation, relationNote: note });
     },
 
     async get(id) {

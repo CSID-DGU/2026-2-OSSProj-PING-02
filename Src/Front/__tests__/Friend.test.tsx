@@ -140,7 +140,7 @@ describe("14 친구 상세", () => {
     await waitForText(root, last);
 
     await pressByRole(root, "button", `마지막 대화. ${last}`);
-    await waitForText(root, "민지와의 연락");
+    await waitForText(root, "최근 연락");
     await press(root, "친구 정보 보기");
     await waitForText(root, "생일: 5월 18일");
   });

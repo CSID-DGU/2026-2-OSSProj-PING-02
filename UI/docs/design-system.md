@@ -226,7 +226,13 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 | `captionQuick` | Pretendard Regular | `10/15` | 장문 안내 설명 |
 | `labelLink` | Pretendard Medium | `11/17` | "관계 ∨" 필터 |
 | `labelTab` | Pretendard Medium | `11/16` | 밑줄 탭 (Navigation/Label, 선택 textPrimary · 기본 textSecondary) |
-| `labelButtonCompact` | Pretendard Medium | `13/13` | D02 "변경 사항 저장하기"·"전체 선택" (Figma 행간 자동) |
+| `labelButtonCompact` | Pretendard Medium | `13/13` | D02 "변경 사항 저장하기"·"전체 선택", D03 버튼 (Figma 행간 자동) |
+| `titleProfile` | Pretendard Bold | `16/26` | D03 프로필 카드 이름 (추가) |
+| `bodyReply` | Pretendard Regular | `12/21` | D03 답장 입력 글자 (`TextArea` `typo`) (추가) |
+| `titleHomeSection` | Pretendard Bold | `16/22` | D03 섹션 제목 "요약"·"답장하기"·"관계 종류" |
+| `captionRegular` | Pretendard Regular | `12/17` | D03 요약 본문, 선택 상자 설명, 후보 말풍선 |
+| `labelForm` | Pretendard Medium | `13/18` | D03 선택 상자 제목 (수락·짧게) |
+| `labelField` | Pretendard SemiBold | `12/18` | D03 답장 입력 라벨 "선택한 답장" |
 
 - **예외: 일정 카드 날짜.** 조선굴림체는 서비스명·브랜드 문구에만 쓰지만, 홈 일정 카드의 날짜 원("11월"·"22")은 시안대로 조선굴림체를 씀 (#53 팀 확정). Figma에서 로고와 같은 폰트로 지정돼 있고, 숫자 폭(약 0.46em)도 굴림 계열 반각 숫자와 일치
 

@@ -68,15 +68,14 @@ export const useConversationDetail = (conversationId: string) => {
   return { state, retry, reload: load };
 };
 
-// 연락 카드를 눌렀을 때: 단톡은 08을 건너뛰고 09-C로, 1:1은 08 연락 상세로
+// 연락을 눌렀을 때: 1:1·단톡 모두 05 연락 D03 상세 (단톡은 D05 모양)
 export const useOpenConversation = () => {
   const navigation = useAuthNavigation();
   return useCallback(
     (conversation: Conversation) =>
-      navigation.navigate(
-        conversation.kind === "group" ? "ReplyGroup" : "ConversationDetail",
-        { conversationId: conversation.id }
-      ),
+      navigation.navigate("ConversationDetail", {
+        conversationId: conversation.id,
+      }),
     [navigation]
   );
 };

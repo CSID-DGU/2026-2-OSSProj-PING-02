@@ -4,6 +4,7 @@ import { useTheme } from "styled-components/native";
 import { Button } from "@core/ui/button";
 import ContactListControls from "@components/contact/ContactListControls";
 import ConversationRow from "@components/contact/ConversationRow";
+import LongMessageNotice from "@components/contact/LongMessageNotice";
 import HomeHero from "@components/home/HomeHero";
 import TabScreen from "@components/main/TabScreen";
 import Notice from "@components/onboarding/Notice";
@@ -79,7 +80,6 @@ const ContactsTab = ({ title }: { title: string }) => {
   const laterCount = items.filter(i => i.deferred).length;
   const data = filterConversations(items, tab, relation);
   // 알림에 앞부분만 온 메시지 → 가장 최근 대화의 긴 메시지 보완(D04)으로
-  // TODO(알림): 잘린 메시지가 10개 쌓이거나 새로 감지될 때 알려 주기 (디자이너 의견, 이번 범위 밖)
   const truncated = items.find(i => i.lastMessage.truncated);
 
   const header = (
@@ -101,24 +101,15 @@ const ContactsTab = ({ title }: { title: string }) => {
         onSettings={() => navigation.navigate("AnalysisRooms")}
       />
       {truncated && (
-        <s.LongNotice
-          onPress={() =>
-            navigation.navigate("TruncatedMessage", {
-              conversationId: truncated.conversation.id,
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel="인식에 실패한 장문 메시지가 있어요. 원문을 말씨앗에 보내주세요."
-        >
-          <s.LongNoticeTitleRow>
-            {/* TODO(에셋): 노란 "!" 아이콘 (Figma에서 내보내면 교체) */}
-            <s.LongNoticeMark>
-              <s.LongNoticeMarkText>!</s.LongNoticeMarkText>
-            </s.LongNoticeMark>
-            <s.LongNoticeTitle>인식에 실패한 장문 메시지가 있어요</s.LongNoticeTitle>
-          </s.LongNoticeTitleRow>
-          <s.LongNoticeBody>원문을 말씨앗에 보내주세요.</s.LongNoticeBody>
-        </s.LongNotice>
+        <s.NoticeSlot>
+          <LongMessageNotice
+            onPress={() =>
+              navigation.navigate("TruncatedMessage", {
+                conversationId: truncated.conversation.id,
+              })
+            }
+          />
+        </s.NoticeSlot>
       )}
     </>
   );

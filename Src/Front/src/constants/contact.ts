@@ -96,21 +96,13 @@ export const withWa = (name: string) => {
   return `${name}${hasBatchim ? "과" : "와"}`;
 };
 
-// 답장 후보 화면 고르기 (08 "답장 후보 살펴보기", 09-C "답장 만들기")
-// - 나에게 묻는 말이 있으면 09-A 입장 고르기 (경조사 초대처럼 참석 여부를 묻는 경우 포함)
-// - 안부·축하 등 입장이 필요 없으면 09-B 말투 고르기
-export type ReplyStep = "ReplyStance" | "ReplyTone";
-
-export const replyStepFor = (tags: AnalysisTag[]): ReplyStep =>
-  tags.includes("question") ? "ReplyStance" : "ReplyTone";
-
-// 09-B 위 카드 제목
-export const toneCardTitle = (tags: AnalysisTag[]) =>
-  tags.includes("occasion")
-    ? "경조사 메시지"
-    : tags.includes("greeting")
-    ? "안부·축하 메시지"
-    : "받은 메시지";
+// 05 연락 D03 입장 고르기 설명 (메시지마다 다른 시안 문장 대신 고정 문구, 팀 확정)
+// TODO(디자이너 문구 확인)
+export const STANCE_DESCRIPTION: Record<ReplyStance, string> = {
+  accept: "좋다고 전하고 싶어요.",
+  decline: "이번엔 어렵다고 전하고 싶어요.",
+  hold: "조금 더 생각해 보고 싶어요.",
+};
 
 // 10 기본 말투 (09-A에서 입장만 고른 경우)
 export const DEFAULT_TONE: ReplyTone = "warm";

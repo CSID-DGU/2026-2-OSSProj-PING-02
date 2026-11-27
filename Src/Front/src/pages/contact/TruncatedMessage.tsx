@@ -8,7 +8,7 @@ import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import LoadState from "@components/contact/LoadState";
 import Notice from "@components/onboarding/Notice";
-import { APP_LABEL, replyStepFor } from "@constants/contact";
+import { APP_LABEL } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useLoad } from "@hooks/useLoad";
 import { services } from "@services";
@@ -49,7 +49,7 @@ const TruncatedMessage = () => {
     );
   }
 
-  const { conversation, analysis } = state.data;
+  const { conversation } = state.data;
   const appName = APP_LABEL[conversation.app];
   const working = summary.status === "working";
   const disabled = !pasted.trim() || working;
@@ -62,7 +62,9 @@ const TruncatedMessage = () => {
         pasted
       );
       setSummary({ status: "done", summary: result });
-      navigation.navigate(replyStepFor(analysis.tags), { conversationId });
+      // 05 연락 D03 상세로: 스택에 있으면 그 화면으로 돌아가고, 없으면(D01 안내에서 옴) 이 화면을 상세로 바꿈
+      // D04 덩어리에서 다시 맞춤
+      navigation.popTo("ConversationDetail", { conversationId });
     } catch {
       setSummary({ status: "error" });
     }

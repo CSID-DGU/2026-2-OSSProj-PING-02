@@ -1,5 +1,6 @@
 import type {
   Analysis,
+  ContactRelation,
   ContactEvent,
   ConversationDetail,
   ConversationSummary,
@@ -19,6 +20,12 @@ export interface ConversationService {
   // 05 연락 D02: 분석을 끈 대화방 id (TODO(네이티브): 끈 방은 알림 수집·분석에서도 빼기)
   getAnalysisOffIds(): Promise<string[]>;
   setAnalysisOffIds(conversationIds: string[]): Promise<void>;
+  // 05 연락 D03 관계 탭: 관계 종류·설명 저장 (D01 관계 필터·꼭 챙길 연락에도 반영)
+  // TODO(06 친구): 친구 정보(person)의 관계·메모로 옮기기
+  saveRelation(
+    conversationId: string,
+    relation: { relation: ContactRelation; note: string }
+  ): Promise<void>;
   get(conversationId: string): Promise<ConversationDetail>;
   // 분석이 끝나지 않은(pending) 대화를 분석
   analyze(conversationId: string): Promise<Analysis>;
