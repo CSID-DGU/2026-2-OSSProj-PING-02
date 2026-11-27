@@ -88,6 +88,7 @@
   - 복사는 `ClipboardManager`(라이브러리 없음). 앱 열기 순서: 알림에 담긴 동작으로 그 대화방(`ConversationIntents`, 메모리에만, 앱 재시작하면 남은 알림으로 다시 채움) → 알림 보낸 앱 첫 화면 → (첫마디) 문자는 기본 문자 앱, 나머지는 `LINKED_APP_OPTIONS` 패키지. 못 열면 `APP_NOT_INSTALLED`
   - 복사가 되면 앱이 안 열려도 "복사했어요" 안내를 보여 줌. 바로 답장(RemoteInput)은 아직 없음 → `canReplyDirectly`는 `false`
 - AI 마스킹 이름: `services.maskNames`(로그인한 사용자 이름 + 성 뺀 이름, `SessionProvider`가 로그인·로그아웃 때 바꿈)를 `getMaskNames`로 넘김. 친구 이름은 연락처 연동(#70) 뒤
+- **친구 (실제, feat/real-friends)**: 실기기에서 `services.friends`는 `deviceFriendService` (예시 친구 mock은 Jest·네이티브 모듈이 없을 때만). 1:1 대화를 보낸 사람(단톡·기관·번호 발신자 제외)은 NEW로, 온보딩 09에서 고른 연락처는 친구 + 문자 계정(전화번호)으로 만들어 `userStorage`의 `malssiat.friends` 한 칸에 저장. 계정 id = "앱:보낸 사람 id"(문자 `tel:번호`(+82 → 0), 인스타 `ig:id`, 카카오톡은 사람 id가 없어 `name:이름`). 한 번 가져온 연락처는 다시 가져오지 않고, 지운 NEW는 그 뒤에 새 메시지가 와야 다시 생김. 기기 대화의 1:1 `personId`는 친구 서비스로 채움(연락 상세 "친구 정보 보기"). 연락처 가져오기는 `OnboardingProvider`가 `friends`를 저장·불러올 때(`syncFriends`)
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
 - **기기 저장소 (앱을 껐다 켜도 남음)**: `services.storage`는 keychain 암호화 저장소(`storage/secureKeyValueStorage.ts`, 키마다 한 칸, 모드별 `malssiat.kv.mock|http.<키>`). 새 패키지·네이티브 빌드 없음
   - 온보딩 진행 상황·선택 값(연동 앱·받을 알림·친구·AI 메모리): `services.storage`에 사용자 id를 붙인 키 (`OnboardingProvider`)

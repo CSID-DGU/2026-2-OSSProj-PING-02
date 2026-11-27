@@ -96,6 +96,7 @@ export const createMockFriendService = ({
   // 연락 분석을 끈 계정, E04 "다른 사람이에요"를 고른 NEW
   const analysisOff = new Set<string>();
   const sameNameDismissed = new Set<string>();
+  const importedContactIds = new Set<string>();
 
   // NEW(isFriend false)도 06 목록·상세에 나옴
   const findPerson = (id: string) => {
@@ -347,6 +348,30 @@ export const createMockFriendService = ({
             similarName(a.senderName, person.displayName)
         )
         .map(a => ({ ...a }));
+    },
+
+    async importContacts(contacts) {
+      await delay(100);
+      contacts.forEach(contact => {
+        if (importedContactIds.has(contact.id)) return;
+        importedContactIds.add(contact.id);
+        persons = [
+          ...persons,
+          {
+            id: `p-contact-${contact.id}`,
+            displayName: contact.name,
+            isFriend: true,
+            frozen: false,
+            phone: contact.phone,
+          },
+        ];
+      });
+    },
+
+    // mock 대화 메시지의 accountId는 mock 계정 id와 같음 (앱은 보지 않음)
+    async getPersonLookup() {
+      const byAccount = new Map(accounts.map(a => [a.id, a.personId]));
+      return (_app, senderId) => byAccount.get(senderId) ?? null;
     },
   };
 };

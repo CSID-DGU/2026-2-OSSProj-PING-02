@@ -95,7 +95,11 @@ export interface DeviceConversationDeps {
   network?: NetworkService;
   /** 가릴 이름 (사용자 본인·친구 이름·별명). 보낸 사람 이름은 requestAiReply가 자동으로 더함 */
   getMaskNames?: () => Promise<string[]>;
+  /** 1:1 대화의 보낸 사람(앱 + 보낸 사람 id) → 친구 id (services.friends). 없으면 personId 없음 */
+  getPersonLookup?: () => Promise<PersonLookup>;
 }
+
+export type PersonLookup = (app: MessengerApp, senderId: string) => string | null;
 
 interface StoredState {
   /** 대화방 id → 답장한 시각(ms). 그 뒤에 온 메시지가 있으면 다시 답장 필요 */
@@ -136,17 +140,23 @@ const toMessage = (key: string, row: StoredNotification): Message => ({
   truncated: false,
 });
 
-const toConversation = (key: string, rows: StoredNotification[]): Conversation => {
+const toConversation = (
+  key: string,
+  rows: StoredNotification[],
+  lookup?: PersonLookup
+): Conversation => {
   const last = rows[rows.length - 1];
   const group = rows.some(r => r.isGroupConversation);
+  const app = PACKAGE_TO_APP[last.packageName];
   return {
     id: key,
-    app: PACKAGE_TO_APP[last.packageName],
+    app,
     kind: group ? "group" : "direct",
     // 이름을 모르는 단톡방은 앱 이름으로 대신 보여 줌
     title: last.conversationTitle || (group ? `${last.appName} 단체방` : last.sender),
-    // TODO(친구): senderId로 친구와 연결
-    personId: null,
+    // 1:1 대화는 보낸 사람으로 친구를 찾음 (단톡은 사람이 여럿이라 없음)
+    personId:
+      !group && lookup ? lookup(app, last.senderId ?? `name:${last.sender}`) : null,
     lastMessageAt: iso(last.messageTime),
   };
 };
@@ -213,7 +223,11 @@ export const createDeviceConversationService = ({
   aiReplies,
   network,
   getMaskNames = async () => [],
+  getPersonLookup,
 }: DeviceConversationDeps): ConversationService => {
+  const personLookup = async (): Promise<PersonLookup | undefined> =>
+    getPersonLookup ? getPersonLookup().catch(() => undefined) : undefined;
+
   const readState = async (): Promise<StoredState> => {
     const raw = await storage.getItem(STATE_KEY);
     if (!raw) return emptyState();
@@ -262,9 +276,10 @@ export const createDeviceConversationService = ({
     key: string,
     rows: StoredNotification[],
     state: StoredState,
-    forDetail = false
+    forDetail = false,
+    lookup?: PersonLookup
   ): Promise<ConversationSummary> => {
-    const conversation = toConversation(key, rows);
+    const conversation = toConversation(key, rows, lookup);
     const last = rows[rows.length - 1];
     const handledAt = Math.max(state.replied[key] ?? 0, state.checked[key] ?? 0);
     const saved = await latestAiReply(key, last.messageTime);
@@ -328,9 +343,10 @@ export const createDeviceConversationService = ({
   const service: ConversationService = {
     onChange: listener => source.onSaved?.(listener) ?? (() => {}),
     async list() {
-      const [rows, state] = await Promise.all([
+      const [rows, state, lookup] = await Promise.all([
         source.getNotifications({ limit: LIST_LIMIT }),
         readState(),
+        personLookup(),
       ]);
       const groups = new Map<string, StoredNotification[]>();
       for (const row of rows) {
@@ -341,7 +357,9 @@ export const createDeviceConversationService = ({
         groups.set(key, list);
       }
       const summaries = await Promise.all(
-        [...groups.entries()].map(([key, list]) => summarize(key, [...list].sort(byTimeAsc), state))
+        [...groups.entries()].map(([key, list]) =>
+          summarize(key, [...list].sort(byTimeAsc), state, false, lookup)
+        )
       );
       return summaries.sort((a, b) =>
         b.conversation.lastMessageAt.localeCompare(a.conversation.lastMessageAt)
@@ -349,9 +367,13 @@ export const createDeviceConversationService = ({
     },
 
     async get(key) {
-      const [rows, state] = await Promise.all([loadRows(key), readState()]);
+      const [rows, state, lookup] = await Promise.all([
+        loadRows(key),
+        readState(),
+        personLookup(),
+      ]);
       const detail: ConversationDetail = {
-        ...(await summarize(key, rows, state, true)),
+        ...(await summarize(key, rows, state, true, lookup)),
         messages: rows.map(r => toMessage(key, r)),
         // TODO(캘린더): 메시지에서 일정 뽑기
         events: [],

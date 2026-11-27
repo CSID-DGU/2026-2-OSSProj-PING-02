@@ -1,3 +1,4 @@
+import type { Contact } from "../contacts/ContactsService";
 import type {
   Account,
   FriendRelation,
@@ -95,6 +96,12 @@ export interface FriendService {
   dismissSameName(personId: string): Promise<void>;
   // E03-1 "연결이 필요한 계정": 이름이 비슷한데 아직 친구와 연결되지 않은 계정 (NEW 포함)
   getConnectSuggestions(personId: string): Promise<Account[]>;
+
+  // ── 실제 데이터 연결
+  // 온보딩 09에서 고른 연락처를 친구로 (전화번호로 문자 계정을 만듦). 한 번 가져온 연락처는 다시 가져오지 않음
+  importContacts(contacts: Contact[]): Promise<void>;
+  // 연락 대화의 보낸 사람(앱 + 알림의 보낸 사람 id) → 친구 id. 없으면 null
+  getPersonLookup(): Promise<(app: MessengerApp, senderId: string) => string | null>;
 }
 
 export const FRIEND_ERROR_CODE = {

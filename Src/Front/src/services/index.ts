@@ -19,6 +19,8 @@ import {
   createMockMessengerService,
 } from "./conversation/mockConversationService";
 import { createMockFriendService } from "./friend/mockFriendService";
+import { createDeviceFriendService } from "./friend/deviceFriendService";
+import type { FriendService } from "./friend/FriendService";
 import { createMockNetworkService } from "./network/NetworkService";
 import {
   createMockPermissionService,
@@ -137,9 +139,23 @@ const conversation =
         network,
         // TODO(친구): 친구 이름·별명도 넘겨 마스킹 (연락처 연동 #70 이후)
         getMaskNames: async () => maskNames.get(),
+        // 1:1 대화의 보낸 사람 → 친구 (연락 상세 "친구 정보 보기")
+        getPersonLookup: () => friends.getPersonLookup(),
       })
     : // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
       createMockConversationService();
+
+// 친구: 기기 알림의 보낸 사람 + 온보딩 09에서 고른 연락처, 사용자별 기기 저장소 (실기기)
+// 네이티브 알림 모듈이 없으면(Jest) 예시 친구 mock
+// 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
+const friends: FriendService =
+  USE_DEVICE_CONVERSATIONS && isNotificationStoreAvailable()
+    ? createDeviceFriendService({
+        storage: userStorage,
+        conversation,
+        getRetentionDays: () => NotificationStore.getRetentionDays(),
+      })
+    : createMockFriendService();
 
 const createAuthService = () =>
   httpClient
@@ -164,8 +180,7 @@ export const services = {
   messenger: isMessengerAvailable()
     ? createDeviceMessengerService(Messenger)
     : createMockMessengerService(),
-  // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
-  friends: createMockFriendService(),
+  friends,
   storage,
   userStorage,
   ai,
