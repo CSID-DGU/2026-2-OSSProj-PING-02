@@ -1,8 +1,12 @@
+import { formatTime, minutesOfDay } from "@core/ui/calendar";
 import { LINKED_APP_OPTIONS } from "./onboarding";
+import type { ImageSourcePropType } from "react-native";
 import type {
   AnalysisTag,
   ConversationKind,
+  ConversationSummary,
   MessengerApp,
+  ContactRelation,
   ReplyStance,
   ReplyTone,
 } from "@services";
@@ -14,6 +18,58 @@ import type {
 export const APP_LABEL = Object.fromEntries(
   LINKED_APP_OPTIONS.map(o => [o.value, o.label])
 ) as Record<MessengerApp, string>;
+
+// 05 연락 D01 목록 줄 오른쪽 메신저 로고
+export const APP_ICON = Object.fromEntries(
+  LINKED_APP_OPTIONS.map(o => [o.value, o.icon])
+) as Record<MessengerApp, ImageSourcePropType>;
+
+// 05 연락 D01·D03 작은 메신저 로고 (17dp, Figma에서 내보낸 2x·3x)
+export const APP_LOGO_SMALL: Record<MessengerApp, ImageSourcePropType> = {
+  KAKAOTALK: require("@assets/img/contact/logo-kakao.png"),
+  INSTAGRAM: require("@assets/img/contact/logo-instagram.png"),
+  SMS: require("@assets/img/contact/logo-sms.png"),
+};
+
+// 05 연락 D01 관계 필터 (시안 메뉴 순서: 친구·가족·직장·기타·전체)
+export type RelationFilter = ContactRelation | "all";
+
+export const RELATION_OPTIONS: { value: RelationFilter; label: string }[] = [
+  { value: "friend", label: "친구" },
+  { value: "family", label: "가족" },
+  { value: "work", label: "직장" },
+  { value: "etc", label: "기타" },
+  { value: "all", label: "전체" },
+];
+
+// 05 연락 "꼭 챙길 연락" (디자이너 기준): 별/하트를 켠 친구의 연락 + 직장(업무) + 경조사
+// 목록 이름 앞 노란 "!"도 같은 기준
+// TODO(06 친구): 별/하트·관계는 지금 mock 데이터에만 있음
+export const isMustCare = ({ conversation, analysis }: ConversationSummary) =>
+  !!conversation.favorite ||
+  conversation.relation === "work" ||
+  analysis.tags.includes("occasion");
+
+// 05 연락 D01·D02 밑줄 탭
+export type ContactTab = "all" | "mustCare" | "later";
+
+export const CONTACT_TABS: { key: ContactTab; label: string }[] = [
+  { key: "all", label: "전체" },
+  { key: "mustCare", label: "꼭 챙길 연락" },
+  { key: "later", label: "미뤄둔 답장" },
+];
+
+export const filterConversations = (
+  items: ConversationSummary[],
+  tab: ContactTab,
+  relation: RelationFilter
+) =>
+  items.filter(
+    item =>
+      (tab === "all" ||
+        (tab === "mustCare" ? isMustCare(item) : !!item.deferred)) &&
+      (relation === "all" || item.conversation.relation === relation)
+  );
 
 export const KIND_LABEL: Record<ConversationKind, string> = {
   direct: "1:1",
@@ -48,44 +104,70 @@ export const withWa = (name: string) => {
   return `${name}${hasBatchim ? "과" : "와"}`;
 };
 
-// 답장 후보 화면 고르기 (08 "답장 후보 살펴보기", 09-C "답장 만들기")
-// - 나에게 묻는 말이 있으면 09-A 입장 고르기 (경조사 초대처럼 참석 여부를 묻는 경우 포함)
-// - 안부·축하 등 입장이 필요 없으면 09-B 말투 고르기
-export type ReplyStep = "ReplyStance" | "ReplyTone";
-
-export const replyStepFor = (tags: AnalysisTag[]): ReplyStep =>
-  tags.includes("question") ? "ReplyStance" : "ReplyTone";
-
-// 09-B 위 카드 제목
-export const toneCardTitle = (tags: AnalysisTag[]) =>
-  tags.includes("occasion")
-    ? "경조사 메시지"
-    : tags.includes("greeting")
-    ? "안부·축하 메시지"
-    : "받은 메시지";
+// 05 연락 D03 입장 고르기 설명 (메시지마다 다른 시안 문장 대신 고정 문구, 팀 확정)
+// TODO(디자이너 문구 확인)
+export const STANCE_DESCRIPTION: Record<ReplyStance, string> = {
+  accept: "좋다고 전하고 싶어요.",
+  decline: "이번엔 어렵다고 전하고 싶어요.",
+  hold: "조금 더 생각해 보고 싶어요.",
+};
 
 // 10 기본 말투 (09-A에서 입장만 고른 경우)
 export const DEFAULT_TONE: ReplyTone = "warm";
 
-// 11 / 나중에 답하기
-export type DeferOption = "tonight" | "in3days" | "in1week" | "none";
+// 05 연락 D03 나중에 답하기 시트 (Figma "나중에답하기 선택", 기본 "내일")
+// 오늘 저녁은 오후 6시, 나머지는 오전 9시 (팀 확정). 오후 6시가 지나면 "오늘 저녁"은 고를 수 없음
+export type DeferOption = "tonight" | "tomorrow" | "in3days" | "in1week";
 
 export const DEFER_OPTIONS: { value: DeferOption; label: string }[] = [
   { value: "tonight", label: "오늘 저녁" },
+  { value: "tomorrow", label: "내일" },
   { value: "in3days", label: "3일 뒤" },
-  { value: "in1week", label: "1주 뒤" },
-  { value: "none", label: "날짜 없이" },
+  { value: "in1week", label: "1주일 뒤" },
 ];
 
-export const deferToDate = (option: DeferOption, from = new Date()) => {
-  if (option === "none") return null;
-  const d = new Date(from);
-  if (option === "tonight") d.setHours(20, 0, 0, 0);
-  else {
-    d.setDate(d.getDate() + (option === "in3days" ? 3 : 7));
-    d.setHours(10, 0, 0, 0);
-  }
-  return d.toISOString();
+export const DEFAULT_DEFER_OPTION: DeferOption = "tomorrow";
+
+const DEFER_EVENING_HOUR = 18;
+const DEFER_MORNING_HOUR = 9;
+// 날짜와 시간 직접 선택의 시간 칩 (오전 9시 · 오후 6시)
+export const DEFER_TIME_PRESETS = [
+  DEFER_MORNING_HOUR * 60,
+  DEFER_EVENING_HOUR * 60,
+];
+
+const DEFER_DAYS: Record<DeferOption, number> = {
+  tonight: 0,
+  tomorrow: 1,
+  in3days: 3,
+  in1week: 7,
+};
+
+export const isDeferOptionAvailable = (option: DeferOption, now = new Date()) =>
+  option !== "tonight" || now.getHours() < DEFER_EVENING_HOUR;
+
+export const deferRemindAt = (option: DeferOption, now = new Date()) =>
+  new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + DEFER_DAYS[option],
+    option === "tonight" ? DEFER_EVENING_HOUR : DEFER_MORNING_HOUR
+  );
+
+// 시트 버튼 "내일 다시 알려주기"
+export const deferButtonLabel = (option: DeferOption) =>
+  `${DEFER_OPTIONS.find(o => o.value === option)!.label} 다시 알려주기`;
+
+// 다시 알려 줄 때: "오늘 오후 6시" / "내일 오전 9시" / "11월 30일 오전 9시"
+// 직접 고른 날짜는 시안대로 항상 날짜로 ("11월 25일 오후 6시")
+export const formatDeferAt = (date: Date, option?: DeferOption) => {
+  const day =
+    option === "tonight"
+      ? "오늘"
+      : option === "tomorrow"
+      ? "내일"
+      : `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  return `${day} ${formatTime(minutesOfDay(date))}`;
 };
 
 // 받은 시각 표시 (메시지가 온 때를 알려 줄 뿐, 답장 기한처럼 쓰지 않음)

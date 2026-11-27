@@ -28,7 +28,8 @@ import * as s from "./Contact_styled";
 // 자동 전송 없음. 보내는 방법은 두 가지
 // - 복사하고 메신저 열기: 항상 보이는 기본 동작 (보낼지는 메신저에서 사용자가 정함)
 // - 확인하고 보내기: 알림의 바로 답장이 가능할 때만 보이고, 누르면 확인 팝업을 꼭 거침
-// 친구에게 먼저 보내는 첫마디는 받은 알림이 없어서 복사하고 메신저 열기만 (나중에 답하기도 없음)
+// 친구에게 먼저 보내는 첫마디는 받은 알림이 없어서 복사하고 메신저 열기만
+// (나중에 답하기는 #77에서 연락 상세의 시트로 옮김)
 // 복사·앱 열기는 Kotlin Messenger 모듈(#69). 바로 답장(RemoteInput)은 아직 mock (TODO(네이티브))
 type SendState = "idle" | "copied" | "sending" | "unavailable" | "error";
 
@@ -286,16 +287,6 @@ const ReplyEdit = () => {
             // 바로 답장이 안 되면 버튼을 숨기고 이유만 알려 줌
             <s.Hint>알림이 남아 있지 않아 여기서 바로 보낼 수는 없어요.</s.Hint>
           )
-        )}
-        {conversationId && (
-          <Button
-            variant="secondary"
-            fullWidth
-            disabled={busy}
-            onPress={() => navigation.navigate("ReplyDefer", { conversationId })}
-          >
-            나중에 답하기
-          </Button>
         )}
       </s.Actions>
 

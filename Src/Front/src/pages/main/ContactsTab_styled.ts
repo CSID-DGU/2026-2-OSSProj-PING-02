@@ -1,13 +1,13 @@
 import { StyleSheet } from "react-native";
 import styled from "styled-components/native";
 
-// Figma 07 와이어프레임: 양옆 20, 카드 사이 12, 제목 위 약 24
+// 05 연락 D01 (720px 시안 ÷2)
+// 도움 수준 카드: 앱바 아래 2 · 좌우 16 / 장문 안내: 필터 줄 아래 15 · 좌우 16 · 높이 약 58
 export const { listContent } = StyleSheet.create({
   listContent: {
-    gap: 12,
-    paddingTop: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    flexGrow: 1,
+    paddingBottom: 16,
+    backgroundColor: "transparent",
   },
 });
 
@@ -17,30 +17,14 @@ export const Center = styled.View`
   padding: 24px 20px;
 `;
 
-export const Header = styled.View`
-  gap: 16px;
-  padding-bottom: 4px;
+export const Empty = styled.View`
+  padding: 24px 20px;
 `;
 
-export const Muted = styled.Text`
-  ${({ theme }) => theme.fonts.bodyMedium};
-  color: ${({ theme }) => theme.colors.textTertiary};
-  text-align: center;
+export const HeroSlot = styled.View`
+  padding: 2px 16px 0px;
 `;
 
-export const TitleRow = styled.View`
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-`;
-
-export const Title = styled.Text`
-  flex-shrink: 1;
-  ${({ theme }) => theme.fonts.titleSection};
-  color: ${({ theme }) => theme.colors.textPrimary};
-`;
-
-export const Sub = styled.Text`
-  ${({ theme }) => theme.fonts.titleSection};
-  color: ${({ theme }) => theme.colors.textBrand};
+export const NoticeSlot = styled.View`
+  margin: 15px 0px 2px;
 `;

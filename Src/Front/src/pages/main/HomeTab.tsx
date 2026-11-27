@@ -308,14 +308,20 @@ const ReconnectCard = ({ top, onPress }: { top: number; onPress: () => void }) =
 };
 
 // 빠른 기능 2개 (C08)
-const QuickActions = ({ onOpenTab }: { onOpenTab: (key: MainTabKey) => void }) => (
+const QuickActions = ({ onOpenTab }: { onOpenTab: (key: MainTabKey) => void }) => {
+  const navigation = useAuthNavigation();
+  return (
   <>
     <s.SectionHeader>
       <s.SectionTitle accessibilityRole="header">빠른 기능</s.SectionTitle>
     </s.SectionHeader>
     <s.CardRow $top={12.5}>
-      {/* TODO(05 연락): 긴 메시지 붙여넣기 동작은 05 연락 작업 때 정함 (팀 확정: 지금은 버튼만) */}
-      <s.QuickCard accessibilityRole="button" accessibilityLabel="긴 메시지 붙여넣기">
+      {/* 05 연락 D04 긴 메시지 보완 (모든 대화의 잘린 메시지) */}
+      <s.QuickCard
+        onPress={() => navigation.navigate("TruncatedMessage")}
+        accessibilityRole="button"
+        accessibilityLabel="긴 메시지 붙여넣기"
+      >
         <ClipboardIcon />
         <s.QuickTitle>긴 메시지 붙여넣기</s.QuickTitle>
         <s.QuickDescription>요약과 답장 방향을 바로 확인해요</s.QuickDescription>
@@ -331,6 +337,7 @@ const QuickActions = ({ onOpenTab }: { onOpenTab: (key: MainTabKey) => void }) =
       </s.QuickCard>
     </s.CardRow>
   </>
-);
+  );
+};
 
 export default HomeTab;

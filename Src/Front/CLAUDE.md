@@ -81,28 +81,12 @@
 - 온보딩 단계는 `constants/onboarding.ts`의 `ONBOARDING_STEPS`. 없어진 단계(#59: `ModelDownload`·`BatteryOptimization`)가 저장돼 있으면 `resolveSavedStep`이 그다음 단계로 이어 줌
 - **연락 데이터는 기기 알림(로컬 DB)**: `services/conversation/deviceConversationService.ts`가 Kotlin 알림 수집 모듈(#42)의 메시지로 연락 목록·상세를 만듦. 네이티브 모듈이 없으면(Jest) mock을 씀. 화면만 작업하면서 예시 대화를 보려면 `services/index.ts`의 `USE_DEVICE_CONVERSATIONS = false` (커밋 전에 되돌리기)
   - 목록 분석(질문·멘션·답장 필요)은 기기 안 규칙만. **AI는 대화방을 열 때 그 방 하나만 한 번** 부르고 결과를 저장해 답장 화면에서 다시 씀. 기관·번호 발신자, 안내 문구(`isPlaceholder`)만 있는 대화는 보내지 않음
-  - **자동 갱신 (#71)**: 알림 리스너가 새 메시지를 저장하면 `NotificationEvents` → `NotificationStoreModule`이 JS 이벤트(`malssiat.notificationsSaved`, 내용 없음)를 보냄 → `ConversationService.onChange` → `useConversations`가 화면이 보이는 동안 0.5초 안의 이벤트를 묶어 다시 읽음. 앱이 앞으로 올 때도 다시 읽음. 로딩 표시 없이 내용만 바뀌고 AI는 부르지 않음. 연락 탭 목록은 `maintainVisibleContentPosition`으로 보던 자리 유지. 당겨서 새로고침은 없음
-  - **알림 수집 켜기 (#83)**: 알림 리스너는 알림 접근 허용 + 수집 앱 목록(`services.collection`, 네이티브 `MonitoredAppsStore`)에 있는 앱만 저장. 온보딩 04가 알림 접근 설정을 실제로 열고(`devicePermissionService`의 `notificationListener`), 05 연동 앱이 수집 목록이 됨(`collectPackagesFor`, 문자는 삼성·Google 메시지 둘 다). `OnboardingProvider`가 진행 상황을 읽을 때·연동 앱을 바꿀 때 맞추고(연동 앱이 비면 그대로), 로그인하지 않은 상태면 비움(쌓인 알림은 그대로). 개발용 `NotificationDebug` 화면에서 직접 바꿀 수도 있음(다음 로그인 때 연동 앱 기준으로 다시 맞춰짐)
+  - 기기에 데이터를 쌓으려면 개발용 `NotificationDebug` 화면에서 알림 접근 허용 + 수집 앱 선택
   - 알림 DB는 SQLCipher로 암호화돼 있음 (암호는 Android Keystore로 감싸 보관, 예전 평문 DB는 처음 열 때 옮김). DB는 다시 열 수 없는 게 확실할 때(키 없음·영구 무효·AEADBadTag, SQLITE_NOTADB·CORRUPT)만 지우고, 일시적인 실패는 지우지 않고 다시 시도. 메시지는 보관 기간(기본 30일)이 지나면 지움 → `NotificationStore.get/setRetentionDays`. 자세한 내용은 README "알림 수집"
-- **복사하고 메신저 열기 (#69)**: `services.messenger`는 Kotlin `Messenger` 모듈(`android/.../messenger/MessengerModule.kt`, JS `src/native/Messenger.ts`) 위의 `deviceMessengerService`. 네이티브 모듈이 없으면(Jest) mock
-  - 복사는 `ClipboardManager`(라이브러리 없음). 앱 열기 순서: 알림에 담긴 동작으로 그 대화방(`ConversationIntents`, 메모리에만, 앱 재시작하면 남은 알림으로 다시 채움) → 알림 보낸 앱 첫 화면 → (첫마디) 문자는 기본 문자 앱, 나머지는 `LINKED_APP_OPTIONS` 패키지. 못 열면 `APP_NOT_INSTALLED`
-  - 복사가 되면 앱이 안 열려도 "복사했어요" 안내를 보여 줌. 바로 답장(RemoteInput)은 아직 없음 → `canReplyDirectly`는 `false`
-- AI 마스킹 이름: `services.maskNames`(로그인한 사용자 이름 + 성 뺀 이름, `SessionProvider`가 로그인·로그아웃 때 바꿈)를 `getMaskNames`로 넘김. 친구 이름은 연락처 연동(#70) 뒤
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
-- **기기 저장소 (앱을 껐다 켜도 남음)**: `services.storage`는 keychain 암호화 저장소(`storage/secureKeyValueStorage.ts`, 키마다 한 칸, 모드별 `malssiat.kv.mock|http.<키>`). 새 패키지·네이티브 빌드 없음
-  - 온보딩 진행 상황·선택 값(연동 앱·받을 알림·친구·AI 메모리): `services.storage`에 사용자 id를 붙인 키 (`OnboardingProvider`)
-  - 연락 상태(답장함·확인함·나중에 답하기)·AI 답장 결과: `services.userStorage`(사용자별로 나눔). `SessionProvider`가 세션을 바꿀 때 `setUserId`로 사용자를 지정, 로그인 전·로그아웃 뒤에는 읽어도 없고 쓰기는 버림
-  - 로그아웃해도 지우지 않음 (같은 계정으로 다시 로그인하면 이어서 씀)
-  - **칸(키)마다 Keystore 키가 따로 생김** → 키 이름에 대화방 id처럼 늘어나는 값을 넣지 말고 칸 하나에 묶음. AI 답장은 사용자당 `malssiat.aiReplies` 한 칸(30일·대화방당 5개·전체 100개, 예전 대화방별 칸은 처음 읽을 때 옮기고 지움). #47(SQLCipher 알림 DB)이 머지되면 그 DB로 옮김 (`AiReplyStore.ts` TODO)
-  - 온보딩 진행 상황을 못 읽으면 다시 시도(0.5·1.5·3초), 그래도 못 읽으면 저장하지 않음 (저장된 완료 상태를 덮어쓰지 않게)
-- mock 회원·친구 편집 등 mock 서비스 안의 데이터는 여전히 메모리라 앱을 완전히 끄면 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
+- mock 저장소는 메모리라 앱을 완전히 끄면 진행 상황·mock 회원이 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
-- **기기 연락처 (#70)**: `services.contacts`는 Kotlin `Contacts` 모듈(`android/.../contacts/ContactsModule.kt`, JS `src/native/Contacts.ts`)로 `ContactsContract`에서 id·이름·전화번호만 읽음(대표 번호 하나, 가나다순). 네이티브 모듈이 없으면(Jest) mock 42명. 연락처와 고른 친구는 기기에만 두고 서버로 보내지 않음
-  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)가 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근은 #83에서 실제(`NotificationStore` 설정 화면), 앱 알림은 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
-- AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. `services.ai`는 API 모드가 `http`면 실서버(`createHttpAiReplyService`, 인증과 같은 `httpClient`로 토큰 갱신), 아니면 mock
-  - **결정 여부는 AI가 판단**: 응답의 `needsDecision`이 true면 답장 9개(입장 `ACCEPT/HOLD/DECLINE` × 말투 `SHORT/WARM/POLITE`), false면 말투 3개. AI 결과가 있으면 그 판단으로 `question` 태그를 정해 답장 화면 갈래(09-A 입장 먼저 / 09-B 말투 바로)가 AI를 따름. 목록처럼 AI 결과가 없을 때만 기기 규칙(`classifyNeedsDecision`)
-  - **갈래가 엇갈리면 (#81)**: AI 분석 전에 기기 규칙으로 들어간 화면과 AI 판단이 다르면 `getReplyCandidates`가 `REPLY_STEP_MISMATCH`를 던지고, `ReplyStance`/`ReplyTone`이 `navigation.replace`로 반대쪽 화면으로 감(뒤로가기는 이전 화면). 단톡(`ReplyGroup`)은 분석 전에도 "답장 만들기"를 누를 수 있어 이 경로로 처리
-  - **응답 형식 검사 (#81)**: `parseAiReplyResponse`가 9개(입장×말투 빠짐·겹침 없이)/3개(입장 없음)와 빈 문장을 확인. 서버 응답이 JSON이 아니거나 틀리면 저장하지 않고 `AI_RESPONSE_INVALID`. 예전 형식(`label`)으로 저장된 결과는 없는 것으로 보고 다시 받음. AI 요청의 401 갱신은 `httpClient.refreshAfterUnauthorized`(이미 갱신됐으면 다시 갱신하지 않음)
+- AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계·결정 여부 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. 지금 `services.ai`는 mock
 
 ## 팀 Git 규칙
 
@@ -145,12 +129,26 @@
 - 09 연락처 검색창
 
 네이티브·API 연결
-- 권한(앱 알림)·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70, 알림 접근·수집 앱 목록은 #83에서 구현. 모델 다운로드·배터리 최적화는 #59에서 온보딩에서 뺌)
-- 연락: `MessengerService`의 `canReplyDirectly`·`sendReply`(바로 답장, 정책 확인 후), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
+- 권한·연락처·클립보드·메신저 열기·바로 답장: Kotlin 모듈로 교체
+- 연락: `MessengerService`(복사·앱 열기·`canReplyDirectly`·`sendReply`), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
 - 친구: `services.friends`(`FriendService`)를 기기 안 암호화 DB의 person·account로 교체, 15 첫마디 후보는 가린 메모로 외부 AI
-- 저장소: 친구 목록·대화 상태가 커지면 기기 안 암호화 DB로 (로그인 토큰·온보딩·연락 상태·AI 답장은 keychain 완료)
+- 저장소: 온보딩 진행 상황·AI 답장 결과는 AsyncStorage/암호화 저장소(지금 메모리 `services.storage`), 친구 목록은 기기 안 암호화 DB (로그인 토큰은 keychain 완료)
 
 ## 다음 작업
+
+- **#77 origin/main merge 완료, PR 대기**: #81 갈래 엇갈림은 `useReplyFlow`로 옮김(연락 테스트 "갈래 엇갈림" 2개), #72 openApp에 대화 id 넘김, #74 목록 스크롤 위치 유지, autoRefresh 테스트는 새 D01 머리말을 기다리게 바꿈. 남은 것: Kotlin `MessengerModule`에 클립보드 읽기(readText) 추가(`TODO(네이티브)`, 지금 기기에서는 D04 붙여넣기가 "복사한 내용이 없어요"), 실기기 APK로 시안 비교·스크린샷(에뮬레이터는 메모리 부족)
+
+- 진행: **05 연락 최종 시안 반영** `feat/#77-contact` (시안 `docs/figma/contact`). 끝난 것: D01 목록·D02 분석 대화방 관리·D03 상세(최근 연락·관계·관련 일정 빈 상태)·답장 단계·D05 단체방, 아이콘 교체. D01·D02·D03 에뮬레이터 비교 완료. 연락 본문 바탕 흰색(`TabScreen`·`FooterLayout` `background="surface"`), 나중에 답하기 시트(`DeferSheet`, ReplyDefer 삭제)·보내기 팝업 완료, D04 긴 메시지 보완 완료 (시트·팝업·D04 에뮬레이터 비교는 06 작업이 끝난 뒤, 사용자가 알려 줌). "친구 정보 보기"·"미뤄두기 그만하기"는 삭제(팀 확정)
+  - D04(팀 확정): D01 안내·홈 빠른 기능 → 모든 대화의 잘린 메시지를 시작 화면부터 / D03 안내 → 그 대화만 2단계부터. 씨앗(`SeedProgress`, seed-gray·seed-color, 1x는 2x 복사)은 지금 보완하는 건까지 색, 많으면 줄바꿈. "붙여넣기"는 `services.messenger.readClipboard`(mock, `TODO(네이티브)`), 확인 완료 → `listTruncated`/`summarizePasted(…, messageId)`로 보완 표시 → 다음 건, 끝나면 토스트 + 돌아감. 없으면 안내 상자. "{앱} 열어서 복사하기"는 #72 기능이라 작은 텍스트 버튼으로 유지. 글자: 제목 titleSubsection, 설명 bodyCompact, 카드 이름 titleSection, 본문 captionDense, 시간 captionHero (`SummaryBlock` variant="message")
+  - mock 잘린 메시지 5건: 민지·서연 선배·상담센터·하늘·대학교 친구들(첫 메시지). 클립보드 mock은 `createMockMessengerService({ clipboard })`
+  - 나중에 답하기(팀 확정): 칩 오늘 저녁(오후 6시, 지나면 못 고름)·내일(기본)·3일 뒤·1주일 뒤(오전 9시), 버튼 "{칩} 다시 알려주기", 토스트 "오늘/내일/11월 30일 오전 9시에 다시 알려드릴게요"(직접 선택은 항상 날짜), 저장 후 상세에 남음. 직접 선택에서 취소·뒤로가기면 첫 시트로
+  - 보내기 팝업(팀 확정): `canReplyDirectly`면 "…바로 보내볼까요?"+바로 보내기 → 토스트 "답장을 보냈어요"+목록 / 실패 토스트 "보내지 못했어요. 복사해서 메신저에서 보내 주세요". 아니면 누를 때 복사 → "…지금 보내볼까요?"+메신저 열기 → "보냈다고 표시하기". 닫기는 그대로. 토스트 문구는 `TODO(Figma 문구 확인)`
+  - 글자(팀 확정): 시트 칩 = `labelChip` 12/18 Medium(공통 pill 칩 전체), "날짜와 시간 직접 선택" = `captionRelaxed` 12/20 Regular
+  - 구조: 상세는 한 화면(`ConversationDetail`), 답장 단계는 `useReplyFlow`(뒤로가기 한 단계씩). ReplyStance·ReplyTone·ReplyGroup 삭제, ReplyEdit은 친구 첫마디용으로만
+  - 꼭 챙길 연락·"!" = 별/하트 친구 + 직장 + 경조사 (관계·별은 mock, `TODO(06 친구)`). 관계 필터 단일 선택
+  - 도움 수준별 버튼: 추천 선택(미루기·안 고름 포함) 복사/수정, 추천 수정 수정/직접 쓰기, 직접 쓰기는 처음부터 작성 상자
+  - core 변경(PR에 적기): `UnderlineTabs` 글자 labelTab·칸 32+hitSlop, `ChoiceGroup` shape="pill"(글자 labelChip)·항목별 `disabled`, `DateTimeSheet` 시간 칩 pill·`minDateTime`(지난 시간 막기), `FooterLayout` background, `TextArea` typo, `TabScreen` onBack·divider·background, 토큰 labelNotice·labelMenu·titleProfile·bodyReply·labelChip·captionRelaxed, 아이콘 9개(Avatar·WarningBadge·SettingsSmall·Filter·Edit·Phone·Birthday·Copy·CalendarSmall)
+  - Figma와 다르게 간 부분(PR에 적기): D02 버튼 영역 흰 바탕(시안은 목록이 비침, 글자가 겹쳐 읽기 힘듦), D04 "{앱} 열어서 복사하기" 작은 텍스트 버튼(#72 대화방 바로 열기), D04 씨앗 1x 파일은 2x를 그대로 씀, 관계 메뉴 항목 높이 31(48dp 미만, 시안 우선), 직접 쓰기 시작 화면의 "나중에 답하기" 텍스트 버튼, "보냈다고 표시하기", "친구 정보 보기" 텍스트 버튼 유지, 입장 설명 고정 문구(`TODO(디자이너 문구 확인)`), 로고 1x 파일은 2x를 그대로 씀
 
 - 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 남은 것: 07(아이콘)·08·09는 민재 #73 머지 후 + 에셋(연락처 책 PNG·아바타·돋보기 SVG)과 함께. 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영

@@ -214,6 +214,28 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 | `captionQuick` | Pretendard Regular | `10/15` | `TextArea` 글자 수 |
 | `labelForm` | Pretendard Medium | `13/18` | 온보딩 10 줄 제목 (Label/Form) |
 
+#77 연락 최종 시안(05 연락 D01·D02)에서 추가·사용한 스타일
+
+| 코드 토큰 | 서체·굵기 | 크기/행간 | 사용처 |
+|---|---|---:|---|
+| `labelNotice` | Pretendard SemiBold | `12/19` | D01 "인식에 실패한 장문 메시지가 있어요" (추가) |
+| `labelMenu` | Pretendard Medium | `10/20` | D01 관계 필터 메뉴 항목 (추가) |
+| `titleSection` | Pretendard SemiBold | `14/20` | 연락 목록 이름 |
+| `captionDense` | Pretendard Regular | `11/12` | 연락 목록 요약 |
+| `captionHero` | Pretendard Regular | `11/17` | 연락 목록 시간 |
+| `captionQuick` | Pretendard Regular | `10/15` | 장문 안내 설명 |
+| `labelLink` | Pretendard Medium | `11/17` | "관계 ∨" 필터 |
+| `labelTab` | Pretendard Medium | `11/16` | 밑줄 탭 (Navigation/Label, 선택 textPrimary · 기본 textSecondary) |
+| `labelButtonCompact` | Pretendard Medium | `13/13` | D02 "변경 사항 저장하기"·"전체 선택", D03 버튼 (Figma 행간 자동) |
+| `titleProfile` | Pretendard Bold | `16/26` | D03 프로필 카드 이름 (추가) |
+| `bodyReply` | Pretendard Regular | `12/21` | D03 답장 입력 글자 (`TextArea` `typo`) (추가) |
+| `titleHomeSection` | Pretendard Bold | `16/22` | D03 섹션 제목 "요약"·"답장하기"·"관계 종류" |
+| `captionRegular` | Pretendard Regular | `12/17` | D03 요약 본문, 선택 상자 설명, 후보 말풍선 |
+| `labelForm` | Pretendard Medium | `13/18` | D03 선택 상자 제목 (수락·짧게) |
+| `labelField` | Pretendard SemiBold | `12/18` | D03 답장 입력 라벨 "선택한 답장" |
+| `labelChip` | Pretendard Medium | `12/18` | Local "Delay Chip"(`ChoiceGroup` pill): 나중에 답하기·시간·관계 종류 칩 (추가) |
+| `captionRelaxed` | Pretendard Regular | `12/20` | D03 나중에 답하기 시트 "날짜와 시간 직접 선택" 줄 (추가) |
+
 - **예외: 일정 카드 날짜.** 조선굴림체는 서비스명·브랜드 문구에만 쓰지만, 홈 일정 카드의 날짜 원("11월"·"22")은 시안대로 조선굴림체를 씀 (#53 팀 확정). Figma에서 로고와 같은 폰트로 지정돼 있고, 숫자 폭(약 0.46em)도 굴림 계열 반각 숫자와 일치
 
 - 화면에서는 `__Source/*`가 아니라 위의 역할 기반 스타일을 적용합니다.

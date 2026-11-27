@@ -1,11 +1,8 @@
 import type { ComponentType } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import AnalysisRooms from "@pages/contact/AnalysisRooms";
 import ConversationDetail from "@pages/contact/ConversationDetail";
-import ReplyStance from "@pages/contact/ReplyStance";
-import ReplyTone from "@pages/contact/ReplyTone";
-import ReplyGroup from "@pages/contact/ReplyGroup";
 import ReplyEdit from "@pages/contact/ReplyEdit";
-import ReplyDefer from "@pages/contact/ReplyDefer";
 import TruncatedMessage from "@pages/contact/TruncatedMessage";
 import FriendDetail from "@pages/friend/FriendDetail";
 import FirstWords from "@pages/friend/FirstWords";
@@ -41,13 +38,10 @@ export const createTabStack = (
       <Stack.Screen name="HomeHelpLevel" component={HelpLevel} />
       <Stack.Screen name="HomeHelpMode" component={HelpMode} />
 
-      {/* Contact (04 연락) */}
+      {/* Contact (04·05 연락) */}
+      <Stack.Screen name="AnalysisRooms" component={AnalysisRooms} />
       <Stack.Screen name="ConversationDetail" component={ConversationDetail} />
-      <Stack.Screen name="ReplyStance" component={ReplyStance} />
-      <Stack.Screen name="ReplyTone" component={ReplyTone} />
-      <Stack.Screen name="ReplyGroup" component={ReplyGroup} />
       <Stack.Screen name="ReplyEdit" component={ReplyEdit} />
-      <Stack.Screen name="ReplyDefer" component={ReplyDefer} />
       <Stack.Screen name="TruncatedMessage" component={TruncatedMessage} />
 
       {/* Friend (05 친구) */}

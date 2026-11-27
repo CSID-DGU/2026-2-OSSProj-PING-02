@@ -15,6 +15,9 @@ export interface Person {
   birthday?: string;
   // 얼려둔 관계: 사용자가 잠시 쉬어 두기로 한 친구
   frozen: boolean;
+  // 05 연락 D03 프로필 카드. 연락처에 없는 친구(알림으로만 잡힌 친구)는 없음 → "전화번호가 없어요"
+  // TODO(06 친구): 기기 연락처(ContactsService)와 연결. 지금은 mock 데이터에만 있음
+  phone?: string;
 }
 
 // account: 메신저별 계정 (알림의 발신자 이름으로 구분)
@@ -28,6 +31,9 @@ export interface Account {
 
 export type ConversationKind = "direct" | "group";
 
+// 관계 (05 연락 D01 관계 필터: 친구/가족/직장/기타)
+export type ContactRelation = "friend" | "family" | "work" | "etc";
+
 // conversation: 1:1 또는 단톡방
 export interface Conversation {
   id: string;
@@ -36,6 +42,13 @@ export interface Conversation {
   title: string; // 1:1이면 상대 이름, 단톡이면 방 이름
   personId: string | null;
   lastMessageAt: string; // ISO
+  // TODO(06 친구): 친구 정보(person)의 관계·별/하트로 교체. 지금은 mock 데이터에만 있고
+  // 기기 알림 대화는 비어 있음 (관계 필터 "전체"에서만 보임)
+  relation?: ContactRelation;
+  // 친구 탭에서 별/하트를 켠 친구 (꼭 챙길 연락 기준)
+  favorite?: boolean;
+  // 05 연락 D03 관계 탭 "관계 설명" (TODO(06 친구): 친구 메모와 합치기)
+  relationNote?: string;
 }
 
 // message: 알림으로 받은 메시지 (원문은 기기에만)
@@ -112,6 +125,12 @@ export interface ConversationSummary {
   analysis: Analysis;
   deferred?: DeferredReply;
   replied: boolean;
+}
+
+// 05 연락 D04 긴 메시지 보완: 알림에서 잘린 메시지 하나
+export interface TruncatedItem {
+  conversation: Conversation;
+  message: Message;
 }
 
 export interface ConversationDetail extends ConversationSummary {

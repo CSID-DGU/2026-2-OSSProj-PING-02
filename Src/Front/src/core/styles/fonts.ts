@@ -72,6 +72,12 @@ export const fonts = {
   bodySmallRelaxed: fontGenerator(13, fontFamily.regular, 20), // #59 온보딩 11 소제목 설명
   labelField: fontGenerator(12, fontFamily.semiBold, 18), // #59 TextArea 상자 라벨
   captionChip: fontGenerator(10, fontFamily.regular, 13.5), // #59 공통 칩 글자 (135%)
+  labelNotice: fontGenerator(12, fontFamily.semiBold, 19), // #77 연락 D01 장문 안내 제목
+  labelMenu: fontGenerator(10, fontFamily.medium, 20), // #77 연락 D01 관계 필터 메뉴 항목
+  titleProfile: fontGenerator(16, fontFamily.bold, 26), // #77 연락 D03 프로필 카드 이름
+  bodyReply: fontGenerator(12, fontFamily.regular, 21), // #77 연락 D03 답장 입력 글자
+  labelChip: fontGenerator(12, fontFamily.medium, 18), // #77 연락 Delay Chip (나중에 답하기·시간·관계 종류 칩)
+  captionRelaxed: fontGenerator(12, fontFamily.regular, 20), // #77 연락 D03 "날짜와 시간 직접 선택" 줄
 };
 
 export const FontList = Object.keys(fonts);

@@ -1,8 +1,7 @@
-import { useState } from "react";
-import type { LayoutChangeEvent } from "react-native";
+import { StyleSheet } from "react-native";
 import styled, { useTheme } from "styled-components/native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { ChevronRightIcon } from "@core/ui/icon";
+import SeedGradientBox from "@components/main/SeedGradientBox";
 import { HERO, type HelpMode } from "@constants/homeHelp";
 
 // 04 홈 히어로 카드 (Figma C01): 328×176, 모서리 28, 왼쪽 surfaceSeed → 오른쪽 stateSelectedBg 가로 그라데이션
@@ -20,34 +19,9 @@ const HomeHero = ({ mode, onChange }: HomeHeroProps) => {
   const theme = useTheme();
   const copy = HERO[mode ?? "unset"];
   const image = mode ? MODE_IMAGE : HERO_IMAGE;
-  // 그라데이션은 카드 실제 크기로 그림: Svg의 "100%"는 안쪽 여백을 뺀 크기로 잡히고,
-  // 안드로이드에서 overflow hidden이 Svg 모서리를 자르지 않아 둥근 모서리도 Svg에서 직접 그림
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  const onLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    setSize(prev =>
-      prev.width === width && prev.height === height ? prev : { width, height }
-    );
-  };
 
   return (
-    <Wrapper onLayout={onLayout}>
-      {size.width > 0 && (
-        <Svg style={StyledFill} width={size.width} height={size.height}>
-          <Defs>
-            <LinearGradient id="homeHero" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0" stopColor={theme.colors.surfaceSeed} />
-              <Stop offset="1" stopColor={theme.colors.stateSelectedBg} />
-            </LinearGradient>
-          </Defs>
-          <Rect
-            width={size.width}
-            height={size.height}
-            rx={RADIUS}
-            fill="url(#homeHero)"
-          />
-        </Svg>
-      )}
+    <SeedGradientBox id="homeHero" radius={RADIUS} style={styles.wrapper}>
       <Character
         source={copy.image}
         $size={image.size}
@@ -72,19 +46,20 @@ const HomeHero = ({ mode, onChange }: HomeHeroProps) => {
         <ChangeText>상태 바꾸기</ChangeText>
         <ChevronRightIcon size={15} color={theme.colors.brandBrown} />
       </ChangeButton>
-    </Wrapper>
+    </SeedGradientBox>
   );
 };
 
 const RADIUS = 28;
-const StyledFill = { position: "absolute" as const, top: 0, left: 0 };
 
-const Wrapper = styled.View`
-  min-height: 176px;
-  padding: 18px 0px 27px 18px;
-  border-radius: ${RADIUS}px;
-  overflow: hidden;
-`;
+const styles = StyleSheet.create({
+  wrapper: {
+    minHeight: 176,
+    paddingTop: 18,
+    paddingBottom: 27,
+    paddingLeft: 18,
+  },
+});
 
 const Character = styled.Image<{ $size: number; $right: number; $top: number }>`
   position: absolute;

@@ -3,6 +3,7 @@ import type { Account, Person } from "../conversation/types";
 // mock 친구 데이터 (Figma 05 친구 예시 + 연락 mock과 같은 사람들)
 // - 민지: 카카오톡 + 인스타그램 계정을 같은 사람으로 합쳐 둔 상태, 문자 "김민지"는 아직 연결 안 됨(합치기 후보)
 // - 지연: 얼려둔 관계, 이도현: 긴 이름(말줄임 확인)
+// - 전화번호: 민지·서연 선배만 (나머지는 알림으로만 잡힌 친구 → "전화번호가 없어요")
 // 1:1 대화가 있는 계정 id는 연락 mock 메시지의 accountId(`대화id-보낸 사람`)와 같게 맞춤
 const DAY = 24 * 60 * 60_000;
 const daysAgo = (days: number) => new Date(Date.now() - days * DAY).toISOString();
@@ -15,6 +16,7 @@ export const PERSONS: Person[] = [
     frozen: false,
     memo: "대학교 친구 · 편하게 안부를 물어볼 수 있음",
     birthday: "05-18",
+    phone: "010-1234-5678",
   },
   {
     id: "p-junho",
@@ -30,6 +32,7 @@ export const PERSONS: Person[] = [
     frozen: false,
     memo: "동아리 선배",
     birthday: "12-03",
+    phone: "010-2345-6789",
   },
   { id: "p-haneul", displayName: "하늘", isFriend: true, frozen: false },
   {

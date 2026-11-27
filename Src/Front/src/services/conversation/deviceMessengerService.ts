@@ -77,6 +77,12 @@ export const createDeviceMessengerService = (
       await launch(await defaultPackage(app));
     },
 
+    // 05 연락 D04 "붙여넣기". TODO(네이티브): MessengerModule에 클립보드 읽기(readText) 추가
+    // 지금은 빈 값 → 화면이 "복사한 내용이 없어요" 안내 (상자에 직접 붙여넣기는 됨)
+    async readClipboard() {
+      return "";
+    },
+
     async canReplyDirectly() {
       return false;
     },

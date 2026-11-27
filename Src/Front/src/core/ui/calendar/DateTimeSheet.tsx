@@ -14,7 +14,7 @@ import {
 } from "./dateUtils";
 
 // Figma: 05 연락 Screens D03
-//  - "날짜와 시간 직접 선택"(나중에 답하기): 달력 + 시간 칩(오전 9시/오후 6시) → timePresets
+//  - "날짜와 시간 직접 선택"(나중에 답하기): 달력 + 시간 칩(오전 9시/오후 6시, pill) → timePresets
 //  - "새 일정 추가_날짜및시간선택": 달력 + "시간 [오후 1시 ⌄]" → 기본(드롭다운)
 // 구성: 바텀 시트(제목) · 달력 · 구분선 · 시간 · 노란 확인 버튼(선택 내용이 들어간 문구) · 취소
 export interface DateTimeSheetProps {
@@ -31,6 +31,8 @@ export interface DateTimeSheetProps {
   timeStep?: number;
   minDate?: Date;
   maxDate?: Date;
+  // 이 시각보다 이른 날짜+시간은 확인할 수 없음 (시간 칩도 막음). 예: 지금 → 오늘의 지난 시간
+  minDateTime?: Date;
   // 확인 버튼 문구. 기본 "11월 29일 일요일 오후 1시 선택하기"
   confirmLabel?: (date: Date) => string;
   cancelLabel?: string;
@@ -49,6 +51,7 @@ export const DateTimeSheet = ({
   timeStep,
   minDate,
   maxDate,
+  minDateTime,
   confirmLabel,
   cancelLabel,
 }: DateTimeSheetProps) => {
@@ -75,6 +78,9 @@ export const DateTimeSheet = ({
   const ready = !!day && (!withTime || minutes !== undefined);
   const result =
     day && ready ? (withTime ? withMinutes(day, minutes!) : day) : null;
+  const isTooEarly = (date: Date) =>
+    !!minDateTime && date.getTime() < minDateTime.getTime();
+  const tooEarly = !!result && isTooEarly(result);
 
   const label = result
     ? confirmLabel?.(result) ??
@@ -91,8 +97,8 @@ export const DateTimeSheet = ({
       footer={
         <BottomSheetActions
           confirmLabel={label}
-          confirmDisabled={!result}
-          onConfirm={() => result && onConfirm(result)}
+          confirmDisabled={!result || tooEarly}
+          onConfirm={() => result && !tooEarly && onConfirm(result)}
           cancelLabel={cancelLabel}
           onCancel={onClose}
         />
@@ -109,9 +115,11 @@ export const DateTimeSheet = ({
         <TimeArea>
           {timePresets ? (
             <ChoiceGroup
+              shape="pill"
               options={timePresets.map(m => ({
                 label: formatTime(m),
                 value: String(m),
+                disabled: !!day && isTooEarly(withMinutes(day, m)),
               }))}
               value={minutes === undefined ? undefined : String(minutes)}
               onChange={v => setMinutes(Number(v))}

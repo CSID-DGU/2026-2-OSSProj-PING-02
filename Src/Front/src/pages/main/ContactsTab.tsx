@@ -2,35 +2,37 @@ import { useState } from "react";
 import { ActivityIndicator, FlatList } from "react-native";
 import { useTheme } from "styled-components/native";
 import { Button } from "@core/ui/button";
-import { Card, CardDescription } from "@core/ui/card";
-import { ChoiceGroup } from "@core/ui/choice";
-import AuthIntro from "@components/auth/AuthIntro";
-import ConversationCard from "@components/contact/ConversationCard";
+import ContactListControls from "@components/contact/ContactListControls";
+import ConversationRow from "@components/contact/ConversationRow";
+import LongMessageNotice from "@components/contact/LongMessageNotice";
+import HomeHero from "@components/home/HomeHero";
 import TabScreen from "@components/main/TabScreen";
 import Notice from "@components/onboarding/Notice";
-import { formatRemind } from "@constants/contact";
+import {
+  filterConversations,
+  formatRemind,
+  type ContactTab,
+  type RelationFilter,
+} from "@constants/contact";
+import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useOpenConversation } from "@hooks/useConversationDetail";
 import { useConversations } from "@hooks/useConversations";
-import type { ConversationSummary } from "@services";
+import { useHomeHelp } from "@hooks/useHomeHelp";
 import * as s from "./ContactsTab_styled";
 
-// 04 / 07 연락 목록 + 12 미뤄둔 답장("나중에" 필터)
-// 와이어프레임의 구조·문구를 따르고 색·컴포넌트는 design-system
-type Filter = "all" | "important" | "later";
+// 05 연락 D01 연락 목록 (Figma "05 연락 최종")
+// 앱바: 탭 첫 화면이라 뒤로가기 없이 가운데 "연락" + 🔔, 구분선 없음
+// 오늘의 도움 수준 카드(홈과 같음) → 탭 → 톱니·관계 필터 → 장문 안내 → 목록
+// 목록 맨 앞(머리말)부터 보이는 첫 항목의 위치를 지킴 (FlatList는 머리말이 0번)
+const MAINTAIN_POSITION = { minIndexForVisible: 0 };
 
-const FILTER_OPTIONS: { label: string; value: Filter }[] = [
-  { label: "전체", value: "all" },
-  { label: "중요", value: "important" },
-  { label: "나중에", value: "later" },
-];
-
-const EMPTY_TEXT: Record<Filter, { title: string; body: string }> = {
+const EMPTY_TEXT: Record<ContactTab, { title: string; body: string }> = {
   all: {
     title: "아직 모인 연락이 없어요",
     body: "선택한 앱에 새 알림이 오면 여기에 조용히 모아 둘게요.",
   },
-  important: {
-    title: "지금 중요한 연락은 없어요",
+  mustCare: {
+    title: "지금 꼭 챙길 연락은 없어요",
     body: "편한 마음으로 다른 연락을 둘러봐도 괜찮아요.",
   },
   later: {
@@ -39,27 +41,20 @@ const EMPTY_TEXT: Record<Filter, { title: string; body: string }> = {
   },
 };
 
-// 목록 맨 앞(머리말)부터 보이는 첫 항목의 위치를 지킴 (FlatList는 머리말이 0번)
-const MAINTAIN_POSITION = { minIndexForVisible: 0 };
-
-// 중요: 경조사·마감, 나를 언급한 질문 등 분석에서 중요로 고른 연락 (모델이 있어야 판단 가능)
-const isImportant = (item: ConversationSummary) =>
-  item.analysis.status === "done" &&
-  !item.replied &&
-  (item.analysis.priority === "high" ||
-    (item.analysis.mentionsMe && item.analysis.needsReply));
-
 const ContactsTab = ({ title }: { title: string }) => {
   const theme = useTheme();
+  const navigation = useAuthNavigation();
   const { state, retry } = useConversations();
-  const [filter, setFilter] = useState<Filter>("all");
+  const { mode } = useHomeHelp();
+  const [tab, setTab] = useState<ContactTab>("all");
+  const [relation, setRelation] = useState<RelationFilter>("all");
 
   // 단톡은 09-C로, 1:1은 08 연락 상세로
   const open = useOpenConversation();
 
   if (state.status === "loading") {
     return (
-      <TabScreen title={title}>
+      <TabScreen title={title} divider={false} background="surface">
         <s.Center>
           <ActivityIndicator
             color={theme.colors.iconSubtle}
@@ -72,7 +67,7 @@ const ContactsTab = ({ title }: { title: string }) => {
 
   if (state.status === "error") {
     return (
-      <TabScreen title={title}>
+      <TabScreen title={title} divider={false} background="surface">
         <s.Center>
           <Notice tone="danger" align="center" title="연락을 불러오지 못했어요">
             <Button variant="text" onPress={retry}>
@@ -85,50 +80,49 @@ const ContactsTab = ({ title }: { title: string }) => {
   }
 
   const { items } = state;
-  const later = items.filter(i => i.deferred);
-  const data =
-    filter === "later"
-      ? later
-      : filter === "important"
-      ? items.filter(isImportant)
-      : items;
+  const laterCount = items.filter(i => i.deferred).length;
+  const data = filterConversations(items, tab, relation);
+  // 알림에 앞부분만 온 메시지 → 모든 대화의 긴 메시지 보완(D04)으로
+  const truncated = items.some(i => i.lastMessage.truncated);
 
   const header = (
-    <s.Header>
-      <AuthIntro
-        title="연락"
-        // TODO(Figma 문구 확인): 시안 "중요도보다 부담이 적은 순서로도 볼 수 있어요."
-        // 정렬 기능이 아직 없어 약속하지 않는 문구로 둠
-        description="편한 순서대로 천천히 살펴봐도 괜찮아요."
+    <>
+      <s.HeroSlot>
+        <HomeHero
+          mode={mode}
+          onChange={() =>
+            navigation.navigate("HomeHelpLevel", { current: mode ?? undefined })
+          }
+        />
+      </s.HeroSlot>
+      <ContactListControls
+        tab={tab}
+        onTabChange={setTab}
+        laterCount={laterCount}
+        relation={relation}
+        onRelationChange={setRelation}
+        onSettings={() => navigation.navigate("AnalysisRooms")}
       />
-      <ChoiceGroup
-        shape="chip"
-        options={FILTER_OPTIONS.map(o => ({
-          ...o,
-          label:
-            o.value === "later" && later.length > 0
-              ? `${o.label} ${later.length}`
-              : o.label,
-        }))}
-        value={filter}
-        onChange={setFilter}
-      />
-      {filter === "later" && later.length > 0 && (
-        <Notice align="center" title="기한이 지나도 재촉하지 않아요">
-          다시 볼 때가 되면 조용히 한 번만 알려 드려요.
-        </Notice>
+      {truncated && (
+        <s.NoticeSlot>
+          <LongMessageNotice
+            onPress={() => navigation.navigate("TruncatedMessage")}
+          />
+        </s.NoticeSlot>
       )}
-    </s.Header>
+    </>
   );
 
   const empty = (
-    <Notice align="center" title={EMPTY_TEXT[filter].title}>
-      {EMPTY_TEXT[filter].body}
-    </Notice>
+    <s.Empty>
+      <Notice align="center" title={EMPTY_TEXT[tab].title}>
+        {EMPTY_TEXT[tab].body}
+      </Notice>
+    </s.Empty>
   );
 
   return (
-    <TabScreen title={title}>
+    <TabScreen title={title} divider={false} background="surface">
       <FlatList
         data={data}
         keyExtractor={item => item.conversation.id}
@@ -138,31 +132,18 @@ const ContactsTab = ({ title }: { title: string }) => {
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         contentContainerStyle={s.listContent}
-        renderItem={({ item }) =>
-          filter === "later" && item.deferred ? (
-            // 12 미뤄둔 답장 카드: "이름 · N일 뒤 다시 보기" + 무엇에 대한 답장인지
-            <Card
-              onPress={() => open(item.conversation)}
-              accessibilityLabel={`${item.conversation.title}, ${formatRemind(
-                item.deferred.remindAt
-              )}. ${item.deferred.topic}`}
-              accessibilityHint="눌러서 자세히 봐요"
-            >
-              <s.TitleRow>
-                <s.Title numberOfLines={1}>{item.conversation.title}</s.Title>
-                <s.Sub>{`· ${formatRemind(item.deferred.remindAt)}`}</s.Sub>
-              </s.TitleRow>
-              <CardDescription numberOfLines={2}>
-                {item.deferred.topic}
-              </CardDescription>
-            </Card>
-          ) : (
-            <ConversationCard
-              item={item}
-              onPress={() => open(item.conversation)}
-            />
-          )
-        }
+        renderItem={({ item }) => (
+          <ConversationRow
+            item={item}
+            onPress={() => open(item.conversation)}
+            // 미뤄둔 답장 탭: 시간 자리에 "3일 뒤 다시 보기"
+            meta={
+              tab === "later" && item.deferred
+                ? formatRemind(item.deferred.remindAt)
+                : undefined
+            }
+          />
+        )}
       />
     </TabScreen>
   );

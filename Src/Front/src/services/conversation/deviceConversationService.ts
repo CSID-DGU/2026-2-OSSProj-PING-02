@@ -18,6 +18,7 @@ import {
 import type {
   Analysis,
   AnalysisTag,
+  ContactRelation,
   Conversation,
   ConversationDetail,
   ConversationSummary,
@@ -103,9 +104,19 @@ interface StoredState {
   /** 대화방 id → 확인만 한 시각(ms) */
   checked: Record<string, number>;
   deferred: Record<string, DeferredReply>;
+  /** 05 연락 D02에서 분석을 끈 대화방 id. 목록·홈에서 빠짐 */
+  analysisOff: string[];
+  /** 05 연락 D03 관계 탭에서 저장한 관계 종류·설명 */
+  relations: Record<string, { relation: ContactRelation; note: string }>;
 }
 
-const emptyState = (): StoredState => ({ replied: {}, checked: {}, deferred: {} });
+const emptyState = (): StoredState => ({
+  replied: {},
+  checked: {},
+  deferred: {},
+  analysisOff: [],
+  relations: {},
+});
 
 // 화면에서 쓰는 대화방 id: "패키지::대화방ID" (대화방 ID는 앱마다 겹칠 수 있어 앱을 붙임)
 const SEPARATOR = "::";
@@ -264,7 +275,14 @@ export const createDeviceConversationService = ({
     state: StoredState,
     forDetail = false
   ): Promise<ConversationSummary> => {
-    const conversation = toConversation(key, rows);
+    const savedRelation = state.relations[key];
+    const conversation: Conversation = {
+      ...toConversation(key, rows),
+      ...(savedRelation && {
+        relation: savedRelation.relation,
+        relationNote: savedRelation.note,
+      }),
+    };
     const last = rows[rows.length - 1];
     const handledAt = Math.max(state.replied[key] ?? 0, state.checked[key] ?? 0);
     const saved = await latestAiReply(key, last.messageTime);
@@ -327,7 +345,7 @@ export const createDeviceConversationService = ({
 
   const service: ConversationService = {
     onChange: listener => source.onSaved?.(listener) ?? (() => {}),
-    async list() {
+    async list({ includeAnalysisOff = false } = {}) {
       const [rows, state] = await Promise.all([
         source.getNotifications({ limit: LIST_LIMIT }),
         readState(),
@@ -336,6 +354,7 @@ export const createDeviceConversationService = ({
       for (const row of rows) {
         if (!PACKAGE_TO_APP[row.packageName]) continue;
         const key = toConversationKey(row.packageName, row.conversationId);
+        if (!includeAnalysisOff && state.analysisOff.includes(key)) continue;
         const list = groups.get(key) ?? [];
         list.push(row);
         groups.set(key, list);
@@ -346,6 +365,23 @@ export const createDeviceConversationService = ({
       return summaries.sort((a, b) =>
         b.conversation.lastMessageAt.localeCompare(a.conversation.lastMessageAt)
       );
+    },
+
+    // TODO(네이티브): 끈 방은 알림 수집(Kotlin)에서도 빼서 메시지를 쌓지 않기. 지금은 화면에서만 숨김
+    async saveRelation(key, relation) {
+      await updateState(s => {
+        s.relations[key] = relation;
+      });
+    },
+
+    async getAnalysisOffIds() {
+      return (await readState()).analysisOff;
+    },
+
+    async setAnalysisOffIds(ids) {
+      await updateState(s => {
+        s.analysisOff = [...ids];
+      });
     },
 
     async get(key) {
@@ -402,6 +438,12 @@ export const createDeviceConversationService = ({
           ...(stance ? { stance } : {}),
           text,
         }));
+    },
+
+    // 지금은 알림에서 잘린 메시지를 판별하지 않아 항상 없음 (위 truncated: false)
+    // TODO(알림 수집): 판별 규칙이 생기면 잘린 메시지를 돌려주고, summarizePasted에서 보완 표시
+    async listTruncated() {
+      return [];
     },
 
     async summarizePasted(key, text) {

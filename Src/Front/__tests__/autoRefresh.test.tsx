@@ -77,6 +77,9 @@ const comeBackToApp = async () => {
   });
 };
 
+// 05 연락 D01 목록 머리말(장문 안내): 목록을 처음 불러온 뒤에만 보임 (mock에 잘린 메시지가 있음)
+const LIST_HEADER = "인식에 실패한 장문 메시지가 있어요";
+
 const openContactsTab = async () => {
   const login = await services.auth.login(MOCK_DEMO_ACCOUNT.loginId, MOCK_DEMO_ACCOUNT.password);
   services.tokens.set(login.tokens);
@@ -88,7 +91,7 @@ const openContactsTab = async () => {
   const root = await renderApp();
   await waitForText(root, "오늘의 도움 수준");
   await pressByRole(root, "tab", "연락");
-  await waitForText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.");
+  await waitForText(root, LIST_HEADER);
   return root;
 };
 
@@ -107,7 +110,8 @@ test("목록을 보는 중에 새 메시지가 오면 로딩 없이 맨 위에 �
 
   await ReactTestRenderer.act(() => ctl.newMessage("새로 온 친구", template));
   await waitForText(root, "새로 온 친구");
-  expect(findText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.").length).toBeGreaterThan(0);
+  // 다시 불러오는 동안에도 목록(머리말)이 그대로 있고 로딩 화면으로 바뀌지 않음
+  expect(findText(root, LIST_HEADER).length).toBeGreaterThan(0);
   expect(root.findAll(n => n.props.accessibilityLabel === "연락을 불러오는 중")).toHaveLength(0);
 
   // 새 대화가 기존 첫 대화보다 위에 (목록은 최근 대화 먼저)

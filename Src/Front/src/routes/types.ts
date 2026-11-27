@@ -23,15 +23,13 @@ export type TabStackParamList = {
   // 04 홈: C02 오늘 상태 선택(current: 지금 고른 모드) / C03~C05 모드별 화면
   HomeHelpLevel: { current?: HelpMode } | undefined;
   HomeHelpMode: { mode: Exclude<HelpMode, "rest"> };
-  // 04 연락
-  // 08 1:1 연락 상세
+  // 05 연락 D02 분석 대화방 관리 (D01 톱니)
+  AnalysisRooms: undefined;
+  // 05 연락 D03 연락 상세(1:1) · D05 단체방: 요약·답장 단계·관계·관련 일정이 한 화면
+  //   (#77에서 예전 08·09-A·09-B·09-C·10을 합침)
   ConversationDetail: { conversationId: string };
-  // 09-A 입장 고르기 / 09-B 말투 고르기 / 09-C 단톡·정보 요약 (단톡 카드는 08 없이 바로)
-  ReplyStance: { conversationId: string };
-  ReplyTone: { conversationId: string };
-  ReplyGroup: { conversationId: string };
-  // 10 답장 다듬기. tone이 없으면 직접 쓰기(말투 조절 없음)
-  // personId: 05 / 15 첫마디에서 온 경우 (대화 없이 친구에게 먼저 보냄, 바로 보내기·나중에 답하기 없음)
+  // 답장 다듬기: 지금은 05 / 15 첫마디(personId)에서만 씀 (친구 이슈에서 정리)
+  // conversationId 형태는 #77 전 연락 흐름용으로 남아 있음
   ReplyEdit:
     | {
         conversationId: string;
@@ -40,10 +38,9 @@ export type TabStackParamList = {
         stance?: Stance;
       }
     | { personId: string; text: string };
-  // 11 나중에 답하기
-  ReplyDefer: { conversationId: string };
   // 08 "메시지가 잘린 상태 보기" (시안 없음)
-  TruncatedMessage: { conversationId: string };
+  // 05 연락 D04 긴 메시지 보완: conversationId 없으면 모든 대화(D01 안내·홈 빠른 기능), 있으면 그 대화만(D03)
+  TruncatedMessage: { conversationId?: string } | undefined;
   // 05 친구
   // 14 친구 상세 / 15 첫마디 제안
   FriendDetail: { personId: string };

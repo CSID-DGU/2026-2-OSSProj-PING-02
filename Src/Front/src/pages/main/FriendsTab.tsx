@@ -11,7 +11,7 @@ import { friendStatusText } from "@constants/friend";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useFocusLoad } from "@hooks/useFocusLoad";
 import { services, type FriendSummary } from "@services";
-import * as s from "./ContactsTab_styled";
+import * as s from "./FriendsTab_styled";
 
 // 05 / 13 친구 목록 (Figma 05 친구 Screens, 색·컴포넌트는 design-system)
 // - 최근에 연락한 순서, 얼려둔 관계는 맨 아래 (서비스에서 정렬)
