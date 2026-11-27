@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AI_DEFAULTS } from '../../config/configuration';
 import { Completion, UpstreamError, UpstreamFailure } from './openrouter.client';
 import { ChatMessage, REPLY_JSON_SCHEMA } from './prompt.builder';
 
@@ -38,7 +39,7 @@ export class AnthropicClient {
       apiKey: this.config.get<string>('ai.anthropic.apiKey'),
       // 비어 있으면 SDK 기본 주소(api.anthropic.com). 테스트에서만 가짜 서버 주소를 넣는다.
       baseURL: this.config.get<string>('ai.anthropic.baseUrl') || undefined,
-      timeout: this.config.get<number>('ai.timeoutMs') ?? 20_000,
+      timeout: this.config.get<number>('ai.timeoutMs') ?? AI_DEFAULTS.timeoutMs,
       maxRetries: 0,
     });
 
@@ -79,7 +80,7 @@ export class AnthropicClient {
     return {
       model: this.config.get<string>('ai.anthropic.model') as string,
       // 최신 모델은 생각(thinking) 토큰도 max_tokens 에 포함되므로 OpenRouter(400)보다 넉넉히 둔다.
-      max_tokens: this.config.get<number>('ai.anthropic.maxOutputTokens') ?? 2048,
+      max_tokens: this.config.get<number>('ai.anthropic.maxOutputTokens') ?? AI_DEFAULTS.anthropicMaxOutputTokens,
       ...(system ? { system } : {}),
       messages: messages.filter((m) => m.role === 'user').map((m) => ({ role: 'user' as const, content: m.content })),
       output_config: {

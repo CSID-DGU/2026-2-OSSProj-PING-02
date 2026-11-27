@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AI_DEFAULTS } from '../../config/configuration';
 import { ChatMessage, REPLY_JSON_SCHEMA } from './prompt.builder';
 
 /** 외부 호출 실패의 종류. 외부 응답 원문(본문이 섞일 수 있음)은 담지 않는다. */
@@ -40,7 +41,7 @@ export class OpenRouterClient {
     if (!this.isConfigured()) throw new UpstreamError('not_configured');
 
     const baseUrl = this.config.get<string>('ai.baseUrl') ?? 'https://openrouter.ai/api/v1';
-    const timeoutMs = this.config.get<number>('ai.timeoutMs') ?? 20_000;
+    const timeoutMs = this.config.get<number>('ai.timeoutMs') ?? AI_DEFAULTS.timeoutMs;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -92,7 +93,7 @@ export class OpenRouterClient {
       model: this.config.get<string>('ai.model'),
       messages,
       stream: false,
-      max_tokens: this.config.get<number>('ai.maxOutputTokens') ?? 400,
+      max_tokens: this.config.get<number>('ai.maxOutputTokens') ?? AI_DEFAULTS.maxOutputTokens,
       temperature: 0.7,
       response_format: { type: 'json_schema', json_schema: REPLY_JSON_SCHEMA },
       provider: { zdr: true, data_collection: 'deny', require_parameters: true },

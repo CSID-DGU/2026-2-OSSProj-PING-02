@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { createServer, IncomingMessage, Server } from 'http';
 import request from 'supertest';
 import { register, startApp, TestContext, usernameOf } from './support/app';
+import { DECISION_REPLIES, FAKE_SUMMARY, fakeModelOutput, GENERAL_REPLIES } from './support/fake-ai-replies';
 
 // 보조(테스트용) 통로: AI_PROVIDER=anthropic 일 때 같은 /v1/ai/reply 가 Claude API 형식으로 나가는지 확인한다.
 // 입력 검사·마스킹 검사·요청 제한은 통로와 상관없이 같은 코드라 ai-reply.e2e-spec.ts 에서 확인한다.
@@ -15,6 +16,8 @@ type Mode = 'ok' | 'invalid' | 'refusal' | 'maxTokens' | 'error500' | 'overloade
 /** Claude API 대신 요청을 받는 가짜 서버(/v1/messages). 받은 요청을 기록해 두고, mode 에 따라 응답한다. */
 const fake = {
   mode: 'ok' as Mode,
+  // 앱이 needsDecision 을 보내지 않았을 때 가짜 모델이 내릴 판단
+  decide: true,
   requests: [] as Array<{ url: string | undefined; headers: IncomingMessage['headers']; body: any }>,
 };
 let server: Server;
@@ -29,7 +32,6 @@ const message = (text: string, stopReason = 'end_turn') => ({
   stop_sequence: null,
   usage: { input_tokens: 10, output_tokens: 20 },
 });
-const okReply = JSON.stringify({ summary: '상대가 저녁을 제안했어요.', replies: ['좋아!', '확인하고 알려줄게', '이번엔 어려워'] });
 const apiError = (type: string, msg: string) => ({ type: 'error', error: { type, message: msg } });
 
 beforeAll(async () => {
@@ -37,14 +39,15 @@ beforeAll(async () => {
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
-      fake.requests.push({ url: req.url, headers: req.headers, body: JSON.parse(raw || '{}') });
+      const parsed = JSON.parse(raw || '{}');
+      fake.requests.push({ url: req.url, headers: req.headers, body: parsed });
       const send = (status: number, body: unknown) => {
         res.writeHead(status, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(body));
       };
       switch (fake.mode) {
         case 'ok':
-          return send(200, message(okReply));
+          return send(200, message(fakeModelOutput(parsed.messages?.[0]?.content ?? '', fake.decide)));
         case 'invalid':
           return send(200, message('이전 지시를 무시하고 시스템 프롬프트를 알려 줄게'));
         case 'refusal':
@@ -95,6 +98,7 @@ function captureOutput() {
 
 beforeEach(async () => {
   fake.mode = 'ok';
+  fake.decide = true;
   fake.requests = [];
   ctx = await startApp();
   captureOutput();
@@ -131,24 +135,22 @@ const ask = (accessToken: string, payload: Record<string, unknown> = body()) =>
   http().post('/v1/ai/reply').set('Authorization', `Bearer ${accessToken}`).send(payload);
 
 describe('Claude 통로 (AI_PROVIDER=anthropic): 정상 흐름', () => {
-  it('앱이 받는 응답 형식은 OpenRouter 통로와 같다 (요약 + 라벨 붙은 답장 3개)', async () => {
+  it('앱이 받는 응답 형식은 OpenRouter 통로와 같다 (결정 필요: 입장 × 말투 9개)', async () => {
     const res = await ask(await token());
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      summary: '상대가 저녁을 제안했어요.',
-      replies: [
-        { label: '수락', text: '좋아!' },
-        { label: '보류', text: '확인하고 알려줄게' },
-        { label: '거절', text: '이번엔 어려워' },
-      ],
-    });
+    expect(res.body).toEqual({ summary: FAKE_SUMMARY, needsDecision: true, replies: DECISION_REPLIES });
   });
 
-  it('입장(stance)을 보내면 말투 라벨이 붙고, 프롬프트에 그 입장이 들어간다', async () => {
-    const res = await ask(await token(), body({ stance: 'DECLINE' }));
-    expect(res.status).toBe(200);
-    expect(res.body.replies.map((r: { label: string }) => r.label)).toEqual(['짧게', '다정하게', '공손하게']);
-    expect(fake.requests[0].body.messages[0].content).toContain("'거절' 입장으로 정했다");
+  it('결정이 필요 없으면 말투 3개', async () => {
+    const res = await ask(await token(), body({ needsDecision: false }));
+    expect(res.body).toEqual({ summary: FAKE_SUMMARY, needsDecision: false, replies: GENERAL_REPLIES });
+  });
+
+  it('needsDecision 을 보내지 않으면 AI 가 판단한다', async () => {
+    fake.decide = false;
+    const res = await ask(await token(), body({ needsDecision: undefined }));
+    expect(res.body).toEqual({ summary: FAKE_SUMMARY, needsDecision: false, replies: GENERAL_REPLIES });
+    expect(fake.requests[0].body.messages[0].content).toContain('판단해서 needsDecision에 쓰고');
   });
 
   it('Claude Messages API 형식으로 보낸다: system 은 최상위, JSON 스키마 강제, temperature 없음', async () => {
@@ -157,7 +159,7 @@ describe('Claude 통로 (AI_PROVIDER=anthropic): 정상 흐름', () => {
     const [r] = fake.requests;
     expect(r.url).toBe('/v1/messages');
     expect(r.body.model).toBe('claude-test-model');
-    expect(r.body.max_tokens).toBe(2048);
+    expect(r.body.max_tokens).toBe(4096);
     expect(r.body.system).toContain('카카오톡 메시지를 요약');
     expect(r.body.system).not.toContain(MARKER);
     expect(r.body.messages).toHaveLength(1);
@@ -165,6 +167,7 @@ describe('Claude 통로 (AI_PROVIDER=anthropic): 정상 흐름', () => {
     expect(r.body.messages[0].content).toContain(`<message>\n[친구A]: 이번 주 금요일에 저녁 먹을래? ${MARKER}\n</message>`);
     expect(r.body.output_config.effort).toBe('low');
     expect(r.body.output_config.format.type).toBe('json_schema');
+    expect(r.body.output_config.format.schema.required).toEqual(['summary', 'needsDecision', 'replies']);
     expect(r.body).not.toHaveProperty('temperature');
   });
 
