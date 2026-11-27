@@ -10,6 +10,7 @@ import {
 } from "react";
 import { services, STORAGE_KEYS } from "@services";
 import {
+  collectPackagesFor,
   NOTIFICATION_PREF_OPTIONS,
   ONBOARDING_STEPS,
   resolveSavedStep,
@@ -71,6 +72,14 @@ const parseSaved = (raw: string): OnboardingData => {
 // 불러오기 실패 시 다시 시도하는 간격 (부팅 직후 암호화 저장소가 아직 준비되지 않은 경우 대비)
 // 모두 실패하면 기본값으로 화면을 열되, 저장된 값을 덮어쓰지 않도록 저장은 막음
 export const ONBOARDING_LOAD_RETRY_MS = [500, 1500, 3000];
+
+// 연동 앱(05) → 알림을 모을 앱 목록 (#83, 알림 리스너는 이 목록의 앱만 저장)
+// - 비어 있으면 건드리지 않음 (연동 앱을 아직 고르지 않았을 때 개발 화면에서 직접 켠 설정을 지우지 않게)
+// - 실패해도 온보딩은 그대로 진행 (다음에 진행 상황을 읽을 때 다시 맞춤)
+const syncCollection = (apps: LinkedApp[]) => {
+  if (apps.length === 0) return;
+  services.collection.setApps(collectPackagesFor(apps)).catch(() => {});
+};
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
@@ -148,6 +157,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       const next = { ...dataRef.current, ...patch };
       dataRef.current = next;
       setData(next);
+      // 05 연동 앱을 바꾸면 알림을 모을 앱 목록도 바로 맞춤 (#83)
+      if (patch.linkedApps) syncCollection(patch.linkedApps);
       if (!storageKey) return;
 
       if (!loadedOkRef.current) {

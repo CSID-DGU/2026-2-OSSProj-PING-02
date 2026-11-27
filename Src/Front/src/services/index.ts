@@ -38,6 +38,10 @@ import { createMaskNameStore } from "./ai/maskNames";
 import NotificationStore, {
   isNotificationStoreAvailable,
 } from "@native/NotificationStore";
+import {
+  createDeviceCollectionService,
+  createMockCollectionService,
+} from "./collection/CollectionService";
 import Messenger, { isMessengerAvailable } from "@native/Messenger";
 
 // 서비스 교체 지점
@@ -152,6 +156,10 @@ export const services = {
     ? createDeviceContactsService(Contacts)
     : createMockContactsService(),
   conversation,
+  // 알림을 모을 앱 목록 (#83). OnboardingProvider가 연동 앱(05)에 맞추고 로그아웃하면 비움. 네이티브가 없으면(Jest) mock
+  collection: isNotificationStoreAvailable()
+    ? createDeviceCollectionService(NotificationStore)
+    : createMockCollectionService(),
   // 복사·메신저 열기: Kotlin Messenger 모듈 (#69). 네이티브 모듈이 없으면(Jest) mock
   messenger: isMessengerAvailable()
     ? createDeviceMessengerService(Messenger)
@@ -191,6 +199,7 @@ export * from "./network/NetworkService";
 export * from "./contacts/ContactsService";
 export * from "./conversation/types";
 export * from "./conversation/ConversationService";
+export * from "./collection/CollectionService";
 export * from "./friend/FriendService";
 export * from "./storage/KeyValueStorage";
 export * from "./storage/userScopedStorage";

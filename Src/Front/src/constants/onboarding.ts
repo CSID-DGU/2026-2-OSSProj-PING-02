@@ -40,34 +40,53 @@ export const getNextStep = (step: OnboardingStep): OnboardingStep =>
     Math.min(ONBOARDING_STEPS.indexOf(step) + 1, ONBOARDING_STEPS.length - 1)
   ];
 
-// 05 / 연동 앱 선택. packageName은 실기기 테스트 기준 (알림 수집 네이티브 모듈에서 사용)
+// 05 / 연동 앱 선택
+// - packageName: 그 앱을 열 때 쓰는 대표 패키지 (메신저 열기 #69)
+// - collectPackages: 알림을 모을 패키지 (#83, 수집 앱 목록). 문자는 기기마다 기본 앱이 달라 삼성·Google 둘 다
 export type LinkedApp = "KAKAOTALK" | "INSTAGRAM" | "SMS";
 
 export const LINKED_APP_OPTIONS: {
   value: LinkedApp;
   label: string;
   packageName: string;
+  collectPackages: string[];
   icon: ImageSourcePropType;
 }[] = [
   {
     value: "KAKAOTALK",
     label: "카카오톡",
     packageName: "com.kakao.talk",
+    collectPackages: ["com.kakao.talk"],
     icon: kakaoTalkIcon,
   },
   {
     value: "INSTAGRAM",
     label: "인스타그램",
     packageName: "com.instagram.android",
+    collectPackages: ["com.instagram.android"],
     icon: instagramIcon,
   },
   {
     value: "SMS",
     label: "문자 메신저",
     packageName: "com.samsung.android.messaging",
+    collectPackages: [
+      "com.samsung.android.messaging",
+      "com.google.android.apps.messaging",
+    ],
     icon: smsIcon,
   },
 ];
+
+/** 고른 연동 앱의 알림을 모을 패키지 목록 (겹침 없이, 정렬) */
+export const collectPackagesFor = (apps: LinkedApp[]): string[] =>
+  [
+    ...new Set(
+      LINKED_APP_OPTIONS.filter(o => apps.includes(o.value)).flatMap(
+        o => o.collectPackages
+      )
+    ),
+  ].sort();
 
 // 06 / 받을 알림 선택: 줄마다 스위치, 모두 켜짐이 기본값 (Figma 03 온보딩 06 최종)
 // 값 이름은 예전 3개(MORNING·EVENING·NEW_FRIEND)를 그대로 두고 새 3개를 더함
