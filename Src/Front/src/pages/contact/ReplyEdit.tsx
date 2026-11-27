@@ -127,7 +127,8 @@ const ReplyEdit = () => {
     try {
       if (personId) {
         await services.friends.markContacted(personId);
-        navigation.popTo("FriendDetail", { personId });
+        // 06 E05에서 고른 친구: 친구 고르기 화면으로 (마지막 연락 시간이 오늘로 바뀐 것이 보임)
+        navigation.popTo("FirstWordsPick");
       } else {
         await services.conversation.markReplied(conversationId!);
         navigation.popToTop();

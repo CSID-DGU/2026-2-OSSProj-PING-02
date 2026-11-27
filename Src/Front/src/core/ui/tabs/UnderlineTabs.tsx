@@ -5,6 +5,7 @@ import {
   type ScrollViewInstance,
 } from "react-native";
 import styled from "styled-components/native";
+import type { fonts } from "../../styles/fonts";
 
 // Figma: 05 연락 Screens D01 연락 목록(전체/꼭 챙길 연락/미뤄둔 답장),
 //        D03 연락 상세(최근 연락/관계/관련 일정), 06 친구(전체/NEW/친구/가족/직장/기타)
@@ -25,6 +26,8 @@ export interface UnderlineTabsProps<K extends string> {
   // true: 글자 폭만큼 칸을 잡고 가로로 스크롤 (탭이 많거나 이름이 길 때)
   // false(기본): 칸을 똑같이 나눔
   scrollable?: boolean;
+  // 글자 (기본 labelTab 11/16). #79 친구 상세 하위 탭은 11/13 SemiBold(labelRelationChip)
+  typo?: keyof typeof fonts;
 }
 
 export const UnderlineTabs = <K extends string>({
@@ -32,6 +35,7 @@ export const UnderlineTabs = <K extends string>({
   value,
   onChange,
   scrollable = false,
+  typo,
 }: UnderlineTabsProps<K>) => {
   const scrollRef = useRef<ScrollViewInstance>(null);
   const positions = useRef<Partial<Record<K, { x: number; width: number }>>>(
@@ -63,7 +67,7 @@ export const UnderlineTabs = <K extends string>({
         hitSlop={TAB_HIT_SLOP}
         $scrollable={scrollable}
       >
-        <Label $selected={selected} numberOfLines={1}>
+        <Label $selected={selected} $typo={typo} numberOfLines={1}>
           {tab.label}
         </Label>
         <Indicator $selected={selected} $scrollable={scrollable} />
@@ -117,8 +121,8 @@ const Item = styled.Pressable<{ $scrollable: boolean }>`
   align-items: center;
 `;
 
-const Label = styled.Text<{ $selected: boolean }>`
-  ${({ theme }) => theme.fonts.labelTab};
+const Label = styled.Text<{ $selected: boolean; $typo?: keyof typeof fonts }>`
+  ${({ theme, $typo }) => theme.fonts[$typo ?? "labelTab"]};
   color: ${({ theme, $selected }) =>
     $selected ? theme.colors.textPrimary : theme.colors.textSecondary};
 `;

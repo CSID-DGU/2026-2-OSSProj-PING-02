@@ -9,7 +9,6 @@ import { useAuthNavigation } from "@hooks/useAuthNavigation";
 // 친구를 누르면 그 친구의 첫마디 제안(FirstWords)으로
 // 들어오는 곳: 홈 "오랜만에 안부 전하기" 카드 · 도움 수준 화면 안부 줄 · NEW 빈 상태 "연락하러 가기"
 // NEW 빈 상태의 "연락하러 가기"는 이미 이 화면이라 전체 탭으로 바꿈
-// TODO(Figma 문구 확인): 시안 제목은 "말씨앗 심기", 팀 요청으로 "첫마디 보내기"
 const FirstWordsPick = () => {
   const navigation = useAuthNavigation();
   const [tab, setTab] = useState<FriendTab>("all");

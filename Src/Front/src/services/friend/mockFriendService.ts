@@ -8,6 +8,7 @@ import {
   type FriendService,
   type FriendSummary,
   type MergeCandidate,
+  type RawMessageStats,
 } from "./FriendService";
 import {
   ACCOUNTS,
@@ -27,6 +28,13 @@ interface MockOptions {
   noNew?: boolean;
 }
 
+// 기기 알림 원문 보관 기간 (NotificationRetention.DEFAULT_DAYS와 같은 값)
+const RETENTION_DAYS = 30;
+const DAY = 24 * 60 * 60_000;
+
+// 이름이 비슷한지 (한쪽이 다른 쪽을 품음: "민지" ↔ "김민지")
+const similarName = (a: string, b: string) => a.includes(b) || b.includes(a);
+
 const latest = (dates: (string | undefined)[]) =>
   dates.filter((d): d is string => !!d).sort().at(-1) ?? null;
 
@@ -37,6 +45,36 @@ const directConversationsOf = (accountIds: Set<string>) =>
       s.conversation.kind === "direct" &&
       s.messages.some(m => m.accountId && accountIds.has(m.accountId))
   );
+
+// 가장 최근 1:1 대화와 그 주제
+const lastDirect = (conversations: typeof SEEDS) => {
+  const last = [...conversations].sort((a, b) =>
+    b.conversation.lastMessageAt.localeCompare(a.conversation.lastMessageAt)
+  )[0];
+  return (
+    last && {
+      conversationId: last.conversation.id,
+      at: last.conversation.lastMessageAt,
+      topic: last.analysis.summary ?? last.messages[last.messages.length - 1].text,
+    }
+  );
+};
+
+// 06 E03-2: 이 친구 계정이 보낸 원문 (나중에 알림 DB 조회로 교체)
+const rawStatsOf = (accountIds: Set<string>): RawMessageStats => {
+  const times = SEEDS.flatMap(seed => seed.messages)
+    .filter(m => m.accountId && accountIds.has(m.accountId))
+    .map(m => new Date(m.receivedAt).getTime());
+  const monthAgo = Date.now() - RETENTION_DAYS * DAY;
+  const oldest = times.length > 0 ? Math.min(...times) : null;
+  return {
+    recentCount: times.filter(t => t >= monthAgo).length,
+    nextDeleteAt:
+      oldest === null ? null : new Date(oldest + RETENTION_DAYS * DAY).toISOString(),
+    // TODO(API): 알림 DB 자동 삭제 기록 (지금은 기록이 없음)
+    lastDeletedAt: null,
+  };
+};
 
 export const createMockFriendService = ({
   latency = 400,
@@ -55,6 +93,9 @@ export const createMockFriendService = ({
       ).map(a => ({ ...a }));
   const contacted: Record<string, string> = empty ? {} : { ...CONTACTED_AT };
   let splitCount = 0;
+  // 연락 분석을 끈 계정, E04 "다른 사람이에요"를 고른 NEW
+  const analysisOff = new Set<string>();
+  const sameNameDismissed = new Set<string>();
 
   // NEW(isFriend false)도 06 목록·상세에 나옴
   const findPerson = (id: string) => {
@@ -82,7 +123,29 @@ export const createMockFriendService = ({
       // TODO(API): 안 읽은 메시지(알림 DB 읽음 표시)와 AI 답장 생성 여부(services.aiReplies)로 교체
       //   지금 mock은 "1:1 대화가 답장이 필요함"만 봄
       attention: conversations.some(s => s.analysis.needsReply),
+      lastTopic: lastDirect(conversations)?.topic,
     };
+  };
+
+  // from의 계정을 모두 to로 옮기고 from은 지움
+  // 메모는 이어 붙이고, 생일·전화번호는 to에 없을 때만 가져옴
+  const absorb = (fromId: string, toId: string) => {
+    const from = findPerson(fromId);
+    accounts = accounts.map(a =>
+      a.personId === fromId ? { ...a, personId: toId } : a
+    );
+    persons = persons
+      .filter(p => p.id !== fromId)
+      .map(p =>
+        p.id === toId
+          ? {
+              ...p,
+              memo: mergeMemos(p.memo, from.memo),
+              birthday: p.birthday ?? from.birthday,
+              phone: p.phone ?? from.phone,
+            }
+          : p
+      );
   };
 
   return {
@@ -110,17 +173,13 @@ export const createMockFriendService = ({
       const person = findPerson(personId);
       const summary = summarize(person);
       const ids = new Set(summary.accounts.map(a => a.id));
-      const last = directConversationsOf(ids).sort((a, b) =>
-        b.conversation.lastMessageAt.localeCompare(a.conversation.lastMessageAt)
-      )[0];
       const detail: FriendDetail = {
         ...summary,
-        lastConversation: last && {
-          conversationId: last.conversation.id,
-          at: last.conversation.lastMessageAt,
-          topic:
-            last.analysis.summary ?? last.messages[last.messages.length - 1].text,
-        },
+        lastConversation: lastDirect(directConversationsOf(ids)),
+        analysisOff: summary.accounts
+          .filter(a => analysisOff.has(a.id))
+          .map(a => a.id),
+        rawStats: rawStatsOf(ids),
       };
       return detail;
     },
@@ -144,9 +203,7 @@ export const createMockFriendService = ({
       const nameOf = (id: string | null) =>
         id ? persons.find(p => p.id === id)?.displayName ?? null : null;
       // 아직 연결 안 된 발신자를 먼저, 이름이 비슷한 계정을 그다음으로
-      const similar = (a: Account) =>
-        a.senderName.includes(person.displayName) ||
-        person.displayName.includes(a.senderName);
+      const similar = (a: Account) => similarName(a.senderName, person.displayName);
       return accounts
         .filter(a => a.personId !== personId)
         .map<MergeCandidate>(a => ({
@@ -173,18 +230,7 @@ export const createMockFriendService = ({
       // 계정이 하나도 남지 않은 친구는 이 친구에 합쳐진 것으로 봄
       // 메모는 둘 다 남기고, 생일은 이 친구에 없을 때만 가져옴
       if (previous && accountsOf(previous).length === 0) {
-        const absorbed = persons.find(p => p.id === previous);
-        persons = persons
-          .filter(p => p.id !== previous)
-          .map(p =>
-            p.id === personId && absorbed
-              ? {
-                  ...p,
-                  memo: mergeMemos(p.memo, absorbed.memo),
-                  birthday: p.birthday ?? absorbed.birthday,
-                }
-              : p
-          );
+        absorb(previous, personId);
       }
     },
 
@@ -203,10 +249,11 @@ export const createMockFriendService = ({
         );
       }
       splitCount += 1;
+      // 06 E03 "연결 해지하기": 떼어 낸 계정은 NEW로 (다시 연결하거나 새 친구로 추가)
       const next: Person = {
         id: `p-split-${splitCount}`,
         displayName: target.senderName,
-        isFriend: true,
+        isFriend: false,
         frozen: false,
       };
       persons = [...persons, next];
@@ -223,6 +270,83 @@ export const createMockFriendService = ({
       mine.forEach(a => {
         contacted[a.id] = now;
       });
+    },
+
+    async updateInfo(personId, patch) {
+      await delay(150);
+      findPerson(personId);
+      const displayName = patch.displayName?.trim();
+      persons = persons.map(p =>
+        p.id === personId
+          ? {
+              ...p,
+              ...(displayName ? { displayName } : {}),
+              ...(patch.relation ? { relation: patch.relation } : {}),
+              ...(patch.memo !== undefined
+                ? { memo: patch.memo.trim() || undefined }
+                : {}),
+            }
+          : p
+      );
+    },
+
+    async addFriend(personId) {
+      await delay(300);
+      findPerson(personId);
+      persons = persons.map(p => (p.id === personId ? { ...p, isFriend: true } : p));
+    },
+
+    async remove(personId) {
+      await delay(300);
+      findPerson(personId);
+      persons = persons.filter(p => p.id !== personId);
+      accounts = accounts.filter(a => a.personId !== personId);
+    },
+
+    async setAnalysis(personId, accountIds, on) {
+      await delay(150);
+      findPerson(personId);
+      // TODO(API): 꺼진 계정의 알림은 AI 분석·답장 제안에서 빼기
+      accountIds.forEach(id => {
+        if (on) analysisOff.delete(id);
+        else analysisOff.add(id);
+      });
+    },
+
+    async connectTo(fromPersonId, toPersonId) {
+      await delay(400);
+      findPerson(toPersonId);
+      absorb(fromPersonId, toPersonId);
+    },
+
+    async getSameNameFriend(personId) {
+      await delay(150);
+      const person = findPerson(personId);
+      if (person.isFriend || sameNameDismissed.has(personId)) return null;
+      const same = persons.find(
+        p => p.isFriend && p.id !== personId && p.displayName === person.displayName
+      );
+      return same ? summarize(same) : null;
+    },
+
+    async dismissSameName(personId) {
+      await delay(100);
+      sameNameDismissed.add(personId);
+    },
+
+    async getConnectSuggestions(personId) {
+      await delay(300);
+      const person = findPerson(personId);
+      const isUnlinked = (a: Account) =>
+        !a.personId || persons.some(p => p.id === a.personId && !p.isFriend);
+      return accounts
+        .filter(
+          a =>
+            a.personId !== personId &&
+            isUnlinked(a) &&
+            similarName(a.senderName, person.displayName)
+        )
+        .map(a => ({ ...a }));
     },
   };
 };

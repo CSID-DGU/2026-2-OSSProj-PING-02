@@ -2,11 +2,10 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList } from "react-native";
 import styled, { useTheme } from "styled-components/native";
 import { Button } from "@core/ui/button";
-import { Input } from "@core/ui/field";
-import { SearchIcon } from "@core/ui/icon";
 import { UnderlineTabs } from "@core/ui/tabs";
 import Notice from "@components/onboarding/Notice";
 import FriendRow from "@components/friend/FriendRow";
+import FriendSearchBar from "@components/friend/FriendSearchBar";
 import {
   FRIEND_TABS,
   inFriendTab,
@@ -19,11 +18,11 @@ import newEmptyImage from "@assets/img/friend/malssi-new-empty.png";
 
 // 06 친구 목록 내용 (앱바 아래 전부): 검색창 · 6개 탭 · 줄 · 빈 상태
 // E01 친구 탭 첫 화면과 E05 첫마디 보내기(친구 고르기)가 같이 씀. 줄을 누르면 onSelect
-// 검색창(높이 41, 양옆 20) → 탭(양옆 16) → 12 → 줄 (Figma "06 친구 최종", 720px ÷2)
+// 검색창(FriendSearchBar) → 탭(양옆 16) → 12 → 줄 (Figma "06 친구 최종", 720px ÷2)
 // - 연락 최신순 (디자이너 댓글), NEW도 함께 보여 줌
 // - 검색: 지금 탭 안에서 친구 이름·앱 계정 이름으로 찾음
 // 시안에 없는 상태(예전 화면 그대로): 불러오는 중 · 오류 · 친구가 아직 없음 · 검색 결과 없음
-// 글자 (디자이너 확인): 검색창 captionSearch 12/22 · 빈 상태 문구 bodySmallMedium 13/20
+// 글자 (디자이너 확인): 빈 상태 문구 bodySmallMedium 13/20
 interface FriendListProps {
   onSelect: (item: FriendSummary) => void;
   // NEW 빈 상태 버튼 2개
@@ -32,6 +31,8 @@ interface FriendListProps {
   // 탭을 밖에서 정할 때 (상세 화면 탭 → 목록). 없으면 "전체"부터
   tab?: FriendTab;
   onTabChange?: (tab: FriendTab) => void;
+  // 값이 바뀌면 검색칸에 포커스 (상세 화면 검색창 → 목록)
+  focusSearchKey?: number;
 }
 
 const FriendList = ({
@@ -40,6 +41,7 @@ const FriendList = ({
   onReachOut,
   tab: tabProp,
   onTabChange,
+  focusSearchKey,
 }: FriendListProps) => {
   const theme = useTheme();
   const [query, setQuery] = useState("");
@@ -139,19 +141,11 @@ const FriendList = ({
     <>
       <Top>
         {friends.length > 0 && (
-          <Search>
-            <SearchInput
-              size="small"
-              value={query}
-              onChangeText={setQuery}
-              placeholder="검색하기"
-              accessibilityLabel="친구 이름 검색"
-              returnKeyType="search"
-            />
-            <SearchIconBox pointerEvents="none">
-              <SearchIcon />
-            </SearchIconBox>
-          </Search>
+          <FriendSearchBar
+            value={query}
+            onChangeText={setQuery}
+            focusKey={focusSearchKey}
+          />
         )}
         <Tabs>
           <UnderlineTabs tabs={FRIEND_TABS} value={tab} onChange={setTab} />
@@ -189,26 +183,6 @@ const Center = styled.View`
 const Top = styled.View`
   padding-top: 18px;
   background-color: ${({ theme }) => theme.colors.surfaceDefault};
-`;
-
-const Search = styled.View`
-  margin: 0px 20px;
-  justify-content: center;
-`;
-
-// 시안: 높이 41 · 왼쪽 글자까지 17 · 오른쪽 돋보기
-const SearchInput = styled(Input)`
-  height: 41px;
-  padding-left: 16px;
-  padding-right: 44px;
-  border-radius: 10px;
-  ${({ theme }) => theme.fonts.captionSearch};
-`;
-
-// 돋보기 16, 상자 오른쪽 안에서 약 19
-const SearchIconBox = styled.View`
-  position: absolute;
-  right: 19px;
 `;
 
 const Tabs = styled.View`

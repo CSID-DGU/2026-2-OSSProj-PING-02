@@ -1,296 +1,440 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ScrollView } from "react-native";
 import { useRoute, type RouteProp } from "@react-navigation/native";
+import styled from "styled-components/native";
 import { Button } from "@core/ui/button";
-import { Card } from "@core/ui/card";
 import { Dialog } from "@core/ui/dialog";
-import AuthLayout from "@components/auth/AuthLayout";
-import AuthIntro from "@components/auth/AuthIntro";
+import { UnderlineTabs } from "@core/ui/tabs";
+import TabScreen from "@components/main/TabScreen";
 import LoadState from "@components/contact/LoadState";
-import RadioCard from "@components/contact/RadioCard";
-import Notice from "@components/onboarding/Notice";
-import { APP_LABEL, withWa } from "@constants/contact";
-import { formatBirthday, formatSince } from "@constants/friend";
+import FriendRow from "@components/friend/FriendRow";
+import FriendSearchBar from "@components/friend/FriendSearchBar";
+import FriendInfoForm from "@components/friend/FriendInfoForm";
+import LinkedAccountsPanel from "@components/friend/LinkedAccountsPanel";
+import RawMessagesPanel from "@components/friend/RawMessagesPanel";
+import AccountSheet from "@components/friend/AccountSheet";
+import ConnectFriendSheet from "@components/friend/ConnectFriendSheet";
+import SameNamePopup from "@components/friend/SameNamePopup";
+import { accountAppLabel } from "@components/friend/AccountLine";
+import { APP_LABEL } from "@constants/contact";
+import { FRIEND_TABS, type FriendTab } from "@constants/friend";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useFocusLoad } from "@hooks/useFocusLoad";
-import { services, type Account } from "@services";
+import {
+  services,
+  type Account,
+  type FriendDetail as Detail,
+  type FriendInfoPatch,
+  type FriendSummary,
+  type MessengerApp,
+} from "@services";
 import type { AppParamList } from "@routes/types";
-import * as s from "../contact/Contact_styled";
 
-// 05 / 14 친구 상세 (Figma: 관계 메모 · 마지막 대화 · 생일 · 첫마디 함께 찾기)
-// 시안에 없는 부분 (TODO(디자이너 공유)):
-// - 앱바 "Label" 자리는 화면 이름("친구")
-// - 첫마디 버튼 아래 "연결된 계정" 카드: 앱별 계정을 같은 사람으로 합치기·따로 보기 (둘 다 확인 팝업)
-// - 얼려두기 / 다시 꺼내기 텍스트 버튼
-// TODO(디자이너 공유): 관계 메모·생일 편집 화면 (지금은 보기만)
+// 06 친구 상세 (Figma "06 친구 최종" E02 · E03 · E03-1~4 · E04 · E04-1, 720px ÷2)
+// 앱바("친구", 뒤로가기, 🔔) → 검색창 → 6개 탭 → 친구 줄 → 하위 탭(기본 정보 · 연결 계정 · 원문 관리)
+// - 검색창·6개 탭은 목록으로 가는 길: 탭을 누르면 목록으로 돌아가 그 탭, 검색창을 누르면 목록 검색칸에 포커스
+//   (6개 탭에는 이 친구가 속한 탭이 선택돼 보임: NEW · 관계 · 관계가 없으면 전체)
+// - NEW(아직 친구로 등록 안 함): 하위 탭과 상관없이 E02 질문 + 버튼 3개 (팀 확정)
+//   이름이 같은 친구가 있으면 처음 열 때 E04 팝업을 먼저 띄움
+// - 친구: 기본 정보(자동 저장) · 연결 계정(연결 관리 시트) · 원문 관리
+type SubTab = "info" | "accounts" | "raw";
+
+const SUB_TABS: { key: SubTab; label: string }[] = [
+  { key: "info", label: "기본 정보" },
+  { key: "accounts", label: "연결 계정" },
+  { key: "raw", label: "원문 관리" },
+];
+
+// E04-1 모양 시트를 여는 이유
+type ConnectSheet =
+  | { kind: "person" } // E02 "다른 친구에게 연결하기": 이 NEW를 친구에게 합침
+  | { kind: "account"; account: Account } // 시트 "다른 친구에게 연결": 계정 하나를 친구에게 옮김
+  | { kind: "app"; app: MessengerApp }; // "연결 안 됨" 앱 줄: 다른 NEW의 그 앱 계정을 이 친구에게
+
 type Confirm =
-  | { kind: "split"; account: Account }
-  | { kind: "merge"; account: Account; ownerName: string | null; mergesOwner: boolean };
+  | { kind: "remove" }
+  | { kind: "disconnect"; account: Account }
+  | { kind: "suggestion"; account: Account };
 
-// 합치기 확인 문구. 다른 친구가 통째로 합쳐지면 그 친구가 사라진다는 것과 메모는 남는다는 것을 알림
-const mergeDescription = (
-  { account, ownerName, mergesOwner }: Extract<Confirm, { kind: "merge" }>,
-  name: string
-) => {
-  const base = `${APP_LABEL[account.app]} ‘${account.senderName}’ 계정을 ${name}의 계정으로 함께 볼게요.`;
-  const owner =
-    mergesOwner && ownerName
-      ? ` ‘${ownerName}’ 친구는 ${name}에 합쳐지고, 메모는 합쳐서 남겨요.`
-      : "";
-  return `${base}${owner} 나중에 다시 따로 볼 수 있어요.`;
-};
+const tabOf = ({ person }: Detail): FriendTab =>
+  !person.isFriend ? "new" : person.relation ?? "all";
 
 const FriendDetail = () => {
   const navigation = useAuthNavigation();
   const { params } = useRoute<RouteProp<AppParamList, "FriendDetail">>();
   const { personId } = params;
-
-  const load = useCallback(async () => {
-    const [detail, candidates] = await Promise.all([
-      services.friends.get(personId),
-      services.friends.getMergeCandidates(personId),
-    ]);
-    return { detail, candidates };
-  }, [personId]);
-  const { state, retry, reload } = useFocusLoad(load);
-
-  const [mergeOpen, setMergeOpen] = useState(false);
-  const [mergePick, setMergePick] = useState<string>();
+  const [subTab, setSubTab] = useState<SubTab>("info");
+  const [connect, setConnect] = useState<ConnectSheet | null>(null);
+  const [friends, setFriends] = useState<FriendSummary[]>([]);
+  const [accountSheet, setAccountSheet] = useState<Account | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState(false);
+  const [sameName, setSameName] = useState<FriendSummary | null>(null);
+  const [suggestions, setSuggestions] = useState<Account[]>([]);
+  const busy = useRef(false);
 
-  if (state.status !== "ready") {
-    return (
-      <AuthLayout title="친구">
-        <LoadState
-          status={state.status}
-          loadingLabel="친구 정보를 불러오는 중"
-          errorTitle="친구 정보를 불러오지 못했어요"
-          onRetry={retry}
-        />
-      </AuthLayout>
-    );
-  }
+  const load = useCallback(() => services.friends.get(personId), [personId]);
+  const { state, retry, reload } = useFocusLoad(load);
+  const detail = state.status === "ready" ? state.data : null;
+  const isNew = detail ? !detail.person.isFriend : false;
 
-  const { detail, candidates } = state.data;
-  const { person, accounts, lastContactAt, lastConversation } = detail;
-  const name = person.displayName;
-  const picked = candidates.find(c => c.account.id === mergePick);
+  // E04: NEW를 처음 열 때 한 번만 확인
+  const askedSameName = useRef(false);
+  useEffect(() => {
+    if (!detail || !isNew || askedSameName.current) return;
+    askedSameName.current = true;
+    services.friends
+      .getSameNameFriend(personId)
+      .then(setSameName)
+      .catch(() => {});
+  }, [detail, isNew, personId]);
 
-  // 합치기·분리·얼려두기 공통: 실패하면 안내만, 성공하면 다시 불러옴
-  const run = async (action: () => Promise<unknown>) => {
-    setBusy(true);
-    setActionError(false);
+  // E03-1 연결이 필요한 계정
+  useEffect(() => {
+    if (!detail || isNew) return;
+    services.friends
+      .getConnectSuggestions(personId)
+      .then(setSuggestions)
+      .catch(() => setSuggestions([]));
+  }, [detail, isNew, personId]);
+
+  // 하나씩만 처리 (두 번 눌러도 한 번)
+  const run = async (task: () => Promise<void>) => {
+    if (busy.current) return;
+    busy.current = true;
     try {
-      await action();
-      setMergeOpen(false);
-      setMergePick(undefined);
-      await reload();
-    } catch {
-      setActionError(true);
+      await task();
     } finally {
-      setBusy(false);
+      busy.current = false;
     }
   };
 
-  const handleConfirm = () => {
-    if (!confirm) return;
-    const { kind, account } = confirm;
-    setConfirm(null);
-    run(() =>
-      kind === "split"
-        ? services.friends.splitAccount(personId, account.id)
-        : services.friends.mergeAccount(personId, account.id)
-    );
+  // 목록으로 (지금 친구 탭 스택이면 그 목록으로 돌아가고, 다른 탭이면 친구 탭으로)
+  const goToList = (listParams: { tab?: FriendTab; focusSearch?: number }) => {
+    const root = navigation.getState()?.routes[0]?.name;
+    if (root === "FriendsMain") {
+      navigation.popTo("FriendsMain", listParams);
+    } else {
+      navigation.navigate("Home", {
+        screen: "friends",
+        params: { screen: "FriendsMain", params: listParams },
+      });
+    }
   };
 
-  const lastText = lastConversation
-    ? `${formatSince(lastConversation.at)} · ${lastConversation.topic}`
-    : lastContactAt
-    ? `${formatSince(lastContactAt)} · 여기에 모인 대화는 아직 없어요`
-    : "아직 모인 대화가 없어요";
+  // 이 친구가 다른 친구에 합쳐져 사라지면 그 친구 상세로 바꿔 끼움
+  const openFriend = (id: string) => navigation.replace("FriendDetail", { personId: id });
 
-  return (
-    <AuthLayout title="친구" gap={12} paddingBottom={32}>
-      <AuthIntro
-        title={name}
-        description="관계 기록은 평가가 아니라 다시 시작하기 위한 메모예요."
-      />
+  const openConnect = async (sheet: ConnectSheet) => {
+    const all = await services.friends.list();
+    setFriends(all);
+    setConnect(sheet);
+  };
 
-      {person.frozen && (
-        <Notice title="얼려둔 관계예요">
-          <s.Muted>
-            목록 아래쪽에 조용히 두었어요. 마음이 내킬 때 언제든 다시 꺼내도
-            괜찮아요.
-          </s.Muted>
-          <Button
-            variant="text"
-            disabled={busy}
-            onPress={() => run(() => services.friends.setFrozen(personId, false))}
-          >
-            다시 꺼내기
-          </Button>
-        </Notice>
-      )}
+  const connectItems = (): FriendSummary[] => {
+    if (!connect) return [];
+    if (connect.kind === "app") {
+      return friends.filter(
+        f =>
+          f.person.id !== personId &&
+          !f.person.isFriend &&
+          f.accounts.some(a => a.app === connect.app)
+      );
+    }
+    return friends.filter(f => f.person.id !== personId && f.person.isFriend);
+  };
 
-      <s.Cards>
-        <Card>
-          <s.BlockTitle>관계 메모</s.BlockTitle>
-          <s.BlockBody>{person.memo ?? "아직 남긴 메모가 없어요."}</s.BlockBody>
-        </Card>
+  const onConnectConfirm = (target: FriendSummary) =>
+    run(async () => {
+      if (!connect || !detail) return;
+      setConnect(null);
+      if (connect.kind === "person") {
+        await services.friends.connectTo(personId, target.person.id);
+        openFriend(target.person.id);
+      } else if (connect.kind === "account") {
+        const last = detail.accounts.length <= 1;
+        await services.friends.mergeAccount(target.person.id, connect.account.id);
+        if (last) openFriend(target.person.id);
+        else await reload();
+      } else {
+        const account = target.accounts.find(a => a.app === connect.app);
+        if (account) await services.friends.mergeAccount(personId, account.id);
+        await reload();
+      }
+    });
 
-        <Card
-          onPress={
-            lastConversation
-              ? () =>
-                  navigation.navigate("ConversationDetail", {
-                    conversationId: lastConversation.conversationId,
-                  })
-              : undefined
-          }
-          accessibilityLabel={`마지막 대화. ${lastText}`}
-          accessibilityHint={lastConversation ? "눌러서 연락을 봐요" : undefined}
-        >
-          <s.BlockTitle>마지막 대화</s.BlockTitle>
-          <s.BlockBody numberOfLines={2}>{lastText}</s.BlockBody>
-        </Card>
+  const onSameNameConnect = () =>
+    run(async () => {
+      if (!sameName) return;
+      const target = sameName.person.id;
+      setSameName(null);
+      await services.friends.connectTo(personId, target);
+      openFriend(target);
+    });
 
-        {person.birthday && (
-          <Card>
-            <s.BlockTitle>{`생일: ${formatBirthday(person.birthday)}`}</s.BlockTitle>
-          </Card>
-        )}
-      </s.Cards>
+  const onConfirm = () =>
+    run(async () => {
+      if (!confirm) return;
+      const current = confirm;
+      setConfirm(null);
+      if (current.kind === "remove") {
+        await services.friends.remove(personId);
+        navigation.goBack();
+      } else if (current.kind === "disconnect") {
+        await services.friends.splitAccount(personId, current.account.id);
+        await reload();
+      } else {
+        await services.friends.mergeAccount(personId, current.account.id);
+        await reload();
+      }
+    });
 
-      <s.Actions>
-        <Button
-          variant="primary"
-          fullWidth
-          onPress={() => navigation.navigate("FirstWords", { personId })}
-        >
-          첫마디 함께 찾기
-        </Button>
-      </s.Actions>
+  const saveInfo = (patch: FriendInfoPatch) =>
+    services.friends.updateInfo(personId, patch);
 
-      {/* 시안 없음: 앱별 계정 합치기·따로 보기 */}
-      <Card>
-        <s.BlockTitle>연결된 계정</s.BlockTitle>
-        <s.Muted>같은 사람의 앱별 계정을 한 친구로 모아 보여 드려요.</s.Muted>
-        <s.Cards>
-          {accounts.map(account => (
-            <s.AccountRow key={account.id}>
-              <s.AccountName numberOfLines={1}>
-                {`${APP_LABEL[account.app]} · ${account.senderName}`}
-              </s.AccountName>
-              {accounts.length > 1 && (
-                <Button
-                  variant="text"
-                  disabled={busy}
-                  accessibilityLabel={`${account.senderName} 계정 따로 보기`}
-                  onPress={() => setConfirm({ kind: "split", account })}
-                >
-                  따로 보기
-                </Button>
-              )}
-            </s.AccountRow>
-          ))}
-        </s.Cards>
+  const setAnalysis = (accountIds: string[], on: boolean) =>
+    run(async () => {
+      await services.friends.setAnalysis(personId, accountIds, on);
+      await reload();
+    });
 
-        {candidates.length > 0 && !mergeOpen && (
-          <Button
-            variant="text"
-            disabled={busy}
-            onPress={() => setMergeOpen(true)}
-          >
-            같은 사람의 다른 계정 합치기
-          </Button>
-        )}
-      </Card>
+  const name = detail?.person.displayName ?? "";
 
-      {mergeOpen && (
-        <>
-          <s.BlockTitle>{`${withWa(name)} 같은 사람인 계정을 골라 주세요`}</s.BlockTitle>
-          <s.Cards accessibilityRole="radiogroup">
-            {candidates.map(c => (
-              <RadioCard
-                key={c.account.id}
-                label={APP_LABEL[c.account.app]}
-                text={
-                  c.ownerName
-                    ? `${c.account.senderName} (지금은 ‘${c.ownerName}’으로 보고 있어요)`
-                    : `${c.account.senderName} (아직 친구와 연결되지 않았어요)`
-                }
-                selected={mergePick === c.account.id}
-                onSelect={() => setMergePick(c.account.id)}
-              />
-            ))}
-          </s.Cards>
-          <s.Actions>
+  const body = (() => {
+    if (!detail) return null;
+    if (isNew) {
+      return (
+        <NewChoice>
+          <Question accessibilityRole="header">
+            {"기존 친구에게 연결하거나\n새로운 친구로 등록해볼까요?"}
+          </Question>
+          <NewActions>
+            <Button fullWidth onPress={() => openConnect({ kind: "person" })}>
+              다른 친구에게 연결하기
+            </Button>
             <Button
-              variant="secondary"
               fullWidth
-              disabled={!picked || busy}
-              accessibilityHint={picked ? undefined : "계정을 하나 고르면 누를 수 있어요"}
               onPress={() =>
-                picked &&
-                setConfirm({
-                  kind: "merge",
-                  account: picked.account,
-                  ownerName: picked.ownerName,
-                  mergesOwner: picked.mergesOwner,
+                run(async () => {
+                  await services.friends.addFriend(personId);
+                  setSubTab("info");
+                  await reload();
                 })
               }
             >
-              고른 계정 합치기
+              새 친구 추가하기
             </Button>
-            <Button
-              variant="text"
-              onPress={() => {
-                setMergeOpen(false);
-                setMergePick(undefined);
-              }}
-            >
-              합치지 않을게요
-            </Button>
-          </s.Actions>
-        </>
-      )}
-
-      {actionError && (
-        <Notice tone="danger" title="잠시 문제가 생겼어요. 조금 뒤에 다시 해 주세요." />
-      )}
-
-      {!person.frozen && (
-        <s.Actions>
+          </NewActions>
+          {/* TODO(Figma 스타일 확인): 약 13 → bodySmall 13/19 */}
           <Button
             variant="text"
-            disabled={busy}
-            onPress={() => run(() => services.friends.setFrozen(personId, true))}
+            typo="bodySmall"
+            onPress={() => setConfirm({ kind: "remove" })}
           >
-            잠시 얼려두기
+            연결하지 않고 삭제하기
           </Button>
-          <s.Hint>얼려두면 목록 아래쪽에 조용히 둘게요. 언제든 다시 꺼낼 수 있어요.</s.Hint>
-        </s.Actions>
-      )}
-
-      <Dialog
-        visible={!!confirm}
-        icon={null}
-        title={confirm?.kind === "split" ? "이 계정을 따로 볼까요?" : "같은 사람으로 합칠까요?"}
-        description={
-          confirm
-            ? confirm.kind === "split"
-              ? `${APP_LABEL[confirm.account.app]} ‘${confirm.account.senderName}’ 계정을 ${withWa(name)} 다른 사람으로 볼게요. 주고받은 대화는 지워지지 않아요.`
-              : mergeDescription(confirm, name)
+        </NewChoice>
+      );
+    }
+    if (subTab === "info") {
+      return (
+        <FriendInfoForm
+          key={detail.person.id}
+          detail={detail}
+          onSave={saveInfo}
+          onToggleAnalysis={on => setAnalysis(detail.accounts.map(a => a.id), on)}
+        />
+      );
+    }
+    if (subTab === "accounts") {
+      return (
+        <LinkedAccountsPanel
+          detail={detail}
+          suggestions={suggestions}
+          onOpenAccount={setAccountSheet}
+          onLinkApp={app => openConnect({ kind: "app", app })}
+          onSuggestion={account => setConfirm({ kind: "suggestion", account })}
+        />
+      );
+    }
+    const conversationId = detail.lastConversation?.conversationId;
+    return (
+      <RawMessagesPanel
+        stats={detail.rawStats}
+        onOpenMessages={
+          conversationId
+            ? () => navigation.navigate("ConversationDetail", { conversationId })
             : undefined
         }
-        confirmLabel={confirm?.kind === "split" ? "따로 보기" : "합치기"}
-        onConfirm={handleConfirm}
-        closeLabel="그대로 둘게요"
-        onClose={() => setConfirm(null)}
       />
-    </AuthLayout>
+    );
+  })();
+
+  const confirmText = (() => {
+    if (!confirm) return null;
+    if (confirm.kind === "remove") {
+      return {
+        title: "연결하지 않고 삭제할까요?",
+        description: `‘${name}’을 목록에서 지워요. 다시 연락이 오면 NEW로 다시 보여 드릴게요.`,
+        confirmLabel: "삭제하기",
+      };
+    }
+    const { account } = confirm;
+    const label = `${APP_LABEL[account.app]} ‘${account.senderName}’`;
+    return confirm.kind === "disconnect"
+      ? {
+          title: "연결을 해지할까요?",
+          description: `${label} 계정을 ${name}에게서 떼어 NEW로 옮겨요. 나중에 다시 연결할 수 있어요.`,
+          confirmLabel: "연결 해지하기",
+        }
+      : {
+          title: "이 친구의 계정으로 연결할까요?",
+          description: `${label} 계정을 ${name}의 계정으로 함께 볼게요.`,
+          confirmLabel: "연결하기",
+        };
+  })();
+
+  const sheetAccount = accountSheet
+    ? detail?.accounts.find(a => a.id === accountSheet.id) ?? null
+    : null;
+
+  return (
+    <TabScreen title="친구" divider={false} onBack={() => navigation.goBack()}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={scrollContent}>
+        <Top testID="friend-detail-top">
+          <FriendSearchBar onPress={() => goToList({ focusSearch: Date.now() })} />
+          <Tabs>
+            <UnderlineTabs
+              tabs={FRIEND_TABS}
+              value={detail ? tabOf(detail) : "all"}
+              onChange={tab => goToList({ tab })}
+            />
+          </Tabs>
+        </Top>
+
+        {!detail ? (
+          <LoadState
+            status={state.status === "error" ? "error" : "loading"}
+            loadingLabel="친구 정보를 불러오는 중"
+            errorTitle="친구 정보를 불러오지 못했어요"
+            onRetry={retry}
+          />
+        ) : (
+          <>
+            <RowSlot>
+              <FriendRow item={detail} />
+            </RowSlot>
+            <SubTabs>
+              <UnderlineTabs
+                tabs={SUB_TABS}
+                value={subTab}
+                onChange={setSubTab}
+                typo="labelRelationChip"
+              />
+            </SubTabs>
+            {body}
+          </>
+        )}
+      </ScrollView>
+
+      <AccountSheet
+        account={sheetAccount}
+        phone={detail?.person.phone}
+        analysisOn={!!sheetAccount && !detail?.analysisOff.includes(sheetAccount.id)}
+        canDisconnect={(detail?.accounts.length ?? 0) > 1}
+        onToggleAnalysis={on => sheetAccount && setAnalysis([sheetAccount.id], on)}
+        onConnectOther={() => {
+          if (!sheetAccount) return;
+          setAccountSheet(null);
+          openConnect({ kind: "account", account: sheetAccount });
+        }}
+        onDisconnect={() => {
+          if (!sheetAccount) return;
+          setAccountSheet(null);
+          setConfirm({ kind: "disconnect", account: sheetAccount });
+        }}
+        onClose={() => setAccountSheet(null)}
+      />
+
+      <ConnectFriendSheet
+        visible={!!connect}
+        // TODO(Figma 문구 확인): "연결 안 됨" 앱 줄에서 여는 시트 제목은 시안 없음
+        title={
+          connect?.kind === "app"
+            ? `${accountAppLabel(connect.app)} 계정 연결`
+            : "기존 친구에게 연결"
+        }
+        items={connectItems()}
+        onConfirm={onConnectConfirm}
+        onClose={() => setConnect(null)}
+      />
+
+      <SameNamePopup
+        visible={!!sameName}
+        account={detail?.accounts[0]}
+        friendName={sameName?.person.displayName ?? ""}
+        onConnect={onSameNameConnect}
+        onDifferent={() => {
+          setSameName(null);
+          services.friends.dismissSameName(personId).catch(() => {});
+        }}
+        onClose={() => setSameName(null)}
+      />
+
+      {confirmText && (
+        <Dialog
+          visible
+          icon={null}
+          title={confirmText.title}
+          description={confirmText.description}
+          confirmLabel={confirmText.confirmLabel}
+          onConfirm={onConfirm}
+          closeLabel="취소"
+          onClose={() => setConfirm(null)}
+        />
+      )}
+    </TabScreen>
   );
 };
+
+const scrollContent = { paddingBottom: 12 };
+
+// 목록과 같은 자리: 앱바 아래 18 → 검색창 → 탭(양옆 16)
+const Top = styled.View`
+  padding-top: 18px;
+`;
+
+const Tabs = styled.View`
+  padding: 0px 16px;
+`;
+
+// 탭 아래 12 → 친구 줄(72)
+const RowSlot = styled.View`
+  margin-top: 12px;
+`;
+
+// 친구 줄 아래 13 → 하위 탭
+const SubTabs = styled.View`
+  margin-top: 13px;
+  padding: 0px 16px;
+`;
+
+// E02: 하위 탭 아래 약 49 → 질문 2줄(headingDialog 18/26) → 30 → 버튼 2개(사이 4, 양옆 16) → 텍스트 버튼
+const NewChoice = styled.View`
+  padding: 49px 16px 24px;
+  align-items: center;
+`;
+
+const Question = styled.Text`
+  ${({ theme }) => theme.fonts.headingDialog};
+  color: ${({ theme }) => theme.colors.textPrimary};
+  text-align: center;
+`;
+
+const NewActions = styled.View`
+  align-self: stretch;
+  gap: 4px;
+  margin-top: 30px;
+  margin-bottom: 6px;
+`;
 
 export default FriendDetail;

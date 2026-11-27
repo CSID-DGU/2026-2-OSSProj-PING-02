@@ -16,10 +16,11 @@ import FriendAvatar from "./FriendAvatar";
 // 오른쪽 30 안쪽: 위 별·하트(NEW는 없음), 아래 시간 (칩 줄과 같은 높이)
 // 별·하트는 줄 누르기와 따로 누를 수 있게 줄 위에 겹쳐 둠 (스크린리더에서도 따로 읽힘)
 // 글자 (디자이너 확인): 이름 titleSection 14/20 SemiBold · 칩 labelRelationChip 11/13 SemiBold · 시간 captionHero 11/17
+// 06 친구 상세(E02·E03) 맨 위에도 같은 줄을 씀: onPress·onToggleFavorite 없이 (누르지 않음, 별·하트 없음)
 interface FriendRowProps {
   item: FriendSummary;
-  onPress: () => void;
-  onToggleFavorite: () => void;
+  onPress?: () => void;
+  onToggleFavorite?: () => void;
 }
 
 const FriendRow = ({ item, onPress, onToggleFavorite }: FriendRowProps) => {
@@ -45,9 +46,11 @@ const FriendRow = ({ item, onPress, onToggleFavorite }: FriendRowProps) => {
     <Wrapper>
       <Main
         onPress={onPress}
-        accessibilityRole="button"
+        disabled={!onPress}
+        accessible
+        accessibilityRole={onPress ? "button" : "summary"}
         accessibilityLabel={label}
-        accessibilityHint="눌러서 친구 정보를 봐요"
+        accessibilityHint={onPress ? "눌러서 친구 정보를 봐요" : undefined}
       >
         <FriendAvatar dot={attention} />
         <Texts>
@@ -75,7 +78,7 @@ const FriendRow = ({ item, onPress, onToggleFavorite }: FriendRowProps) => {
         </Side>
       </Main>
 
-      {!isNew && (
+      {!isNew && onToggleFavorite && (
         <Favorite
           onPress={onToggleFavorite}
           hitSlop={16}

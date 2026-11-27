@@ -220,9 +220,10 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 |---|---|---:|---|
 | `titleSection` | Pretendard SemiBold | `14/20` | 친구 목록 줄 이름 (05 연락 목록과 같음) |
 | `captionHero` | Pretendard Regular | `11/17` | 친구 목록 시간 (05 연락 목록과 같음) |
-| `labelRelationChip` | Pretendard SemiBold | `11/13` | 친구 목록 관계 칩 NEW·친구·가족·직장·기타 (추가) |
+| `labelRelationChip` | Pretendard SemiBold | `11/13` | 친구 목록 관계 칩 NEW·친구·가족·직장·기타, 친구 상세 하위 탭 (추가) |
 | `captionSearch` | Pretendard Regular | `12/22` | 친구 검색창 글자·placeholder (추가) |
 | `bodySmallMedium` | Pretendard Medium | `13/20` | 친구 NEW·관계 탭 빈 상태 문구 (추가) |
+| `titleSheet` | Pretendard Bold | `16/28` | 친구 연결 관리 시트 제목 (추가) |
 
 - **예외: 일정 카드 날짜.** 조선굴림체는 서비스명·브랜드 문구에만 쓰지만, 홈 일정 카드의 날짜 원("11월"·"22")은 시안대로 조선굴림체를 씀 (#53 팀 확정). Figma에서 로고와 같은 폰트로 지정돼 있고, 숫자 폭(약 0.46em)도 굴림 계열 반각 숫자와 일치
 
