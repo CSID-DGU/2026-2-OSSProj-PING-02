@@ -57,6 +57,10 @@ export const palette = {
   danger600: "#B94747",
   info50: "#EEF5FA",
   info600: "#4D7599",
+
+  //#80 캘린더 일정 점 (Figma 07 캘린더 최종 F01, 팀 확정)
+  eventBlue600: "#295CB8",
+  eventRed500: "#E2425C",
 } as const;
 
 // 역할(semantic) 토큰
@@ -100,6 +104,11 @@ export const colors = {
   feedbackInfoBg: palette.info50, // 정보 안내 배경
   feedbackInfoText: palette.info600, // 정보 안내 텍스트
   stateError: palette.danger600, // 오류 상태 입력창 테두리
+
+  //#80 캘린더 일정 종류 점 (경조사 파랑 · 생일 빨강 · 그 외 초록)
+  eventOccasion: palette.eventBlue600, // 경조사
+  eventBirthday: palette.eventRed500, // 생일
+  eventOther: palette.green500, // 그 외 (brandSprout와 같은 색)
 
   //overlay
   overlayDim: "rgba(0, 0, 0, 0.3)", // 다이얼로그·시트 뒤 딤 배경 (Figma 01-4-1)

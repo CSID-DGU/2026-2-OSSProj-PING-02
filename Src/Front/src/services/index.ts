@@ -24,6 +24,9 @@ import {
   createMockPermissionService,
   type MockPermissionScenario,
 } from "./permission/mockPermissionService";
+import { createCalendarService } from "./calendar/CalendarService";
+import type { ConversationDetail } from "./conversation/types";
+import type { FriendSummary } from "./friend/FriendService";
 import { createKeychainStorage } from "./storage/keychainStorage";
 import { createSecureKeyValueStorage } from "./storage/secureKeyValueStorage";
 import { createUserScopedStorage } from "./storage/userScopedStorage";
@@ -166,6 +169,16 @@ export const services = {
     : createMockMessengerService(),
   // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
   friends: createMockFriendService(),
+  // 07 캘린더 일정 (#80): 사용자별 암호화 저장소에 저장 (백엔드에 일정 API 없음) + 친구 생일
+  // 친구·연락은 부를 때 services에서 찾음 (테스트·개발 옵션으로 바꿔 끼워도 같이 따라감)
+  calendar: createCalendarService({
+    storage: userStorage,
+    friends: { list: (): Promise<FriendSummary[]> => services.friends.list() },
+    conversation: {
+      get: (id: string): Promise<ConversationDetail> =>
+        services.conversation.get(id),
+    },
+  }),
   storage,
   userStorage,
   ai,
@@ -207,4 +220,7 @@ export * from "./ai/AiReplyService";
 export * from "./ai/AiReplyStore";
 export * from "./ai/classifyMessage";
 export * from "./ai/requestAiReply";
+export * from "./calendar/types";
+export * from "./calendar/CalendarService";
+export { eventKindOf, findEventsInMessages } from "./calendar/findEvents";
 export * from "./ai/maskNames";
