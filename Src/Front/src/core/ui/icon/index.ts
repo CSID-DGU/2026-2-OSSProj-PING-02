@@ -9,6 +9,7 @@ export {
   ChatIcon,
   FriendsIcon,
   CalendarIcon,
+  CalendarSmallIcon,
   SettingsIcon,
   GroupChatIcon,
   ClipboardIcon,

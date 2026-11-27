@@ -273,6 +273,36 @@ describe("DateTimeSheet", () => {
     unmount();
   });
 
+  test("최소 시각보다 이른 시간 칩과 확인 버튼은 막힌다", async () => {
+    const onConfirm = jest.fn();
+    const { root, unmount } = await render(
+      <DateTimeSheet
+        visible
+        onClose={() => {}}
+        onConfirm={onConfirm}
+        initialValue={new Date(2026, 0, 15, 9)}
+        minDateTime={new Date(2026, 0, 15, 15)}
+        timePresets={[9 * 60, 18 * 60]}
+      />
+    );
+    const chip = (label: string) =>
+      byRole(root, "radio").find(n => findText(n, label).length > 0)!;
+    const confirm = () =>
+      byRole(root, "button").find(
+        n => findText(n, "1월 15일 목요일 오전 9시 선택하기").length > 0
+      );
+    expect(chip("오전 9시").props.accessibilityState).toMatchObject({ disabled: true });
+    expect(chip("오후 6시").props.accessibilityState).toMatchObject({ disabled: false });
+    expect(confirm()?.props.accessibilityState).toMatchObject({ disabled: true });
+
+    // 다음 날이면 오전 9시도 고를 수 있음
+    await pressByRole(root, "button", "2026년 1월 16일 금요일");
+    expect(chip("오전 9시").props.accessibilityState).toMatchObject({ disabled: false });
+    await press(root, "1월 16일 금요일 오전 9시 선택하기");
+    expect(onConfirm).toHaveBeenCalledWith(new Date(2026, 0, 16, 9));
+    unmount();
+  });
+
   test("처음 값이 없으면 날짜를 고르기 전까지 확인할 수 없다", async () => {
     const { root, unmount } = await render(
       <DateTimeSheet visible onClose={() => {}} onConfirm={() => {}} />

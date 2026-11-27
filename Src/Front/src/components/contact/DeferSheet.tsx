@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import styled from "styled-components/native";
 import { DateTimeSheet, startOfDay } from "@core/ui/calendar";
 import { ChoiceGroup } from "@core/ui/choice";
-import { CalendarIcon, ChevronRightIcon } from "@core/ui/icon";
+import { CalendarSmallIcon, ChevronRightIcon } from "@core/ui/icon";
 import { BottomSheet, BottomSheetActions } from "@core/ui/sheet";
 import {
   DEFAULT_DEFER_OPTION,
@@ -88,8 +88,7 @@ const DeferSheet = ({
           accessibilityRole="button"
           accessibilityLabel="날짜와 시간 직접 선택"
         >
-          {/* TODO(에셋): 시안의 작은 달력 아이콘(안쪽 점 없음) SVG가 없어 탭바 달력 아이콘을 씀 */}
-          <CalendarIcon size={18} />
+          <CalendarSmallIcon />
           <CustomLabel>날짜와 시간 직접 선택</CustomLabel>
           <ChevronRightIcon size={20} />
         </CustomRow>
@@ -102,6 +101,8 @@ const DeferSheet = ({
         initialValue={deferRemindAt(option, now)}
         timePresets={DEFER_TIME_PRESETS}
         minDate={startOfDay(now)}
+        // 오늘의 지난 시간은 고를 수 없음 (팀 확정)
+        minDateTime={now}
         confirmLabel={date => `${formatDeferAt(date)}에 다시 알려주기`}
       />
     </>
@@ -114,14 +115,14 @@ const Chips = styled.View`
 `;
 
 // 시안: 칩 아래 약 18 · 아이콘 왼쪽 36 · 글자 왼쪽 64 · 오른쪽 > 끝 40 (시트 기준)
-// 줄 높이 48dp (터치 영역)
+// 아이콘 상자 20(그려진 부분 16, 바깥 2씩) · 줄 높이 48dp (터치 영역)
 const CustomRow = styled.Pressable`
   flex-direction: row;
   align-items: center;
   gap: 10px;
   height: 48px;
   margin-top: 18px;
-  padding: 0px 12px 0px 16px;
+  padding: 0px 12px 0px 14px;
 `;
 
 const CustomLabel = styled.Text`

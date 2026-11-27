@@ -143,8 +143,8 @@
   - 구조: 상세는 한 화면(`ConversationDetail`), 답장 단계는 `useReplyFlow`(뒤로가기 한 단계씩). ReplyStance·ReplyTone·ReplyGroup 삭제, ReplyEdit은 친구 첫마디용으로만
   - 꼭 챙길 연락·"!" = 별/하트 친구 + 직장 + 경조사 (관계·별은 mock, `TODO(06 친구)`). 관계 필터 단일 선택
   - 도움 수준별 버튼: 추천 선택(미루기·안 고름 포함) 복사/수정, 추천 수정 수정/직접 쓰기, 직접 쓰기는 처음부터 작성 상자
-  - core 변경(PR에 적기): `UnderlineTabs` 글자 labelTab·칸 32+hitSlop, `ChoiceGroup` shape="pill"(글자 labelChip)·항목별 `disabled`, `DateTimeSheet` 시간 칩 pill, `FooterLayout` background, `TextArea` typo, `TabScreen` onBack·divider·background, 토큰 labelNotice·labelMenu·titleProfile·bodyReply·labelChip·captionRelaxed, 아이콘 8개(Avatar·WarningBadge·SettingsSmall·Filter·Edit·Phone·Birthday·Copy)
-  - Figma와 다르게 간 부분(PR에 적기): D02 버튼 영역 흰 바탕(시안은 목록이 비침, 글자가 겹쳐 읽기 힘듦), 나중에 답하기 시트 달력 아이콘은 탭바 아이콘 임시(`TODO(에셋)`), 관계 메뉴 항목 높이 31(48dp 미만, 시안 우선), 직접 쓰기 시작 화면의 "나중에 답하기" 텍스트 버튼, "보냈다고 표시하기", "친구 정보 보기" 텍스트 버튼 유지, 입장 설명 고정 문구(`TODO(디자이너 문구 확인)`), 로고 1x 파일은 2x를 그대로 씀
+  - core 변경(PR에 적기): `UnderlineTabs` 글자 labelTab·칸 32+hitSlop, `ChoiceGroup` shape="pill"(글자 labelChip)·항목별 `disabled`, `DateTimeSheet` 시간 칩 pill·`minDateTime`(지난 시간 막기), `FooterLayout` background, `TextArea` typo, `TabScreen` onBack·divider·background, 토큰 labelNotice·labelMenu·titleProfile·bodyReply·labelChip·captionRelaxed, 아이콘 9개(Avatar·WarningBadge·SettingsSmall·Filter·Edit·Phone·Birthday·Copy·CalendarSmall)
+  - Figma와 다르게 간 부분(PR에 적기): D02 버튼 영역 흰 바탕(시안은 목록이 비침, 글자가 겹쳐 읽기 힘듦), 관계 메뉴 항목 높이 31(48dp 미만, 시안 우선), 직접 쓰기 시작 화면의 "나중에 답하기" 텍스트 버튼, "보냈다고 표시하기", "친구 정보 보기" 텍스트 버튼 유지, 입장 설명 고정 문구(`TODO(디자이너 문구 확인)`), 로고 1x 파일은 2x를 그대로 씀
 
 - 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 남은 것: 07(아이콘)·08·09는 민재 #73 머지 후 + 에셋(연락처 책 PNG·아바타·돋보기 SVG)과 함께. 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영

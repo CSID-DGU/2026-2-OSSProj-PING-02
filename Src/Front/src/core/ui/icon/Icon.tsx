@@ -205,6 +205,26 @@ export const FriendsIcon = ({
   </Svg>
 );
 
+// calendar-small.svg (05 연락 D03 나중에 답하기 시트 "날짜와 시간 직접 선택" 줄)
+export const CalendarSmallIcon = ({
+  size = 20,
+  color = colors.textSecondary,
+}: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <Path
+      d="M5 4.25H15C16.2426 4.25 17.25 5.25736 17.25 6.5V15C17.25 16.2426 16.2426 17.25 15 17.25H5C3.75736 17.25 2.75 16.2426 2.75 15V6.5C2.75 5.25736 3.75736 4.25 5 4.25Z"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M6 2.5V6M14 2.5V6M2.75 8H17.25"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
 export const CalendarIcon = ({
   size = 24,
   color = colors.iconSubtle,
