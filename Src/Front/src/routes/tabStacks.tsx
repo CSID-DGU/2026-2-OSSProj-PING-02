@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import AnalysisRooms from "@pages/contact/AnalysisRooms";
 import ConversationDetail from "@pages/contact/ConversationDetail";
 import ReplyStance from "@pages/contact/ReplyStance";
 import ReplyTone from "@pages/contact/ReplyTone";
@@ -41,7 +42,8 @@ export const createTabStack = (
       <Stack.Screen name="HomeHelpLevel" component={HelpLevel} />
       <Stack.Screen name="HomeHelpMode" component={HelpMode} />
 
-      {/* Contact (04 연락) */}
+      {/* Contact (04·05 연락) */}
+      <Stack.Screen name="AnalysisRooms" component={AnalysisRooms} />
       <Stack.Screen name="ConversationDetail" component={ConversationDetail} />
       <Stack.Screen name="ReplyStance" component={ReplyStance} />
       <Stack.Screen name="ReplyTone" component={ReplyTone} />

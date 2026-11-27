@@ -41,6 +41,7 @@ export const createMockConversationService = ({
   );
   const deferred = new Map<string, DeferredReply>();
   const replied = new Set<string>();
+  let analysisOff = new Set<string>();
 
   const find = (id: string) => {
     const seed = seeds.find(s => s.conversation.id === id);
@@ -65,18 +66,31 @@ export const createMockConversationService = ({
   };
 
   return {
-    async list() {
+    async list({ includeAnalysisOff = false } = {}) {
       await delay(latency);
       if (failList) {
         throw new ServiceError("NETWORK_ERROR", "불러오지 못했습니다.");
       }
       return seeds
+        .filter(
+          s => includeAnalysisOff || !analysisOff.has(s.conversation.id)
+        )
         .map(s => summarize(s.conversation.id))
         .sort((a, b) =>
           b.conversation.lastMessageAt.localeCompare(
             a.conversation.lastMessageAt
           )
         );
+    },
+
+    async getAnalysisOffIds() {
+      await delay(latency);
+      return [...analysisOff];
+    },
+
+    async setAnalysisOffIds(ids) {
+      await delay(300);
+      analysisOff = new Set(ids);
     },
 
     async get(id) {

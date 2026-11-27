@@ -156,13 +156,16 @@ describe("홈·연락", () => {
   });
 
   // 탭 안 스택 (#44): 상세 화면에서도 탭바가 보이고 🔔가 있음
+  // 하단 탭바만 봄 (연락 목록의 밑줄 탭도 role이 tab)
+  const BOTTOM_TABS = ["홈", "연락", "친구", "캘린더", "설정"];
   const selectedTab = (root: Instance) =>
     root
       .findAll(
         n =>
           typeof n.type === "string" &&
           n.props.accessibilityRole === "tab" &&
-          n.props.accessibilityState?.selected
+          n.props.accessibilityState?.selected &&
+          BOTTOM_TABS.includes(n.props.accessibilityLabel)
       )
       .map(n => n.props.accessibilityLabel);
 
@@ -170,7 +173,7 @@ describe("홈·연락", () => {
     const root = await renderApp();
     await waitForText(root, "오늘의 도움 수준");
     await pressByRole(root, "tab", "연락");
-    await waitForText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.");
+    await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
     await waitForText(root, "민지");
     await pressByRole(root, "button", "민지");
     await waitForText(root, "민지와의 연락");

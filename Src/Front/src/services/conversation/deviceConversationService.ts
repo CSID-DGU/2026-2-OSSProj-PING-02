@@ -92,9 +92,16 @@ interface StoredState {
   /** 대화방 id → 확인만 한 시각(ms) */
   checked: Record<string, number>;
   deferred: Record<string, DeferredReply>;
+  /** 05 연락 D02에서 분석을 끈 대화방 id. 목록·홈에서 빠짐 */
+  analysisOff: string[];
 }
 
-const emptyState = (): StoredState => ({ replied: {}, checked: {}, deferred: {} });
+const emptyState = (): StoredState => ({
+  replied: {},
+  checked: {},
+  deferred: {},
+  analysisOff: [],
+});
 
 // 화면에서 쓰는 대화방 id: "패키지::대화방ID" (대화방 ID는 앱마다 겹칠 수 있어 앱을 붙임)
 const SEPARATOR = "::";
@@ -310,7 +317,7 @@ export const createDeviceConversationService = ({
   };
 
   const service: ConversationService = {
-    async list() {
+    async list({ includeAnalysisOff = false } = {}) {
       const [rows, state] = await Promise.all([
         source.getNotifications({ limit: LIST_LIMIT }),
         readState(),
@@ -319,6 +326,7 @@ export const createDeviceConversationService = ({
       for (const row of rows) {
         if (!PACKAGE_TO_APP[row.packageName]) continue;
         const key = toConversationKey(row.packageName, row.conversationId);
+        if (!includeAnalysisOff && state.analysisOff.includes(key)) continue;
         const list = groups.get(key) ?? [];
         list.push(row);
         groups.set(key, list);
@@ -329,6 +337,17 @@ export const createDeviceConversationService = ({
       return summaries.sort((a, b) =>
         b.conversation.lastMessageAt.localeCompare(a.conversation.lastMessageAt)
       );
+    },
+
+    // TODO(네이티브): 끈 방은 알림 수집(Kotlin)에서도 빼서 메시지를 쌓지 않기. 지금은 화면에서만 숨김
+    async getAnalysisOffIds() {
+      return (await readState()).analysisOff;
+    },
+
+    async setAnalysisOffIds(ids) {
+      await updateState(s => {
+        s.analysisOff = [...ids];
+      });
     },
 
     async get(key) {

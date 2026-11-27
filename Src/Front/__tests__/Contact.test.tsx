@@ -47,7 +47,7 @@ const openContacts = async () => {
   const root = await renderApp();
   await waitForText(root, "오늘의 도움 수준");
   await pressByRole(root, "tab", "연락");
-  await waitForText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.");
+  await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
   return root;
 };
 
@@ -65,6 +65,20 @@ const inputValue = (root: Instance, label: string) =>
         !!n.props.onChangeText
     )
     .at(-1)?.props.value;
+
+// 05 연락 D01·D02 목록 줄의 이름 (홈 카드와 섞이지 않게 목록 줄 힌트로 찾음)
+const rowNames = (root: Instance) =>
+  root
+    .findAll(
+      n =>
+        typeof n.type === "string" &&
+        n.props.accessibilityHint === "눌러서 자세히 봐요"
+    )
+    .map(n => String(n.props.accessibilityLabel).split(", ")[0]);
+
+const repliedTo = async (id: string) =>
+  (await services.conversation.list()).find(i => i.conversation.id === id)
+    ?.replied;
 
 const isDisabled = (root: Instance, text: string) =>
   root
@@ -119,8 +133,9 @@ describe("연락 흐름", () => {
 
     await press(root, "확인하고 보내기");
     await press(root, "보내기");
-    // 보내면 목록으로 돌아가고 "답장함" 표시
-    await waitForText(root, "답장함");
+    // 보내면 목록으로 돌아가고 답장한 연락으로 저장
+    await waitForNoText(root, "보내기 전에 말투를 다듬어보세요");
+    expect(await repliedTo("minji")).toBe(true);
     // 화면 6개를 거치는 긴 흐름이라 단독으로도 약 5초 → 전체 실행 때 기본 5초 제한에 걸려서 늘림
   }, 15000);
 
@@ -144,7 +159,8 @@ describe("연락 흐름", () => {
     await press(root, "복사하고 인스타그램 열기");
     await waitForText(root, "답장을 복사했어요");
     await press(root, "보냈다고 표시하기");
-    await waitForText(root, "답장함");
+    await waitForNoText(root, "보냈다고 표시하기");
+    expect(await repliedTo("haneul")).toBe(true);
   });
 
   test("단톡은 08 없이 09-C로 가고, 나를 언급한 메시지를 강조한다", async () => {
@@ -169,7 +185,7 @@ describe("연락 흐름", () => {
     expect(isDisabled(root, "확인했어요")).toBe(true);
     await pressByRole(root, "radio", "답장 없이 확인만 할게요.");
     await press(root, "확인했어요");
-    await waitForText(root, "편한 순서대로 천천히 살펴봐도 괜찮아요.");
+    await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
     await waitForNoText(root, "나에게 온 질문이 있어요");
   });
 
@@ -201,7 +217,11 @@ describe("연락 흐름", () => {
     await pressByRole(root, "radio", "1주 뒤");
     expect(findText(root, "선택: 1주 뒤").length).toBe(1);
     await press(root, "1주 뒤 다시 보기");
+    // 미뤄둔 답장 탭: 시간 자리에 다시 볼 때
+    await waitForText(root, "인식에 실패한 장문 메시지가 있어요");
+    await pressByRole(root, "tab", "미뤄둔 답장");
     await waitForText(root, "7일 뒤 다시 보기");
+    expect(rowNames(root)).toEqual(["준호"]);
   });
 
   test("분석 실패: 요약 없이 기본 카드, 직접 답장 쓰기에는 말투 조절이 없다", async () => {
@@ -246,6 +266,99 @@ describe("연락 흐름", () => {
     await waitForText(root, "어떻게 답하고 싶으세요?");
     await pressBack();
     await waitForText(root, "정리한 내용");
+  });
+});
+
+describe("05 연락 D01 목록·D02 분석 대화방 관리", () => {
+  beforeEach(() => seed());
+
+  test("꼭 챙길 연락 탭은 별 친구·직장·경조사만, 이름 앞에 꼭 챙길 연락 표시", async () => {
+    const root = await openContacts();
+    expect(rowNames(root)).toContain("하늘");
+    const label = (name: string) =>
+      root.find(
+        n =>
+          typeof n.type === "string" &&
+          n.props.accessibilityHint === "눌러서 자세히 봐요" &&
+          String(n.props.accessibilityLabel).startsWith(`${name}, `)
+      ).props.accessibilityLabel as string;
+    expect(label("민지")).toContain("꼭 챙길 연락");
+    expect(label("하늘")).not.toContain("꼭 챙길 연락");
+    await pressByRole(root, "tab", "꼭 챙길 연락");
+    await waitUntil(() => !rowNames(root).includes("하늘"), "꼭 챙길 연락만");
+    expect([...rowNames(root)].sort()).toEqual(
+      ["2026 봄학기 오픈소스 프로젝트 PING 운영진 방", "김서연 선배", "민지"].sort()
+    );
+  });
+
+  test("관계 필터는 하나만 고르고, 고른 관계 이름이 필터에 보인다", async () => {
+    const root = await openContacts();
+    expect(findText(root, "관계").length).toBe(1);
+    await pressByRole(root, "button", "관계 필터, 전체");
+    await pressByRole(root, "menuitem", "가족");
+    await waitForText(root, "가족");
+    expect(findText(root, "관계").length).toBe(0);
+    expect(rowNames(root)).toEqual(["준호"]);
+
+    await pressByRole(root, "button", "관계 필터, 가족");
+    await pressByRole(root, "menuitem", "전체");
+    await waitForText(root, "관계");
+    expect(rowNames(root)).toContain("하늘");
+  });
+
+  test("장문 안내를 누르면 잘린 메시지 보완 화면으로", async () => {
+    const root = await openContacts();
+    await press(root, "인식에 실패한 장문 메시지가 있어요");
+    await waitForText(root, "긴 메시지를 붙여넣어 주세요");
+  });
+
+  test("상태 바꾸기는 홈과 같은 도움 수준 화면을 연다", async () => {
+    const root = await openContacts();
+    await press(root, "상태 바꾸기");
+    await waitForText(root, "오늘은 어느 정도 도움이 필요하세요?");
+  });
+
+  test("D02: 분석을 끈 대화방은 저장하면 목록에서 빠지고, 전체 선택·해제가 바뀐다", async () => {
+    const root = await openContacts();
+    await pressByRole(root, "button", "분석 대화방 관리");
+    await waitForText(root, "변경 사항 저장하기");
+
+    const checked = () =>
+      root
+        .findAll(
+          n =>
+            typeof n.type === "string" &&
+            n.props.accessibilityRole === "checkbox" &&
+            typeof n.props.onPress === "function"
+        )
+        .map(n => n.props.accessibilityState.checked);
+
+    // 처음엔 모두 분석 중 → "전체 해제"
+    expect(checked().every(Boolean)).toBe(true);
+    expect(findText(root, "전체 해제").length).toBe(1);
+    await press(root, "전체 해제");
+    expect(checked().some(Boolean)).toBe(false);
+    await press(root, "전체 선택");
+    expect(checked().every(Boolean)).toBe(true);
+
+    await pressByRole(root, "checkbox", "하늘");
+    expect(findText(root, "전체 선택").length).toBe(1);
+    await press(root, "변경 사항 저장하기");
+    await waitForText(root, "저장했어요");
+    await waitForNoText(root, "변경 사항 저장하기");
+    await waitUntil(() => !rowNames(root).includes("하늘"), "하늘 빠짐");
+    expect(rowNames(root)).toContain("민지");
+  });
+
+  test("D02: 저장하지 않고 뒤로가면 바뀌지 않는다", async () => {
+    const root = await openContacts();
+    await pressByRole(root, "button", "분석 대화방 관리");
+    await waitForText(root, "변경 사항 저장하기");
+    await pressByRole(root, "checkbox", "하늘");
+    await pressBack();
+    await waitForNoText(root, "변경 사항 저장하기");
+    expect(rowNames(root)).toContain("하늘");
+    expect(await services.conversation.getAnalysisOffIds()).toEqual([]);
   });
 });
 

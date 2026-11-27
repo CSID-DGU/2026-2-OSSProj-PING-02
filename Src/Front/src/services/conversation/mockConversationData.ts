@@ -11,6 +11,8 @@ import type {
 // - 1:1 질문(민지), 경조사(서연 선배), 마감 임박(상담센터), 조금 지난 안부(하늘), 축하(준호)
 // - 단톡: 정보만(대학교 친구들), 나를 언급한 질문(긴 방 이름)
 // - 분석 중(예린) → 화면에서 analyze 호출 시 완료, 분석 실패(시우), 잘린 메시지(민지)
+// - 관계·별 친구(05 연락 D01 필터·꼭 챙길 연락): 민지 별 친구, 준호 가족, PING 운영진 방 직장, 상담센터 기타
+//   TODO(06 친구): 친구 정보의 관계·별/하트가 생기면 거기서 가져옴
 const now = Date.now();
 const ago = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
 const later = (days: number, hour: number) => {
@@ -66,6 +68,8 @@ export const SEEDS: Seed[] = [
       title: "민지",
       personId: "p-minji",
       lastMessageAt: ago(60),
+      relation: "friend",
+      favorite: true,
     },
     messages: [
       msg(
@@ -93,6 +97,7 @@ export const SEEDS: Seed[] = [
       title: "김서연 선배",
       personId: "p-seoyeon",
       lastMessageAt: ago(60 * 5),
+      relation: "friend",
     },
     messages: [
       msg(
@@ -129,6 +134,7 @@ export const SEEDS: Seed[] = [
       title: "마음숲 상담센터",
       personId: null,
       lastMessageAt: ago(60 * 3),
+      relation: "etc",
     },
     messages: [
       msg(
@@ -166,6 +172,7 @@ export const SEEDS: Seed[] = [
       title: "하늘",
       personId: "p-haneul",
       lastMessageAt: ago(60 * 24 * 5),
+      relation: "friend",
     },
     messages: [
       msg(
@@ -193,6 +200,7 @@ export const SEEDS: Seed[] = [
       title: "준호",
       personId: "p-junho",
       lastMessageAt: ago(60 * 26),
+      relation: "family",
     },
     messages: [msg("junho", 1, "준호", "생일 축하해! 잘 지내지?", 60 * 26)],
     analysis: done("junho", {
@@ -211,6 +219,7 @@ export const SEEDS: Seed[] = [
       title: "예린",
       personId: "p-yerin",
       lastMessageAt: ago(10),
+      relation: "friend",
     },
     messages: [
       msg(
@@ -240,6 +249,7 @@ export const SEEDS: Seed[] = [
       title: "시우",
       personId: "p-siwoo",
       lastMessageAt: ago(60 * 8),
+      relation: "friend",
     },
     messages: [msg("siwoo", 1, "시우", "ㅋㅋㅋ 이거 봐 [사진]", 60 * 8)],
     // 분석 실패: 요약 없이 기본 카드만
@@ -261,6 +271,7 @@ export const SEEDS: Seed[] = [
       title: "2026 봄학기 오픈소스 프로젝트 PING 운영진 방",
       personId: null,
       lastMessageAt: ago(30),
+      relation: "work",
     },
     messages: [
       msg("team", 1, "지훈", "이번 주 회의는 목요일 저녁 8시로 할게요", 90),
@@ -291,6 +302,7 @@ export const SEEDS: Seed[] = [
       title: "대학교 친구들",
       personId: null,
       lastMessageAt: ago(60 * 24 * 3),
+      relation: "friend",
     },
     messages: [
       msg(

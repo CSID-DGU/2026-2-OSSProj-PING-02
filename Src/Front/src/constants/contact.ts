@@ -1,8 +1,11 @@
 import { LINKED_APP_OPTIONS } from "./onboarding";
+import type { ImageSourcePropType } from "react-native";
 import type {
   AnalysisTag,
   ConversationKind,
+  ConversationSummary,
   MessengerApp,
+  ContactRelation,
   ReplyStance,
   ReplyTone,
 } from "@services";
@@ -14,6 +17,51 @@ import type {
 export const APP_LABEL = Object.fromEntries(
   LINKED_APP_OPTIONS.map(o => [o.value, o.label])
 ) as Record<MessengerApp, string>;
+
+// 05 연락 D01 목록 줄 오른쪽 메신저 로고
+export const APP_ICON = Object.fromEntries(
+  LINKED_APP_OPTIONS.map(o => [o.value, o.icon])
+) as Record<MessengerApp, ImageSourcePropType>;
+
+// 05 연락 D01 관계 필터 (시안 메뉴 순서: 친구·가족·직장·기타·전체)
+export type RelationFilter = ContactRelation | "all";
+
+export const RELATION_OPTIONS: { value: RelationFilter; label: string }[] = [
+  { value: "friend", label: "친구" },
+  { value: "family", label: "가족" },
+  { value: "work", label: "직장" },
+  { value: "etc", label: "기타" },
+  { value: "all", label: "전체" },
+];
+
+// 05 연락 "꼭 챙길 연락" (디자이너 기준): 별/하트를 켠 친구의 연락 + 직장(업무) + 경조사
+// 목록 이름 앞 노란 "!"도 같은 기준
+// TODO(06 친구): 별/하트·관계는 지금 mock 데이터에만 있음
+export const isMustCare = ({ conversation, analysis }: ConversationSummary) =>
+  !!conversation.favorite ||
+  conversation.relation === "work" ||
+  analysis.tags.includes("occasion");
+
+// 05 연락 D01·D02 밑줄 탭
+export type ContactTab = "all" | "mustCare" | "later";
+
+export const CONTACT_TABS: { key: ContactTab; label: string }[] = [
+  { key: "all", label: "전체" },
+  { key: "mustCare", label: "꼭 챙길 연락" },
+  { key: "later", label: "미뤄둔 답장" },
+];
+
+export const filterConversations = (
+  items: ConversationSummary[],
+  tab: ContactTab,
+  relation: RelationFilter
+) =>
+  items.filter(
+    item =>
+      (tab === "all" ||
+        (tab === "mustCare" ? isMustCare(item) : !!item.deferred)) &&
+      (relation === "all" || item.conversation.relation === relation)
+  );
 
 export const KIND_LABEL: Record<ConversationKind, string> = {
   direct: "1:1",

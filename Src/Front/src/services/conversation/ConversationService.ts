@@ -14,7 +14,11 @@ import type {
 // - 원문은 기기 안, 기기 안 규칙 마스킹(utils/masking)으로 이름·전화번호를 가린 뒤 중간 서버를 거쳐 외부 AI로
 // - 자동 전송은 없음: 보내기는 MessengerService.sendReply를 사용자가 확인한 뒤에만
 export interface ConversationService {
-  list(): Promise<ConversationSummary[]>;
+  // 분석을 끈 대화방은 빠짐. includeAnalysisOff: 05 연락 D02 분석 대화방 관리처럼 모두 보여 줄 때
+  list(options?: { includeAnalysisOff?: boolean }): Promise<ConversationSummary[]>;
+  // 05 연락 D02: 분석을 끈 대화방 id (TODO(네이티브): 끈 방은 알림 수집·분석에서도 빼기)
+  getAnalysisOffIds(): Promise<string[]>;
+  setAnalysisOffIds(conversationIds: string[]): Promise<void>;
   get(conversationId: string): Promise<ConversationDetail>;
   // 분석이 끝나지 않은(pending) 대화를 분석
   analyze(conversationId: string): Promise<Analysis>;

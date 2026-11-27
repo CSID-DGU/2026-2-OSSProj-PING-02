@@ -28,6 +28,9 @@ export interface Account {
 
 export type ConversationKind = "direct" | "group";
 
+// 관계 (05 연락 D01 관계 필터: 친구/가족/직장/기타)
+export type ContactRelation = "friend" | "family" | "work" | "etc";
+
 // conversation: 1:1 또는 단톡방
 export interface Conversation {
   id: string;
@@ -36,6 +39,11 @@ export interface Conversation {
   title: string; // 1:1이면 상대 이름, 단톡이면 방 이름
   personId: string | null;
   lastMessageAt: string; // ISO
+  // TODO(06 친구): 친구 정보(person)의 관계·별/하트로 교체. 지금은 mock 데이터에만 있고
+  // 기기 알림 대화는 비어 있음 (관계 필터 "전체"에서만 보임)
+  relation?: ContactRelation;
+  // 친구 탭에서 별/하트를 켠 친구 (꼭 챙길 연락 기준)
+  favorite?: boolean;
 }
 
 // message: 알림으로 받은 메시지 (원문은 기기에만)
