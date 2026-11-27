@@ -23,6 +23,8 @@ export type TabStackParamList = {
   // 04 홈: C02 오늘 상태 선택(current: 지금 고른 모드) / C03~C05 모드별 화면
   HomeHelpLevel: { current?: HelpMode } | undefined;
   HomeHelpMode: { mode: Exclude<HelpMode, "rest"> };
+  // 07 캘린더 F02 일정 상세·수정 (#80)
+  CalendarEvent: { eventId: string };
   // 04 연락
   // 08 1:1 연락 상세
   ConversationDetail: { conversationId: string };

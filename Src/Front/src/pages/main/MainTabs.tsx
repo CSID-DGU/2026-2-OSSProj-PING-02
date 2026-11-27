@@ -13,6 +13,7 @@ import HomeTab from "./HomeTab";
 import ContactsTab from "./ContactsTab";
 import FriendsTab from "./FriendsTab";
 import PlaceholderTab from "./PlaceholderTab";
+import CalendarHome from "@pages/calendar/CalendarHome";
 
 // 메인 화면: 하단 탭 5개 (@react-navigation/bottom-tabs + 기존 TabBar 디자인)
 // 탭마다 스택이 있어 상세 화면에서도 탭바가 보임 (Figma 05 연락·06 친구 Screens)
@@ -27,7 +28,7 @@ const HomeRoot = () => {
 };
 const ContactsRoot = () => <ContactsTab title={tabConfig("contacts").title} />;
 const FriendsRoot = () => <FriendsTab title={tabConfig("friends").title} />;
-const CalendarRoot = () => <PlaceholderTab tab={tabConfig("calendar")} />;
+const CalendarRoot = () => <CalendarHome title={tabConfig("calendar").title} />;
 const SettingsRoot = () => <PlaceholderTab tab={tabConfig("settings")} />;
 
 const STACKS: Record<MainTabKey, ReturnType<typeof createTabStack>> = {

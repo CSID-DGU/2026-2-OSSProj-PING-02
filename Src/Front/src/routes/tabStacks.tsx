@@ -12,6 +12,7 @@ import FirstWords from "@pages/friend/FirstWords";
 import Notifications from "@pages/main/Notifications";
 import HelpLevel from "@pages/home/HelpLevel";
 import HelpMode from "@pages/home/HelpMode";
+import CalendarEventDetail from "@pages/calendar/CalendarEventDetail";
 import type { TabStackParamList } from "./types";
 
 // 탭 하나 = 스택 하나: 그 탭 첫 화면 + 공통 상세 화면
@@ -40,6 +41,9 @@ export const createTabStack = (
       {/* Home (04 홈 오늘의 도움 수준) */}
       <Stack.Screen name="HomeHelpLevel" component={HelpLevel} />
       <Stack.Screen name="HomeHelpMode" component={HelpMode} />
+
+      {/* Calendar (07 캘린더 #80) */}
+      <Stack.Screen name="CalendarEvent" component={CalendarEventDetail} />
 
       {/* Contact (04 연락) */}
       <Stack.Screen name="ConversationDetail" component={ConversationDetail} />
