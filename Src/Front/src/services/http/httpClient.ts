@@ -33,6 +33,11 @@ export type HttpMethod = "GET" | "POST" | "DELETE";
 export interface HttpClient {
   request<T>(method: HttpMethod, path: string, options?: RequestOptions): Promise<T>;
   refreshTokens(): Promise<AuthTokens>;
+  /**
+   * 401을 받은 요청이 보낸 액세스 토큰을 넘기면, 그사이 다른 요청이 이미 갱신했을 때는 그 토큰을 그대로,
+   * 아니면 refreshTokens()로 갱신한 토큰을 돌려줌. httpClient 밖에서 직접 보내는 요청(AI 답장)도 이걸 씀
+   */
+  refreshAfterUnauthorized(sentWith: string): Promise<AuthTokens>;
 }
 
 interface ErrorBody {
@@ -145,12 +150,15 @@ export const createHttpClient = ({
     const res = await send(method, path, body, sentWith);
     if (!auth || res.status !== 401 || !sentWith) return parse<T>(res);
 
-    // 기다리는 사이 다른 요청이 이미 갱신했으면 새 토큰으로 바로 다시 보냄
-    const latest = tokens.get();
-    const next =
-      latest && latest.accessToken !== sentWith ? latest : await refreshTokens();
+    const next = await refreshAfterUnauthorized(sentWith);
     return parse<T>(await send(method, path, body, next.accessToken));
   };
 
-  return { request, refreshTokens };
+  // 기다리는 사이 다른 요청이 이미 갱신했으면 갱신하지 않고 새 토큰을 바로 씀
+  const refreshAfterUnauthorized = async (sentWith: string) => {
+    const latest = tokens.get();
+    return latest && latest.accessToken !== sentWith ? latest : refreshTokens();
+  };
+
+  return { request, refreshTokens, refreshAfterUnauthorized };
 };

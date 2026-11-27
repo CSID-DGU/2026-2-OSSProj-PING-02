@@ -58,4 +58,6 @@ export const CONVERSATION_ERROR_CODE = {
   replyUnavailable: "REPLY_UNAVAILABLE", // 알림이 사라져 바로 답장 불가
   appNotInstalled: "APP_NOT_INSTALLED", // 메신저 앱이 없거나 열 수 없음
   copyFailed: "COPY_FAILED",
+  // 고른 답장 화면 갈래(입장 먼저 / 말투 바로)와 AI의 결정 판단이 다름 → 화면이 맞는 갈래로 바꿔 감
+  replyStepMismatch: "REPLY_STEP_MISMATCH",
 } as const;

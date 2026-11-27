@@ -10,6 +10,7 @@ import {
   createHttpAiReplyService,
   createKeyValueAiReplyStore,
   maskConversation,
+  parseAiReplyResponse,
   requestAiReply,
   ServiceError,
   type AiReplyRequest,
@@ -252,12 +253,15 @@ describe("createHttpAiReplyService", () => {
       { tone: "POLITE", text: "감사합니다" },
     ],
   };
-  const jsonResponse = (status: number, body: unknown) =>
+  const rawResponse = (status: number, text: string) =>
     ({
       status,
       ok: status >= 200 && status < 300,
-      json: async () => body,
+      json: async () => JSON.parse(text),
+      text: async () => text,
     } as Response);
+  const jsonResponse = (status: number, body: unknown) =>
+    rawResponse(status, JSON.stringify(body));
   const request: AiReplyRequest = {
     text: "[이름1]: 뭐해?",
     relation: "FRIEND",
@@ -271,13 +275,17 @@ describe("createHttpAiReplyService", () => {
       return calls.length === 1 ? jsonResponse(401, {}) : jsonResponse(200, ok);
     }) as unknown as typeof fetch;
 
+    const refreshAccessToken = jest.fn(async () => "new");
     const service = createHttpAiReplyService({
       baseUrl: "https://api.test/v1",
       getAccessToken: async () => "old",
-      refreshAccessToken: async () => "new",
+      refreshAccessToken,
       fetchImpl,
     });
     await expect(service.reply(request)).resolves.toEqual(ok);
+    // 401을 받은 요청이 보낸 토큰을 넘김 → 그사이 이미 갱신됐으면 다시 갱신하지 않을 수 있음 (#81)
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(refreshAccessToken).toHaveBeenCalledWith("old");
     expect(calls.map((c) => [c.url, c.auth])).toEqual([
       ["https://api.test/v1/ai/reply", "Bearer old"],
       ["https://api.test/v1/ai/reply", "Bearer new"],
@@ -326,6 +334,64 @@ describe("createHttpAiReplyService", () => {
       code: TIMEOUT_ERROR,
     });
   });
+
+  const nine = AI_STANCES.flatMap((stance) =>
+    AI_TONES.map((tone) => ({ stance, tone, text: `${stance}-${tone}` }))
+  );
+
+  test("9개 응답은 입장·말투가 다 있으면 순서가 섞여도 받는다", async () => {
+    const body = { summary: "요약", needsDecision: true, replies: [...nine].reverse() };
+    const service = createHttpAiReplyService({
+      baseUrl: "https://api.test/v1",
+      getAccessToken: async () => "t",
+      fetchImpl: (async () => jsonResponse(200, body)) as unknown as typeof fetch,
+    });
+    const res = await service.reply(request);
+    expect(res.replies).toHaveLength(9);
+    expect(res.needsDecision).toBe(true);
+  });
+
+  test.each<[string, string]>([
+    [
+      "예전 형식(label, needsDecision 없음)",
+      JSON.stringify({
+        summary: "요약",
+        replies: [
+          { label: "짧게", text: "응" },
+          { label: "다정하게", text: "고마워" },
+          { label: "공손하게", text: "감사합니다" },
+        ],
+      }),
+    ],
+    ["결정 필요인데 3개뿐", JSON.stringify({ ...ok, needsDecision: true, replies: nine.slice(0, 3) })],
+    [
+      "입장·말투 조합이 겹침",
+      JSON.stringify({ ...ok, needsDecision: true, replies: [...nine.slice(0, 8), nine[0]] }),
+    ],
+    [
+      "결정 불필요인데 입장이 있음",
+      JSON.stringify({ ...ok, replies: ok.replies.map((r) => ({ ...r, stance: "ACCEPT" })) }),
+    ],
+    ["정해지지 않은 말투", JSON.stringify({ ...ok, replies: [...ok.replies.slice(0, 2), { tone: "LOUD", text: "야" }] })],
+    ["빈 답장", JSON.stringify({ ...ok, replies: [...ok.replies.slice(0, 2), { tone: "POLITE", text: " " }] })],
+    ["요약 없음", JSON.stringify({ ...ok, summary: "" })],
+    ["JSON이 아님", "<html>bad gateway</html>"],
+  ])("형식이 틀린 응답은 AI_RESPONSE_INVALID로 바꾸고 저장하지 않는다: %s", async (_name, text) => {
+    const service = createHttpAiReplyService({
+      baseUrl: "https://api.test/v1",
+      getAccessToken: async () => "t",
+      fetchImpl: (async () => rawResponse(200, text)) as unknown as typeof fetch,
+    });
+    const store = createKeyValueAiReplyStore(createMemoryStorage());
+    const error = await requestAiReply(
+      { conversationId: "room-x", names: [], messages: [{ sender: "민수", text: "뭐해?" }] },
+      { ai: service, store }
+    ).catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: AI_ERROR_CODE.responseInvalid });
+    // 오류 메시지에 응답 본문을 넣지 않음
+    expect((error as Error).message).not.toContain("bad gateway");
+    expect(await store.listByConversation("room-x")).toEqual([]);
+  });
 });
 
 describe("createMockAiReplyService", () => {
@@ -354,5 +420,12 @@ describe("createMockAiReplyService", () => {
       [undefined, "WARM"],
       [undefined, "POLITE"],
     ]);
+  });
+
+  test("mock 응답도 서버 응답과 같은 형식 검사를 통과한다", async () => {
+    for (const text of ["[이름1]: 이번 주 금요일에 저녁 먹을래?", "[이름1]: 잘 지내지?"]) {
+      const res = await mock.reply({ text, relation: "SUPERIOR" });
+      expect(parseAiReplyResponse(res)).toEqual(res);
+    }
   });
 });
