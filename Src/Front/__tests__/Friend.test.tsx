@@ -132,14 +132,17 @@ describe("06 E01 친구 목록", () => {
     await waitForText(root, "민지");
 
     const labels = friendCardLabels(root);
+    // 시간은 mock 데이터 시각으로 계산 (mock 시각은 파일을 불러올 때 정해져서, 테스트가 느리면 지금 기준으로는 1분 어긋남)
+    const all = await services.friends.list();
+    const timeOf = (name: string) =>
+      formatFriendTime(all.find(f => f.person.displayName === name)!.lastContactAt!);
     // 예린(10분 전) → 민지(60분 전) … 얼려둔 지연도 순서대로 (맨 아래로 보내지 않음)
-    expect(labels[0]).toBe(`예린, 직장, 카카오톡, ${listTime(10)}`);
+    expect(labels[0]).toBe(`예린, 직장, 카카오톡, ${timeOf("예린")}`);
     expect(labels[1]).toBe(
-      `민지, 친구, 카카오톡, 인스타그램, ${listTime(60)}, 확인할 연락 있음`
+      `민지, 친구, 카카오톡, 인스타그램, ${timeOf("민지")}, 확인할 연락 있음`
     );
     expect(labels).toContain("유영서, NEW, 카카오톡, 문자 메신저, 일주일 전");
     // 얼려둔 지연(8달 전)이 맨 끝 (화면은 처음에 10줄만 그려서 서비스 순서로 확인)
-    const all = await services.friends.list();
     expect(all.at(-1)?.person.displayName).toBe("지연");
 
     expect(findText(root, LONG_NAME)[0].props.numberOfLines).toBe(1);
