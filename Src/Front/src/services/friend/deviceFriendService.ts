@@ -18,6 +18,7 @@ import {
   type RawMessageStats,
 } from "./FriendService";
 import { FIRST_WORDS_DEFAULT } from "./mockFriendData";
+import { toMaskNames } from "../ai/maskNames";
 
 // 실제 친구 서비스: 기기에 쌓인 알림(1:1 대화를 보낸 사람)과 온보딩 09에서 고른 연락처로 친구를 만들고,
 // 친구 정보는 사용자별 기기 저장소(services.userStorage)에 저장함. 서버로는 보내지 않음
@@ -110,6 +111,24 @@ const activityOf = (item: ConversationSummary): Activity | null => {
     topic: analysis.summary ?? lastMessage.text,
     needsReply: analysis.needsReply && !item.replied && !item.deferred,
   };
+};
+
+// AI로 보내기 전에 가릴 이름: 친구·NEW 이름, 계정 이름(보낸 사람 표시 이름), 인스타 아이디
+// 한글 세·네 글자 이름은 성을 뺀 이름도 (toMaskNames)
+export const friendMaskNames = ({
+  persons,
+  accounts,
+}: {
+  persons: Person[];
+  accounts: Account[];
+}) => {
+  const names = new Set<string>();
+  persons.forEach(p => toMaskNames(p.displayName).forEach(n => names.add(n)));
+  accounts.forEach(a => {
+    toMaskNames(a.senderName).forEach(n => names.add(n));
+    if (a.handle) names.add(a.handle);
+  });
+  return [...names];
 };
 
 export interface DeviceFriendDeps {
@@ -508,6 +527,9 @@ export const createDeviceFriendService = ({
         byAccount.get(accountIdOf(app, senderId)) ?? null;
     },
 
+    async getMaskNames() {
+      return friendMaskNames(await read());
+    },
   };
   return service;
 };

@@ -12,6 +12,8 @@ import {
 import {
   createKeyValueAiReplyStore,
   createMockAiReplyService,
+  type AiReplyRequest,
+  type AiReplyService,
   type FriendService,
 } from "../src/services";
 import { createMemoryStorage } from "../src/services/storage/memoryStorage";
@@ -210,6 +212,107 @@ describe("실제 친구 서비스", () => {
     expect(detail.rawStats.recentCount).toBe(2);
     expect(detail.rawStats.nextDeleteAt).not.toBeNull();
     expect(detail.rawStats.lastDeletedAt).toBeNull();
+  });
+});
+
+describe("AI 마스킹: 친구 이름·별명·대화방 이름·보낸 사람·전화번호", () => {
+  // index.ts와 같은 구성 + 서버로 가는 요청을 가로챔
+  const setupWithAi = (rows: StoredNotification[]) => {
+    const storage = createMemoryStorage();
+    const sent: AiReplyRequest[] = [];
+    const base = createMockAiReplyService();
+    const ai: AiReplyService = {
+      reply: async req => {
+        sent.push(req);
+        return base.reply(req);
+      },
+    };
+    const source: DeviceMessageSource = {
+      getNotifications: async () => [...rows].reverse(),
+      getConversationMessages: async (pkg, id) =>
+        rows.filter(r => r.packageName === pkg && r.conversationId === id).reverse(),
+    };
+    let friends: FriendService;
+    const conversation = createDeviceConversationService({
+      source,
+      storage,
+      ai,
+      aiReplies: createKeyValueAiReplyStore(storage),
+      // 사용자 본인(김선빈) + 친구 이름
+      getMaskNames: async () => ["김선빈", "선빈", ...(await friends.getMaskNames())],
+      getPersonLookup: () => friends.getPersonLookup(),
+    });
+    friends = createDeviceFriendService({ storage, conversation });
+    return { friends, conversation, sent };
+  };
+
+  test("친구 이름이 들어간 메시지 → 서버로 보내는 본문에 이름·아이디·번호가 없고, 답장에서는 되돌아온다", async () => {
+    const { friends, conversation, sent } = setupWithAi([
+      // 인스타 NEW (아이디 seonbinihong05, 표시 이름 하늘이)
+      row({
+        packageName: INSTA,
+        conversationId: "dm-1",
+        conversationTitle: "하늘이",
+        sender: "하늘이",
+        senderId: "ig:seonbinihong05",
+        text: "안녕",
+      }),
+      // 단톡방: 보낸 사람 예린, 내용에 친구(연락처 김민지 → "민지"), 인스타 아이디, 방 이름, 전화번호, 내 이름
+      row({
+        conversationId: "group-1",
+        conversationTitle: "도현이네 모임",
+        sender: "예린",
+        isGroupConversation: true,
+        isMention: true,
+        text: "선빈아 민지가 그러는데 seonbinihong05 계정이 하늘이 거래. 도현이네 모임 연락은 010-1234-5678로 줘",
+      }),
+    ]);
+    await friends.importContacts([{ id: "c1", name: "김민지", phone: "010-1111-2222" }]);
+    await friends.list();
+
+    const key = toConversationKey(KAKAO, "group-1");
+    const candidates = await conversation
+      .getReplyCandidates(key, { tone: "short" })
+      .catch(() => []);
+    expect(sent).toHaveLength(1);
+    const body = JSON.stringify(sent[0]);
+    for (const secret of [
+      "민지",
+      "김민지",
+      "예린",
+      "하늘이",
+      "seonbinihong05",
+      "도현이네 모임",
+      "선빈",
+      "010-1234-5678",
+      "01012345678",
+    ]) {
+      expect(body).not.toContain(secret);
+    }
+    expect(sent[0].text).toMatch(/\[이름\d+\]/);
+    expect(sent[0].text).toContain("[전화번호1]");
+    // 기기에 저장된 결과(요약·답장)는 원래 이름으로 되돌아옴 (자리표시가 남지 않음)
+    const { analysis } = await conversation.get(key);
+    expect(analysis.summary).toBeTruthy();
+    const saved = JSON.stringify([candidates, analysis.summary]);
+    expect(saved).not.toMatch(/\[이름\d+\]/);
+  });
+
+  test("친구 이름 목록: 성 뺀 이름·계정 이름·인스타 아이디 포함", async () => {
+    const { friends } = setupWithAi([
+      row({
+        packageName: INSTA,
+        conversationId: "dm-1",
+        conversationTitle: "하늘이",
+        sender: "하늘이",
+        senderId: "ig:seonbinihong05",
+      }),
+    ]);
+    await friends.importContacts([{ id: "c1", name: "김민지", phone: "010-1111-2222" }]);
+    await friends.list();
+    expect((await friends.getMaskNames()).sort()).toEqual(
+      ["김민지", "민지", "하늘이", "늘이", "seonbinihong05"].sort()
+    );
   });
 });
 

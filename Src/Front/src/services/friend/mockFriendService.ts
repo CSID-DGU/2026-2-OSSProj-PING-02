@@ -17,6 +17,7 @@ import {
   FIRST_WORDS_DEFAULT,
   PERSONS,
 } from "./mockFriendData";
+import { friendMaskNames } from "./deviceFriendService";
 
 interface MockOptions {
   latency?: number;
@@ -366,6 +367,10 @@ export const createMockFriendService = ({
           },
         ];
       });
+    },
+
+    async getMaskNames() {
+      return friendMaskNames({ persons, accounts });
     },
 
     // mock 대화 메시지의 accountId는 mock 계정 id와 같음 (앱은 보지 않음)

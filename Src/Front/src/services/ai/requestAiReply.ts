@@ -8,6 +8,7 @@ import {
 } from "./AiReplyService";
 import type { AiReplyStore, SavedAiReply } from "./AiReplyStore";
 import { classifyRelation, looksLikeInstitution } from "./classifyMessage";
+import { toMaskNames } from "./maskNames";
 
 // 답장 후보 만들기 전체 흐름 (Doc/AI_답장_API_명세.md 6장)
 //   1. 관계를 규칙으로 정함 (기기 안, 원문 기준)
@@ -30,7 +31,7 @@ export interface AiReplyInput {
   conversationId: string;
   /** 대화의 최근 메시지 (오래된 것 → 최근). 길면 오래된 것부터 잘림 */
   messages: ConversationMessage[];
-  /** 가릴 이름: 사용자 본인·친구 이름·별명·아이디. 메시지의 보낸 사람 이름은 자동으로 더함 */
+  /** 가릴 이름: 사용자 본인·친구 이름·별명·아이디·대화방 이름. 메시지의 보낸 사람 이름은 자동으로 더함 */
   names: string[];
   /** 친구 설정 등으로 정해 둔 관계. 없으면 규칙으로 정함 */
   relation?: Relation;
@@ -109,10 +110,11 @@ export async function requestAiReply(
     senderName: lastSender,
     texts: incomingTexts,
   }).value;
-  // 보낸 사람 이름도 가린다. 단, 기관·번호 발신자 이름("국민건강보험")은 개인정보가 아니고 요약에 필요해서 둠
+  // 보낸 사람 이름도 가린다 (성을 뺀 이름도). 단, 기관·번호 발신자 이름("국민건강보험")은 개인정보가 아니고 요약에 필요해서 둠
   const senders = input.messages
     .map((m) => m.sender)
-    .filter((name) => !looksLikeInstitution(name));
+    .filter((name) => !looksLikeInstitution(name))
+    .flatMap(toMaskNames);
   const masked = maskConversation(input.messages, [...input.names, ...senders]);
 
   const response = await ai.reply({

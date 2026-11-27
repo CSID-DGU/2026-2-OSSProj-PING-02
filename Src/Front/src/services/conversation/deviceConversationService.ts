@@ -9,6 +9,7 @@ import {
 import type { AiReplyStore, SavedAiReply } from "../ai/AiReplyStore";
 import { classifyNeedsDecision, looksLikeInstitution } from "../ai/classifyMessage";
 import { requestAiReply, type ConversationMessage } from "../ai/requestAiReply";
+import { toMaskNames } from "../ai/maskNames";
 import type { NetworkService } from "../network/NetworkService";
 import type { KeyValueStorage } from "../storage/KeyValueStorage";
 import {
@@ -225,6 +226,15 @@ export const createDeviceConversationService = ({
   getMaskNames = async () => [],
   getPersonLookup,
 }: DeviceConversationDeps): ConversationService => {
+  // AI로 보내기 전에 가릴 이름: 사용자·친구 이름(getMaskNames) + 이 대화방 이름 (1:1이면 상대를 저장한 이름)
+  // 기관·번호 발신자 방 이름은 개인정보가 아니고 요약에 필요해서 둠
+  const namesFor = async (rows: StoredNotification[]) => {
+    const titles = [...new Set(rows.map(r => r.conversationTitle).filter(Boolean))].filter(
+      t => !looksLikeInstitution(t)
+    );
+    return [...(await getMaskNames().catch(() => [])), ...titles.flatMap(toMaskNames)];
+  };
+
   const personLookup = async (): Promise<PersonLookup | undefined> =>
     getPersonLookup ? getPersonLookup().catch(() => undefined) : undefined;
 
@@ -329,7 +339,7 @@ export const createDeviceConversationService = ({
 
     const request = (async () =>
       requestAiReply(
-        { conversationId: key, messages, names: await getMaskNames() },
+        { conversationId: key, messages, names: await namesFor(rows) },
         { ai, store: aiReplies, network }
       ))();
     inFlight.set(key, request);
@@ -437,7 +447,7 @@ export const createDeviceConversationService = ({
         {
           conversationId: key,
           messages: [{ sender: last.sender || toConversation(key, rows).title, text: trimmed }],
-          names: await getMaskNames(),
+          names: await namesFor(rows),
         },
         { ai, store: aiReplies, network }
       );

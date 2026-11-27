@@ -137,8 +137,11 @@ const conversation =
         ai,
         aiReplies,
         network,
-        // TODO(친구): 친구 이름·별명도 넘겨 마스킹 (연락처 연동 #70 이후)
-        getMaskNames: async () => maskNames.get(),
+        // AI로 보내기 전에 가릴 이름: 사용자 본인 + 친구 이름·별명·계정 이름 (대화방·보낸 사람 이름은 서비스가 더함)
+        getMaskNames: async () => [
+          ...maskNames.get(),
+          ...(await friends.getMaskNames().catch(() => [])),
+        ],
         // 1:1 대화의 보낸 사람 → 친구 (연락 상세 "친구 정보 보기")
         getPersonLookup: () => friends.getPersonLookup(),
       })
