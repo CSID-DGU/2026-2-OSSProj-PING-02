@@ -99,7 +99,7 @@
 - mock 회원·친구 편집 등 mock 서비스 안의 데이터는 여전히 메모리라 앱을 완전히 끄면 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
 - **기기 연락처 (#70)**: `services.contacts`는 Kotlin `Contacts` 모듈(`android/.../contacts/ContactsModule.kt`, JS `src/native/Contacts.ts`)로 `ContactsContract`에서 id·이름·전화번호만 읽음(대표 번호 하나, 가나다순). 네이티브 모듈이 없으면(Jest) mock 42명. 연락처와 고른 친구는 기기에만 두고 서버로 보내지 않음
-  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)가 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근은 #83에서 실제(`NotificationStore` 설정 화면), 앱 알림은 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
+  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)·앱 알림(`POST_NOTIFICATIONS`, #88, Android 12 이하는 묻지 않고 granted, Manifest에 선언)이 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근은 #83에서 실제(`NotificationStore` 설정 화면). "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
 - AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. `services.ai`는 API 모드가 `http`면 실서버(`createHttpAiReplyService`, 인증과 같은 `httpClient`로 토큰 갱신), 아니면 mock
   - **결정 여부는 AI가 판단**: 응답의 `needsDecision`이 true면 답장 9개(입장 `ACCEPT/HOLD/DECLINE` × 말투 `SHORT/WARM/POLITE`), false면 말투 3개. AI 결과가 있으면 그 판단으로 `question` 태그를 정해 답장 화면 갈래(09-A 입장 먼저 / 09-B 말투 바로)가 AI를 따름. 목록처럼 AI 결과가 없을 때만 기기 규칙(`classifyNeedsDecision`)
   - **갈래가 엇갈리면 (#81)**: AI 분석 전에 기기 규칙으로 들어간 화면과 AI 판단이 다르면 `getReplyCandidates`가 `REPLY_STEP_MISMATCH`를 던지고, `ReplyStance`/`ReplyTone`이 `navigation.replace`로 반대쪽 화면으로 감(뒤로가기는 이전 화면). 단톡(`ReplyGroup`)은 분석 전에도 "답장 만들기"를 누를 수 있어 이 경로로 처리

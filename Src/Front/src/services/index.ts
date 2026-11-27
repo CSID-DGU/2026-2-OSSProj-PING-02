@@ -7,7 +7,7 @@ import { createHttpAuthService } from "./auth/httpAuthService";
 import { createTokenStore } from "./auth/tokenStore";
 import { API_CONFIG, AUTH_FEATURES } from "./config";
 import { createHttpClient } from "./http/httpClient";
-import { Linking, PermissionsAndroid, type Permission } from "react-native";
+import { Linking, PermissionsAndroid, Platform, type Permission } from "react-native";
 import {
   createDeviceContactsService,
   createMockContactsService,
@@ -57,8 +57,8 @@ import Messenger, { isMessengerAvailable } from "@native/Messenger";
 // 개발 옵션: 권한 거부 → 다시 묻지 않음 → 설정 열기 흐름을 보려면 "deny"
 const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 
-// 권한: 연락처는 실제(PermissionsAndroid, #70), 알림 접근은 실제(NotificationStore 설정 화면, #83),
-// 앱 알림은 아직 mock. 네이티브 모듈이 없으면(Jest) 모두 mock
+// 권한: 연락처·앱 알림은 실제(PermissionsAndroid, #70·#88), 알림 접근은 실제(NotificationStore 설정 화면, #83).
+// 네이티브 모듈이 없으면(Jest) 모두 mock
 const mockPermission = createMockPermissionService(DEV_PERMISSION_SCENARIO);
 const permission = isContactsAvailable()
   ? createDevicePermissionService(
@@ -73,7 +73,8 @@ const permission = isContactsAvailable()
             isGranted: () => NotificationStore.isPermissionGranted(),
             openSettings: () => NotificationStore.openPermissionSettings(),
           }
-        : undefined
+        : undefined,
+      typeof Platform.Version === "number" ? Platform.Version : Number(Platform.Version)
     )
   : mockPermission;
 
