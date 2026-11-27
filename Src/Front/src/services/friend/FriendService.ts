@@ -102,6 +102,8 @@ export interface FriendService {
   importContacts(contacts: Contact[]): Promise<void>;
   // 연락 대화의 보낸 사람(앱 + 알림의 보낸 사람 id) → 친구 id. 없으면 null
   getPersonLookup(): Promise<(app: MessengerApp, senderId: string) => string | null>;
+  // 연락 분석을 끈 계정인지 (보낸 사람 → true면 분석·AI 요청에서 뺌)
+  getAnalysisOffLookup(): Promise<(app: MessengerApp, senderId: string) => boolean>;
   // AI로 보내기 전에 가릴 친구 이름 (친구·NEW 이름, 계정 이름, 인스타 아이디. 성 뺀 이름 포함). 기기 안에서만 씀
   getMaskNames(): Promise<string[]>;
 }

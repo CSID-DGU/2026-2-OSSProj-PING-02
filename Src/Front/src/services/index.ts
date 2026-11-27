@@ -145,6 +145,8 @@ const conversation =
         ],
         // 1:1 대화의 보낸 사람 → 친구 (연락 상세 "친구 정보 보기")
         getPersonLookup: () => friends.getPersonLookup(),
+        // 친구 화면에서 연락 분석을 끈 사람의 메시지는 분석·AI 요청에서 뺌 (#88)
+        getAnalysisOffLookup: () => friends.getAnalysisOffLookup(),
       })
     : // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
       createMockConversationService();

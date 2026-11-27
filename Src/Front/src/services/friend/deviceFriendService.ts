@@ -253,7 +253,8 @@ export const createDeviceFriendService = ({
       lastContactAt: dates.at(-1) ?? null,
       // 06 빨간 점: 답장이 필요한데 아직 답장(복사·보냄)하지 않았고 미뤄 두지도 않은 1:1 대화가 있음
       // TODO(API): 안 읽은 메시지(알림 DB 읽음 표시)도 함께 (읽음 표시는 아직 없음)
-      attention: acts.some(a => a.needsReply),
+      // 분석을 끈 계정은 빼고 봄 (C8)
+      attention: acts.some(a => a.needsReply && !store.analysisOff.includes(a.accountId)),
       lastTopic: acts[0]?.topic,
     };
   };
@@ -529,6 +530,11 @@ export const createDeviceFriendService = ({
 
     async getMaskNames() {
       return friendMaskNames(await read());
+    },
+
+    async getAnalysisOffLookup() {
+      const off = new Set((await read()).analysisOff);
+      return (app: MessengerApp, senderId: string) => off.has(accountIdOf(app, senderId));
     },
   };
   return service;

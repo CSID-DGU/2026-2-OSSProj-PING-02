@@ -369,6 +369,10 @@ export const createMockFriendService = ({
       });
     },
 
+    async getAnalysisOffLookup() {
+      return (_app, senderId) => analysisOff.has(senderId);
+    },
+
     async getMaskNames() {
       return friendMaskNames({ persons, accounts });
     },

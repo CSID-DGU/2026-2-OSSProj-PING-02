@@ -316,6 +316,86 @@ describe("AI 마스킹: 친구 이름·별명·대화방 이름·보낸 사람·
   });
 });
 
+describe("친구 분석 끄기 (C8)", () => {
+  const setupOff = (rows: StoredNotification[]) => {
+    const storage = createMemoryStorage();
+    const sent: AiReplyRequest[] = [];
+    const base = createMockAiReplyService();
+    const ai: AiReplyService = {
+      reply: async req => {
+        sent.push(req);
+        return base.reply(req);
+      },
+    };
+    const source: DeviceMessageSource = {
+      getNotifications: async () => [...rows].reverse(),
+      getConversationMessages: async (pkg, id) =>
+        rows.filter(r => r.packageName === pkg && r.conversationId === id).reverse(),
+    };
+    let friends: FriendService;
+    const conversation = createDeviceConversationService({
+      source,
+      storage,
+      ai,
+      aiReplies: createKeyValueAiReplyStore(storage),
+      getMaskNames: async () => friends.getMaskNames(),
+      getPersonLookup: () => friends.getPersonLookup(),
+      getAnalysisOffLookup: () => friends.getAnalysisOffLookup(),
+    });
+    friends = createDeviceFriendService({ storage, conversation });
+    return { friends, conversation, sent };
+  };
+
+  test("끈 친구의 1:1 대화: 메시지는 보이지만 답장 필요·빨간 점이 없고, AI를 부르지 않는다", async () => {
+    const { friends, conversation, sent } = setupOff([
+      row({ conversationId: "room-1", sender: "민지", text: "이번 주말에 만날 수 있어?" }),
+    ]);
+    const [minji] = await friends.list();
+    expect(minji.attention).toBe(true);
+    const key = toConversationKey(KAKAO, "room-1");
+    expect((await conversation.list())[0].analysis.needsReply).toBe(true);
+
+    await friends.setAnalysis(minji.person.id, minji.accounts.map(a => a.id), false);
+
+    const [item] = await conversation.list();
+    expect(item.lastMessage.text).toBe("이번 주말에 만날 수 있어?");
+    expect(item.analysis).toMatchObject({ needsReply: false, tags: [] });
+    expect((await friends.list())[0].attention).toBe(false);
+    // 상세를 열어도 AI 요청(pending)이 없고, 답장 후보·긴 메시지 요약도 보내지 않음
+    expect((await conversation.get(key)).analysis.status).toBe("done");
+    await expect(conversation.getReplyCandidates(key, { tone: "short" })).rejects.toMatchObject({
+      code: "ANALYSIS_OFF",
+    });
+    await expect(conversation.summarizePasted(key, "긴 메시지")).rejects.toMatchObject({
+      code: "ANALYSIS_OFF",
+    });
+    expect(sent).toHaveLength(0);
+
+    // 다시 켜면 원래대로
+    await friends.setAnalysis(minji.person.id, minji.accounts.map(a => a.id), true);
+    expect((await conversation.list())[0].analysis.needsReply).toBe(true);
+  });
+
+  test("단톡방: 끈 친구가 보낸 메시지만 AI로 보내는 본문에서 빠진다", async () => {
+    const { friends, conversation, sent } = setupOff([
+      // 1:1 대화로 민지·준호를 친구 계정으로 만듦
+      row({ conversationId: "room-1", sender: "민지", text: "안녕" }),
+      row({ conversationId: "room-2", conversationTitle: "준호", sender: "준호", text: "안녕" }),
+      row({ conversationId: "group-1", conversationTitle: "동아리", sender: "민지", isGroupConversation: true, isMention: true, text: "비밀 이야기야" }),
+      row({ conversationId: "group-1", conversationTitle: "동아리", sender: "준호", isGroupConversation: true, isMention: true, text: "회의는 내일 3시" }),
+    ]);
+    const minji = (await friends.list()).find(f => f.person.displayName === "민지")!;
+    await friends.setAnalysis(minji.person.id, minji.accounts.map(a => a.id), false);
+
+    await conversation
+      .getReplyCandidates(toConversationKey(KAKAO, "group-1"), { tone: "short" })
+      .catch(() => []);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain("회의는 내일 3시");
+    expect(sent[0].text).not.toContain("비밀 이야기야");
+  });
+});
+
 describe("번호·계정 id", () => {
   test.each([
     ["010-1234-5678", "01012345678"],
