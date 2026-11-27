@@ -152,6 +152,13 @@
 
 ## 다음 작업
 
+- 진행: **07 캘린더** `feat/#80-calendar` (worktree `C:\dev\ping-calendar`, 시안 `docs/figma/calendar`). 끝난 것: F01 월 화면·F02 일정 상세(수정·삭제)·F03 새 일정 추가·인원 설정 시트, 홈 다가오는 일정 연결. 남은 것: **05 연락 D03 관련 일정 탭**(다가오는/지난 일정, "+ 일정 추가", "새 일정이 발견됐어요" 카드)은 #77 머지 뒤 main을 merge해서 붙이기 (서비스 `listForConversation`·`findSuggestions`·`dismissSuggestion`, 컴포넌트 `EventCard tone="dark"`·`NewEventSheet initialPeople`는 준비됨)
+  - 데이터(팀 확정): 백엔드에 일정 API가 없어 `services.calendar`가 사용자별 암호화 저장소(`userStorage`)에 저장. 친구 생일은 `services.friends`의 생일로 만든 읽기 전용 일정(연도가 없어 "생일"만, #79가 실제 데이터가 되면 따라감). 새 일정 발견은 `findEventsInMessages`(기기 안 규칙, `TODO(AI 일정)`: AI 응답에 일정이 생기면 이 함수만 교체)
+  - 점 색 토큰 `eventOccasion` #295CB8 · `eventBirthday` #E2425C · `eventOther` = brandSprout (팀 확정). 직접 추가한 일정 종류는 제목 낱말로(`eventKindOf`)
+  - core 변경(PR에 적기): `Calendar` size="month"·marks, 아이콘 `PlusIcon` + `AvatarDefaultIcon`·`SearchIcon`·`CloseIcon`(#79와 같은 정의, 머지할 때 한쪽만 남기기), 색 토큰 3개
+  - #77 머지 뒤 할 것: 캘린더 `TabScreen divider={false} background="surface"`, 일정 상세 앱바를 `TabScreen onBack`으로, "답장 보내기"는 연락 상세에서 답장하기 바로 시작, 인원 설정 "!"는 `isMustCare`
+  - Figma와 다르게 간 부분(PR에 적기): 탭 첫 화면 뒤로가기 화살표 없음, + 버튼을 일정이 있는 날에도 보여 줌, "일정 삭제" 텍스트 버튼 + 확인 팝업, 생일 일정 "22살 생일" 대신 "생일"
+
 - 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 남은 것: 07(아이콘)·08·09는 민재 #73 머지 후 + 에셋(연락처 책 PNG·아바타·돋보기 SVG)과 함께. 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영
 - 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)
