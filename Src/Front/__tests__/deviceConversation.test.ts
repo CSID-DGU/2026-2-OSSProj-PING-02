@@ -244,10 +244,30 @@ describe("AI 답장 후보", () => {
 
     const tones = await service.getReplyCandidates(key, { tone: "short" });
     expect(tones.map(c => c.text)).toEqual(["그렇구나!", "알려줘서 고마워!", "응, 알겠어"]);
-    // 입장 선택 화면으로 잘못 들어가면 후보가 없다고 알림 (직접 쓰기로 이어짐)
+    // 입장 선택 화면으로 잘못 들어가면 갈래가 다르다고 알림 (화면이 말투 선택으로 바꿔 감)
     await expect(
       service.getReplyCandidates(key, { tone: "short", stance: "accept" })
-    ).rejects.toMatchObject({ code: "ANALYSIS_FAILED" });
+    ).rejects.toMatchObject({ code: "REPLY_STEP_MISMATCH" });
+  });
+
+  test("AI 분석 전에 기기 규칙으로 입장 화면에 들어가도, 다시 불러 같은 오류만 반복되지 않고 갈래가 다르다고 알린다", async () => {
+    const { ai, calls } = spyAi();
+    // AI는 결정이 필요 없다고 판단 (말투 3개)
+    const noDecision: AiReplyService = { reply: req => ai.reply({ ...req, needsDecision: false }) };
+    const service = setup([row({ text: "이번 주말에 같이 갈래?" })], noDecision);
+    const key = toConversationKey(KAKAO, "room-1");
+
+    // 기기 규칙은 질문으로 봄 → 입장 화면(09-A)으로 들어갔다고 가정
+    expect((await service.get(key)).analysis.tags).toContain("question");
+    for (let i = 0; i < 2; i++) {
+      await expect(
+        service.getReplyCandidates(key, { tone: "short", stance: "accept" })
+      ).rejects.toMatchObject({ code: "REPLY_STEP_MISMATCH" });
+    }
+    // 결과는 한 번만 받아 저장하고, 말투 화면에서는 그 결과로 후보를 보여 줌
+    const tones = await service.getReplyCandidates(key, { tone: "short" });
+    expect(tones).toHaveLength(3);
+    expect(calls).toHaveLength(1);
   });
 
   test("AI가 결정이 필요하다고 판단하면 기기 규칙에 단서가 없어도 입장 선택 화면으로 간다", async () => {
@@ -259,6 +279,13 @@ describe("AI 답장 후보", () => {
     expect((await service.get(key)).analysis.tags).not.toContain("question");
     const analysis = await service.analyze(key);
     expect(analysis.tags).toContain("question");
+
+    // 말투 선택 화면으로 잘못 들어가면 갈래가 다르다고 알림 (화면이 입장 선택으로 바꿔 감)
+    await expect(
+      service.getReplyCandidates(key, { tone: "short" })
+    ).rejects.toMatchObject({ code: "REPLY_STEP_MISMATCH" });
+    const accept = await service.getReplyCandidates(key, { tone: "short", stance: "accept" });
+    expect(accept.map(c => c.stance)).toEqual(["accept", "accept", "accept"]);
   });
 
   test("AI가 만든 요약은 그 뒤 목록·상세에 쓰인다", async () => {

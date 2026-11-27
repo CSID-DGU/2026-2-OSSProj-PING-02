@@ -4,7 +4,12 @@ import {
   createMockConversationService,
   createMockMessengerService,
 } from "../src/services/conversation/mockConversationService";
-import { services, STORAGE_KEYS } from "../src/services";
+import {
+  CONVERSATION_ERROR_CODE,
+  ServiceError,
+  services,
+  STORAGE_KEYS,
+} from "../src/services";
 import {
   findText,
   press,
@@ -129,6 +134,63 @@ describe("가리기 모델이 준비된 경우", () => {
     await waitForText(root, "답장함");
     // 화면 6개를 거치는 긴 흐름이라 단독으로도 약 5초 → 전체 실행 때 기본 5초 제한에 걸려서 늘림
   }, 15000);
+
+  test("AI 판단과 답장 화면 갈래가 다르면 맞는 화면으로 바꿔 가고, 뒤로가기는 08로 (#81)", async () => {
+    // AI가 결정이 필요 없다고 판단한 상황: 입장 후보를 달라고 하면 갈래가 다르다는 오류
+    const base = services.conversation;
+    services.conversation = {
+      ...base,
+      getReplyCandidates: (id, options) =>
+        options.stance
+          ? Promise.reject(
+              new ServiceError(
+                CONVERSATION_ERROR_CODE.replyStepMismatch,
+                "갈래가 다름"
+              )
+            )
+          : base.getReplyCandidates(id, options),
+    };
+    const root = await openContacts();
+    await openCard(root, "민지");
+    await waitForText(root, "답장 후보 살펴보기");
+    await press(root, "답장 후보 살펴보기");
+
+    // 09-A 대신 09-B 말투 선택이 보이고, 오류 화면은 남지 않음
+    await waitForText(root, "어떤 말투가 편하세요?");
+    expect(findText(root, "어떻게 답하고 싶으세요?").length).toBe(0);
+    expect(findText(root, "답장 후보를 준비하지 못했어요").length).toBe(0);
+
+    // 09-A를 건너뛰었으니 뒤로가기는 08
+    await pressBack();
+    await waitForText(root, "민지와의 연락");
+    expect(findText(root, "어떻게 답하고 싶으세요?").length).toBe(0);
+  });
+
+  test("반대로 AI가 입장 선택이 필요하다고 판단하면 말투 화면에서 입장 화면으로 바꿔 간다 (#81)", async () => {
+    const base = services.conversation;
+    services.conversation = {
+      ...base,
+      getReplyCandidates: (id, options) =>
+        options.stance
+          ? base.getReplyCandidates(id, options)
+          : Promise.reject(
+              new ServiceError(
+                CONVERSATION_ERROR_CODE.replyStepMismatch,
+                "갈래가 다름"
+              )
+            ),
+    };
+    const root = await openContacts();
+    await openCard(root, "대학교 친구들");
+    await waitForText(root, "지금은 답장이 꼭 필요하지 않아요");
+    await pressByRole(root, "radio", "그래도 짧은 답장을 만들고 싶어요.");
+    await press(root, "답장 만들기");
+
+    await waitForText(root, "어떻게 답하고 싶으세요?");
+    expect(findText(root, "어떤 말투가 편하세요?").length).toBe(0);
+    await pressBack();
+    await waitForText(root, "지금은 답장이 꼭 필요하지 않아요");
+  });
 
   test("바로 답장이 안 되면 보내기 버튼 없이 안내하고, 복사하고 메신저 열기로 보낸다 (09-B)", async () => {
     const root = await openContacts();

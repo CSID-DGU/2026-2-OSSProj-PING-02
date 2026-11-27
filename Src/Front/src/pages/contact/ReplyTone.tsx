@@ -9,7 +9,12 @@ import RadioCard from "@components/contact/RadioCard";
 import { DEFAULT_TONE, TONE_OPTIONS, toneCardTitle } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
 import { useLoad } from "@hooks/useLoad";
-import { services, type ReplyTone as Tone } from "@services";
+import {
+  CONVERSATION_ERROR_CODE,
+  getErrorCode,
+  services,
+  type ReplyTone as Tone,
+} from "@services";
 import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
@@ -27,7 +32,13 @@ const ReplyTone = () => {
       services.conversation.getReplyCandidates(conversationId, {
         tone: DEFAULT_TONE,
       }),
-    ]);
+    ]).catch(error => {
+      // AI가 수락·보류·거절을 정해야 하는 메시지로 판단함 → 입장 선택(09-A)으로 바꿔 감 (뒤로가기는 이전 화면으로)
+      if (getErrorCode(error) === CONVERSATION_ERROR_CODE.replyStepMismatch) {
+        navigation.replace("ReplyStance", { conversationId });
+      }
+      throw error;
+    });
     const last = detail.messages[detail.messages.length - 1];
     return {
       cardTitle: toneCardTitle(detail.analysis.tags),
@@ -38,7 +49,7 @@ const ReplyTone = () => {
         text: candidates.find(c => c.tone === o.value)?.text ?? "",
       })).filter(o => o.text),
     };
-  }, [conversationId]);
+  }, [conversationId, navigation]);
   const { state, retry } = useLoad(load);
 
   const writeMyself = () =>
