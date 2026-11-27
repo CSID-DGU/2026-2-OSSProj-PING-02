@@ -27,7 +27,10 @@ import {
 } from "./permission/mockPermissionService";
 import { createKeychainStorage } from "./storage/keychainStorage";
 import { createMemoryStorage } from "./storage/memoryStorage";
-import { createMockAiReplyService } from "./ai/AiReplyService";
+import {
+  createHttpAiReplyService,
+  createMockAiReplyService,
+} from "./ai/AiReplyService";
 import { createKeyValueAiReplyStore } from "./ai/AiReplyStore";
 import { createDeviceConversationService } from "./conversation/deviceConversationService";
 import { createDeviceMessengerService } from "./conversation/deviceMessengerService";
@@ -40,7 +43,7 @@ import Messenger, { isMessengerAvailable } from "@native/Messenger";
 // 서비스 교체 지점
 // API·네이티브 모듈이 준비되면 여기서 mock 대신 실제 구현을 넣으면 됨. 화면 코드는 바꿀 필요 없음
 //
-// 인증: services/config.ts의 API_CONFIG.mode (테스트 mock / release http / debug DEV_API_MODE)
+// 인증·AI 답장: services/config.ts의 API_CONFIG.mode (테스트 mock / release http / debug DEV_API_MODE)
 //   "mock" → 메모리 mock / "http" → API_CONFIG.baseUrl의 실제 백엔드
 //
 // 실패 화면을 확인하고 싶을 때:
@@ -68,11 +71,42 @@ const USE_DEVICE_CONVERSATIONS = true;
 // AI로 보내기 전에 가릴 이름 (사용자 본인. SessionProvider가 로그인·로그아웃 때 바꿈, #69)
 const maskNames = createMaskNameStore();
 
+// 로그인 토큰 (메모리 + 암호화 저장소, 자동 로그인용). HTTP 클라이언트와 SessionProvider가 같이 씀
+// mock과 실서버 토큰이 섞이지 않게 모드별로 따로 저장
+const tokens = createTokenStore(
+  createKeychainStorage(`malssiat.auth.${API_CONFIG.mode}`)
+);
+
+// 실서버 HTTP 클라이언트. 인증과 AI가 같이 써서 토큰 갱신(POST /auth/refresh)이 한 번만 나가게 함
+// (같은 refreshToken으로 두 번 갱신하면 백엔드가 재사용으로 보고 세션을 끊음)
+const httpClient =
+  API_CONFIG.mode === "http"
+    ? createHttpClient({
+        baseUrl: API_CONFIG.baseUrl,
+        timeoutMs: API_CONFIG.timeoutMs,
+        tokens,
+      })
+    : null;
+
 // 기기 저장소 (mock은 메모리). AI 답장 결과도 같은 저장소에 둠
 const storage = createMemoryStorage();
 const network = createMockNetworkService();
-// AI 답장 (백엔드 PR #36 POST /v1/ai/reply). 서버 연결 시 createHttpAiReplyService로 교체
-const ai = createMockAiReplyService();
+// AI 답장 (POST /v1/ai/reply). API 모드가 http면 실서버, 아니면 mock
+// 요약·답장을 만드는 데 시간이 걸려서 시간 제한은 공통(timeoutMs)이 아니라 AI 서비스 기본값(35초)을 씀
+const ai = httpClient
+  ? createHttpAiReplyService({
+      baseUrl: API_CONFIG.baseUrl,
+      getAccessToken: async () => tokens.get()?.accessToken ?? null,
+      // 갱신 실패(세션 만료)면 null → 401 오류를 그대로 올림. 토큰 정리는 httpClient가 함
+      refreshAccessToken: async () => {
+        try {
+          return (await httpClient.refreshTokens()).accessToken;
+        } catch {
+          return null;
+        }
+      },
+    })
+  : createMockAiReplyService();
 const aiReplies = createKeyValueAiReplyStore(storage);
 
 const conversation =
@@ -89,21 +123,9 @@ const conversation =
     : // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
       createMockConversationService();
 
-// 로그인 토큰 (메모리 + 암호화 저장소, 자동 로그인용). HTTP 클라이언트와 SessionProvider가 같이 씀
-// mock과 실서버 토큰이 섞이지 않게 모드별로 따로 저장
-const tokens = createTokenStore(
-  createKeychainStorage(`malssiat.auth.${API_CONFIG.mode}`)
-);
-
 const createAuthService = () =>
-  API_CONFIG.mode === "http"
-    ? createHttpAuthService(
-        createHttpClient({
-          baseUrl: API_CONFIG.baseUrl,
-          timeoutMs: API_CONFIG.timeoutMs,
-          tokens,
-        })
-      )
+  httpClient
+    ? createHttpAuthService(httpClient)
     : createMockAuthService({ tokens });
 
 export const services = {

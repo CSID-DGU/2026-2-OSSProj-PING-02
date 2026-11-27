@@ -11,6 +11,7 @@ export interface SavedAiReply {
   conversationId: string;
   createdAt: number;
   relation: Relation;
+  /** AI가 판단한 결정 필요 여부. true면 replies가 입장 3 × 말투 3 = 9개 */
   needsDecision: boolean;
   summary: string;
   replies: AiReplyCandidate[];

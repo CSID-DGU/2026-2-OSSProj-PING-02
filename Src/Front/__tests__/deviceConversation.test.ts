@@ -121,7 +121,9 @@ describe("목록", () => {
     expect(analysis.status).toBe("done");
     expect(analysis.summary).toBeTruthy();
     expect(calls).toHaveLength(1);
-    expect(calls[0].needsDecision).toBe(true); // 질문이라 입장 선택 화면과 같은 기준
+    // 결정 여부는 AI가 판단 (앱은 보내지 않음). AI 판단이 "question" 태그 → 입장 선택 화면으로
+    expect(calls[0]).not.toHaveProperty("needsDecision");
+    expect(analysis.tags).toContain("question");
 
     const reopened = await service.get(key);
     expect(reopened.analysis.status).toBe("done");
@@ -183,7 +185,7 @@ describe("AI 답장 후보", () => {
       [
         row({ text: "새로운 메시지가 있습니다.", isPlaceholder: true, messageTime: 1_000 }),
         row({ text: "사진을 보냈습니다.", isPlaceholder: true, contentType: "image", messageTime: 2_000 }),
-        row({ text: "주말에 시간 돼?", messageTime: 3_000 }),
+        row({ text: "오늘 날씨 진짜 좋다", messageTime: 3_000 }),
       ],
       ai
     );
@@ -193,7 +195,7 @@ describe("AI 답장 후보", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].text).not.toContain("새로운 메시지가 있습니다");
     expect(calls[0].text).not.toContain("사진을 보냈습니다");
-    expect(calls[0].text).toContain("주말에 시간 돼?");
+    expect(calls[0].text).toContain("오늘 날씨 진짜 좋다");
     expect(calls[0].text).not.toContain("민지"); // 보낸 사람 이름은 가려서 보냄
     expect(candidates.map(c => c.tone)).toEqual(["warm", "short", "polite"]);
   });
@@ -211,9 +213,52 @@ describe("AI 답장 후보", () => {
     await service.getReplyCandidates(key, { tone: "short", stance: "accept" });
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].needsDecision).toBe(true);
     expect(accept[0].stance).toBe("accept");
     expect(new Set([accept[0].text, hold[0].text, decline[0].text]).size).toBe(3);
+    // 한 번 받은 9개에서 입장마다 말투 3개 (고른 말투가 먼저)
+    for (const list of [accept, hold, decline]) {
+      expect(list.map(c => c.tone)).toEqual(["warm", "short", "polite"]);
+      expect(new Set(list.map(c => c.text)).size).toBe(3);
+    }
+  });
+
+  test("AI가 결정이 필요 없다고 판단하면 기기 규칙이 질문으로 봤어도 말투 화면으로 간다", async () => {
+    const ai: AiReplyService = {
+      reply: async () => ({
+        summary: "민지가 저녁 이야기를 했어요.",
+        needsDecision: false,
+        replies: [
+          { tone: "SHORT", text: "그렇구나!" },
+          { tone: "WARM", text: "알려줘서 고마워!" },
+          { tone: "POLITE", text: "응, 알겠어" },
+        ],
+      }),
+    };
+    const service = setup([row({ text: "어제 저녁 먹을래? 했던 거 기억나?" })], ai);
+    const key = toConversationKey(KAKAO, "room-1");
+
+    expect((await service.get(key)).analysis.tags).toContain("question"); // 기기 규칙
+    const analysis = await service.analyze(key);
+    expect(analysis.tags).not.toContain("question"); // AI 판단을 따름
+    expect((await service.list())[0].analysis.tags).not.toContain("question");
+
+    const tones = await service.getReplyCandidates(key, { tone: "short" });
+    expect(tones.map(c => c.text)).toEqual(["그렇구나!", "알려줘서 고마워!", "응, 알겠어"]);
+    // 입장 선택 화면으로 잘못 들어가면 후보가 없다고 알림 (직접 쓰기로 이어짐)
+    await expect(
+      service.getReplyCandidates(key, { tone: "short", stance: "accept" })
+    ).rejects.toMatchObject({ code: "ANALYSIS_FAILED" });
+  });
+
+  test("AI가 결정이 필요하다고 판단하면 기기 규칙에 단서가 없어도 입장 선택 화면으로 간다", async () => {
+    const base = createMockAiReplyService();
+    const ai: AiReplyService = { reply: req => base.reply({ ...req, needsDecision: true }) };
+    const service = setup([row({ text: "이번 주말 어떻게 생각해" })], ai);
+    const key = toConversationKey(KAKAO, "room-1");
+
+    expect((await service.get(key)).analysis.tags).not.toContain("question");
+    const analysis = await service.analyze(key);
+    expect(analysis.tags).toContain("question");
   });
 
   test("AI가 만든 요약은 그 뒤 목록·상세에 쓰인다", async () => {

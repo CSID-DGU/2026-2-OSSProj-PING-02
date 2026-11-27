@@ -7,16 +7,13 @@ import {
   type Relation,
 } from "./AiReplyService";
 import type { AiReplyStore, SavedAiReply } from "./AiReplyStore";
-import {
-  classifyNeedsDecision,
-  classifyRelation,
-  looksLikeInstitution,
-} from "./classifyMessage";
+import { classifyRelation, looksLikeInstitution } from "./classifyMessage";
 
 // 답장 후보 만들기 전체 흐름 (Doc/AI_답장_API_명세.md 6장)
-//   1. 관계·결정 여부를 규칙으로 정함 (기기 안, 원문 기준)
+//   1. 관계를 규칙으로 정함 (기기 안, 원문 기준)
 //   2. 원문을 maskPii로 가림 → mapping은 이 함수 안에서만 쓰고 버림
 //   3. 가린 문장만 서버(POST /v1/ai/reply)로 보냄
+//      결정(수락·보류·거절)이 필요한 메시지인지는 AI가 요약하면서 판단함 (앱이 정해 둔 경우만 보냄)
 //   4. 요약·답장의 자리표시를 unmaskPii로 되돌림
 //   5. 되돌린 결과를 기기에만 저장
 // 오류는 ServiceError로 그대로 올려 보냄. 자동 재시도는 하지 않음 (사용자가 "다시"를 누를 때만)
@@ -37,7 +34,7 @@ export interface AiReplyInput {
   names: string[];
   /** 친구 설정 등으로 정해 둔 관계. 없으면 규칙으로 정함 */
   relation?: Relation;
-  /** 사용자가 직접 고른 경우만. 없으면 규칙으로 정함 */
+  /** 앱이 결정 여부를 이미 정한 경우만. 없으면 AI가 판단함 */
   needsDecision?: boolean;
 }
 
@@ -112,12 +109,6 @@ export async function requestAiReply(
     senderName: lastSender,
     texts: incomingTexts,
   }).value;
-  const needsDecision = classifyNeedsDecision(
-    // 결정 여부는 가장 최근 메시지 몇 개만 봄 (예전 초대에 이미 답했을 수 있음)
-    incomingTexts.slice(-3),
-    input.needsDecision
-  ).value;
-
   // 보낸 사람 이름도 가린다. 단, 기관·번호 발신자 이름("국민건강보험")은 개인정보가 아니고 요약에 필요해서 둠
   const senders = input.messages
     .map((m) => m.sender)
@@ -127,7 +118,7 @@ export async function requestAiReply(
   const response = await ai.reply({
     text: masked.text,
     relation,
-    needsDecision,
+    ...(input.needsDecision === undefined ? {} : { needsDecision: input.needsDecision }),
   });
 
   const saved: SavedAiReply = {
@@ -135,10 +126,10 @@ export async function requestAiReply(
     conversationId: input.conversationId,
     createdAt: now(),
     relation,
-    needsDecision,
+    needsDecision: response.needsDecision,
     summary: unmaskPii(response.summary, masked.mapping),
     replies: response.replies.map((r) => ({
-      label: r.label,
+      ...r,
       text: unmaskPii(r.text, masked.mapping),
     })),
   };
