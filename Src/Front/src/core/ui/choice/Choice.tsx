@@ -7,12 +7,14 @@ import styled, { css } from "styled-components/native";
 // chip은 Figma 03 온보딩 11·02-4 최종 값 (#59): 높이 28 · 바탕 seed100 · 테두리 brown700 · 칩 사이 가로 3 세로 4
 //   (누르는 중은 바탕보다 한 단계 진한 seed200)
 // pill: Figma 05 연락 Local "Delay Chip" (#77): 높이 34 · 알약 · 흰 바탕 + borderDefault 테두리,
-//   선택은 갈색 바탕 + 흰 글자 · 칩 사이 7 (D03 관계 종류, 나중에 답하기·시간 칩)
+//   선택은 갈색 바탕 + 흰 글자 · 글자 labelChip 12/18 · 칩 사이 7 (D03 관계 종류, 나중에 답하기·시간 칩)
 export type ChoiceShape = "option" | "chip" | "pill";
 
 export interface ChoiceOption<T extends string> {
   label: string;
   value: T;
+  // 이 항목만 누를 수 없게 (예: 오후 6시가 지난 뒤 "오늘 저녁")
+  disabled?: boolean;
 }
 
 export interface ChoiceGroupProps<T extends string> {
@@ -97,9 +99,12 @@ const Label = styled.Text<{
   $selected: boolean;
   $disabled: boolean;
 }>`
-  /* TODO(Figma 스타일 확인): pill 글자는 가장 가까운 labelForm 13/18 */
   ${({ theme, $shape }) =>
-    $shape === "chip" ? theme.fonts.captionChip : theme.fonts.labelForm};
+    $shape === "chip"
+      ? theme.fonts.captionChip
+      : $shape === "pill"
+      ? theme.fonts.labelChip
+      : theme.fonts.labelForm};
   color: ${({ theme, $shape, $selected, $disabled }) => {
     if ($disabled) return theme.palette.neutral400;
     if ($selected) return theme.colors.actionPrimaryText;
@@ -121,11 +126,12 @@ export const ChoiceGroup = <T extends string>({
     <Group accessibilityRole="radiogroup" $shape={shape}>
       {options.map(option => {
         const selected = option.value === value;
+        const off = disabled || !!option.disabled;
         return (
           <Pressable
             key={option.value}
             onPress={() => onChange(option.value)}
-            disabled={disabled}
+            disabled={off}
             // 보이는 크기는 Figma 그대로, 터치 영역만 세로 48dp (chip 28→48, option 40→48)
             // chip은 칩 사이가 좁아(가로 3) 가로로 넓히면 옆 칩과 겹쳐서 세로로만 넓힘
             // pill 34→48 (위아래 7)
@@ -137,7 +143,7 @@ export const ChoiceGroup = <T extends string>({
                 : { top: 4, bottom: 4 }
             }
             accessibilityRole="radio"
-            accessibilityState={{ selected, disabled }}
+            accessibilityState={{ selected, disabled: off }}
           >
             {({ pressed }) => (
               <Inner
@@ -145,12 +151,12 @@ export const ChoiceGroup = <T extends string>({
                 $selected={selected}
                 $pressed={pressed}
                 $error={error}
-                $disabled={disabled}
+                $disabled={off}
               >
                 <Label
                   $shape={shape}
                   $selected={selected}
-                  $disabled={disabled}
+                  $disabled={off}
                 >
                   {option.label}
                 </Label>

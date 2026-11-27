@@ -14,7 +14,7 @@ import {
 } from "./dateUtils";
 
 // Figma: 05 연락 Screens D03
-//  - "날짜와 시간 직접 선택"(나중에 답하기): 달력 + 시간 칩(오전 9시/오후 6시) → timePresets
+//  - "날짜와 시간 직접 선택"(나중에 답하기): 달력 + 시간 칩(오전 9시/오후 6시, pill) → timePresets
 //  - "새 일정 추가_날짜및시간선택": 달력 + "시간 [오후 1시 ⌄]" → 기본(드롭다운)
 // 구성: 바텀 시트(제목) · 달력 · 구분선 · 시간 · 노란 확인 버튼(선택 내용이 들어간 문구) · 취소
 export interface DateTimeSheetProps {
@@ -109,6 +109,7 @@ export const DateTimeSheet = ({
         <TimeArea>
           {timePresets ? (
             <ChoiceGroup
+              shape="pill"
               options={timePresets.map(m => ({
                 label: formatTime(m),
                 value: String(m),

@@ -233,6 +233,8 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 | `captionRegular` | Pretendard Regular | `12/17` | D03 요약 본문, 선택 상자 설명, 후보 말풍선 |
 | `labelForm` | Pretendard Medium | `13/18` | D03 선택 상자 제목 (수락·짧게) |
 | `labelField` | Pretendard SemiBold | `12/18` | D03 답장 입력 라벨 "선택한 답장" |
+| `labelChip` | Pretendard Medium | `12/18` | Local "Delay Chip"(`ChoiceGroup` pill): 나중에 답하기·시간·관계 종류 칩 (추가) |
+| `captionRelaxed` | Pretendard Regular | `12/20` | D03 나중에 답하기 시트 "날짜와 시간 직접 선택" 줄 (추가) |
 
 - **예외: 일정 카드 날짜.** 조선굴림체는 서비스명·브랜드 문구에만 쓰지만, 홈 일정 카드의 날짜 원("11월"·"22")은 시안대로 조선굴림체를 씀 (#53 팀 확정). Figma에서 로고와 같은 폰트로 지정돼 있고, 숫자 폭(약 0.46em)도 굴림 계열 반각 숫자와 일치
 

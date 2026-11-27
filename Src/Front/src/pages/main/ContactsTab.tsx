@@ -51,7 +51,7 @@ const ContactsTab = ({ title }: { title: string }) => {
 
   if (state.status === "loading") {
     return (
-      <TabScreen title={title} divider={false}>
+      <TabScreen title={title} divider={false} background="surface">
         <s.Center>
           <ActivityIndicator
             color={theme.colors.iconSubtle}
@@ -64,7 +64,7 @@ const ContactsTab = ({ title }: { title: string }) => {
 
   if (state.status === "error") {
     return (
-      <TabScreen title={title} divider={false}>
+      <TabScreen title={title} divider={false} background="surface">
         <s.Center>
           <Notice tone="danger" align="center" title="연락을 불러오지 못했어요">
             <Button variant="text" onPress={retry}>
@@ -123,7 +123,7 @@ const ContactsTab = ({ title }: { title: string }) => {
   );
 
   return (
-    <TabScreen title={title} divider={false}>
+    <TabScreen title={title} divider={false} background="surface">
       <FlatList
         data={data}
         keyExtractor={item => item.conversation.id}

@@ -64,7 +64,7 @@ const AnalysisRooms = () => {
 
   if (state.status !== "ready") {
     return (
-      <TabScreen title="분석 대화방 관리" onBack={goBack} divider={false}>
+      <TabScreen title="분석 대화방 관리" onBack={goBack} divider={false} background="surface">
         <Center>
           {state.status === "loading" ? (
             <ActivityIndicator
@@ -126,10 +126,13 @@ const AnalysisRooms = () => {
   };
 
   return (
-    <TabScreen title="분석 대화방 관리" onBack={goBack} divider={false}>
+    <TabScreen title="분석 대화방 관리" onBack={goBack} divider={false} background="surface">
       <FooterLayout
         // 시안: 버튼 사이 5 · 아래 탭바까지 15
         bottomInset={3}
+        // Figma와 다르게 간 부분(팀 확정): 시안은 목록이 버튼 뒤로 비치지만,
+        // 목록 글자가 버튼과 겹쳐 읽기 힘들어 버튼 영역에 본문과 같은 흰 바탕을 둠
+        background="surface"
         footer={
           <Actions>
             <Button

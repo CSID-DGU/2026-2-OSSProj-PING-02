@@ -76,6 +76,8 @@ export const fonts = {
   labelMenu: fontGenerator(10, fontFamily.medium, 20), // #77 연락 D01 관계 필터 메뉴 항목
   titleProfile: fontGenerator(16, fontFamily.bold, 26), // #77 연락 D03 프로필 카드 이름
   bodyReply: fontGenerator(12, fontFamily.regular, 21), // #77 연락 D03 답장 입력 글자
+  labelChip: fontGenerator(12, fontFamily.medium, 18), // #77 연락 Delay Chip (나중에 답하기·시간·관계 종류 칩)
+  captionRelaxed: fontGenerator(12, fontFamily.regular, 20), // #77 연락 D03 "날짜와 시간 직접 선택" 줄
 };
 
 export const FontList = Object.keys(fonts);
