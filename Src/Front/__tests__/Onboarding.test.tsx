@@ -1,5 +1,6 @@
 import ReactTestRenderer from "react-test-renderer";
 import { createMockPermissionService } from "../src/services/permission/mockPermissionService";
+import { createMockCollectionService } from "../src/services/collection/CollectionService";
 import { services, STORAGE_KEYS } from "../src/services";
 import { resolveSavedStep } from "../src/constants/onboarding";
 import {
@@ -25,7 +26,12 @@ const USER_ID = "mock-user-demo";
 const reset = async (scenario: "allow" | "deny") => {
   await services.storage.removeItem(`${STORAGE_KEYS.onboarding}.${USER_ID}`);
   services.permission = createMockPermissionService(scenario);
+  services.collection = createMockCollectionService();
 };
+
+const KAKAO = "com.kakao.talk";
+const SAMSUNG_SMS = "com.samsung.android.messaging";
+const GOOGLE_SMS = "com.google.android.apps.messaging";
 
 const login = async (root: Instance) => {
   await press(root, "시작하기");
@@ -103,6 +109,51 @@ test("이어서 하기: AI 모델 단계에서 멈췄던 사용자는 06 받을 
   const root = await renderApp();
   await login(root);
   await waitForText(root, TITLE.types);
+});
+
+test("05: 고른 연동 앱의 알림을 모으도록 수집 앱 목록을 맞추고, 바꾸면 목록도 바뀐다 (#83)", async () => {
+  await services.storage.setItem(
+    `${STORAGE_KEYS.onboarding}.${USER_ID}`,
+    JSON.stringify({ completed: false, lastStep: "LinkedApps" })
+  );
+  const root = await renderApp();
+  await login(root);
+  await waitForText(root, TITLE.apps);
+  // 아직 고르지 않았으면 수집 목록은 그대로 (비어 있음)
+  expect(await services.collection.getApps()).toEqual([]);
+
+  // 카카오톡 + 문자 → 문자는 삼성·Google 메시지 둘 다
+  await toggle(root, "카카오톡");
+  await toggle(root, "문자 메신저");
+  await press(root, "다음");
+  await waitForText(root, TITLE.types);
+  expect(await services.collection.getApps()).toEqual([KAKAO, GOOGLE_SMS, SAMSUNG_SMS].sort());
+
+  // 06에서 돌아와 카카오톡을 빼면 수집 목록에서도 빠짐
+  await pressBack();
+  await waitForNoText(root, TITLE.types);
+  await toggle(root, "카카오톡");
+  await press(root, "다음");
+  await waitForText(root, TITLE.types);
+  expect(await services.collection.getApps()).toEqual([GOOGLE_SMS, SAMSUNG_SMS].sort());
+});
+
+test("05: 수집 앱 목록을 저장하지 못해도 06으로 넘어간다 (#83)", async () => {
+  await services.storage.setItem(
+    `${STORAGE_KEYS.onboarding}.${USER_ID}`,
+    JSON.stringify({ completed: false, lastStep: "LinkedApps" })
+  );
+  const setApps = jest
+    .spyOn(services.collection, "setApps")
+    .mockRejectedValue(new Error("저장 실패"));
+  const root = await renderApp();
+  await login(root);
+  await waitForText(root, TITLE.apps);
+  await toggle(root, "카카오톡");
+  await press(root, "다음");
+  await waitForText(root, TITLE.types);
+  expect(setApps).toHaveBeenCalledWith([KAKAO]);
+  setApps.mockRestore();
 });
 
 test("06: 알림을 모두 끄면 권한을 묻지 않고 07로 간다", async () => {

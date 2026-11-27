@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  CONVERSATION_ERROR_CODE,
+  getErrorCode,
   services,
   type ReplyCandidate,
   type ReplyStance,
@@ -84,8 +86,20 @@ export const useReplyFlow = ({
         if (id !== request.current) return;
         if (candidates.length === 0) throw new Error("empty");
         replace({ kind: "tone", stance, candidates });
-      } catch {
+      } catch (error) {
         if (id !== request.current) return;
+        // 화면 갈래(입장 먼저 / 말투 바로)와 AI의 결정 판단이 엇갈림 (#81) → 맞는 갈래로 바꿔 감
+        if (getErrorCode(error) === CONVERSATION_ERROR_CODE.replyStepMismatch) {
+          if (stance) {
+            // 입장이 필요 없는 메시지 → 입장 단계를 빼고 입장 없이 말투로 (뒤로가기는 시작으로)
+            setHistory(h => h.filter(s => s.kind !== "stance"));
+            loadTones(undefined, "replace");
+          } else {
+            // 수락·보류·거절을 정해야 하는 메시지 → 불러오던 자리를 입장 고르기로
+            replace({ kind: "stance" });
+          }
+          return;
+        }
         replace({ kind: "failed", stance });
       }
     },

@@ -222,10 +222,13 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
 
   // 팝업 버튼을 누른 뒤 (시안 없음, 팀 확정) TODO(Figma 문구 확인): 토스트 문구
   // 메신저 열기 → 앱을 열고, 돌아오면 "보냈다고 표시하기"
+  // 가능하면 그 대화방을 바로 엶 (#69). 앱을 못 열어도 복사는 됐으니 그대로 둠
   const openMessenger = async () => {
     setSendDialog(null);
     setCopied(true);
-    await services.messenger.openApp(conversation.app).catch(() => {});
+    await services.messenger
+      .openApp(conversation.app, conversation.id)
+      .catch(() => {});
   };
 
   // 바로 보내기 → 보낸 뒤 토스트 + 목록으로. 실패하면 토스트만 (상세에 남음)

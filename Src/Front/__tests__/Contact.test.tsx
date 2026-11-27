@@ -193,7 +193,8 @@ describe("05 연락 D03 상세·답장", () => {
 
     await press(root, "메신저 열기");
     await waitForNoText(root, "선택한 답장을 지금 보내볼까요?");
-    expect(openApp).toHaveBeenCalledWith("INSTAGRAM");
+    // 가능하면 그 대화방을 바로 열도록 대화 id도 넘김 (#72)
+    expect(openApp).toHaveBeenCalledWith("INSTAGRAM", "haneul");
     await press(root, "보냈다고 표시하기");
     await waitForNoText(root, "최근 연락");
     expect(await repliedTo("haneul")).toBe(true);

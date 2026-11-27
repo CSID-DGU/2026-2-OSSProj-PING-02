@@ -227,8 +227,9 @@ const Flow = ({ items, startAtFirst }: FlowProps) => {
                 <Button
                   variant="text"
                   onPress={() =>
+                    // 가능하면 그 대화방을 바로 열어 전체 메시지를 복사하기 쉽게 (#69)
                     services.messenger
-                      .openApp(item.conversation.app)
+                      .openApp(item.conversation.app, item.conversation.id)
                       .catch(() => {})
                   }
                 >

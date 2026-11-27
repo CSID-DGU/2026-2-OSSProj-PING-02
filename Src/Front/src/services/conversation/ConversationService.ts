@@ -18,6 +18,8 @@ import type {
 export interface ConversationService {
   // 분석을 끈 대화방은 빠짐. includeAnalysisOff: 05 연락 D02 분석 대화방 관리처럼 모두 보여 줄 때
   list(options?: { includeAnalysisOff?: boolean }): Promise<ConversationSummary[]>;
+  // 새 메시지가 들어와 목록이 바뀌었을 수 있을 때 부름 (#71). 구독을 끊는 함수를 돌려줌
+  onChange(listener: () => void): () => void;
   // 05 연락 D02: 분석을 끈 대화방 id (TODO(네이티브): 끈 방은 알림 수집·분석에서도 빼기)
   getAnalysisOffIds(): Promise<string[]>;
   setAnalysisOffIds(conversationIds: string[]): Promise<void>;
@@ -57,15 +59,13 @@ export interface ConversationService {
   listEvents(): Promise<ContactEvent[]>;
 }
 
-// 메신저 연결 (나중에 네이티브: 알림 바로 답장(RemoteInput)·클립보드·앱 열기)
+// 메신저 연결. 복사·앱 열기는 Kotlin Messenger 모듈(#69, deviceMessengerService), 바로 답장은 아직 없음
 export interface MessengerService {
-  // TODO(네이티브): @react-native-clipboard/clipboard 설치 후 실제 복사
   copyText(text: string): Promise<void>;
   // 05 연락 D04 "붙여넣기": 클립보드 글자 (비어 있으면 "")
-  // TODO(네이티브): @react-native-clipboard/clipboard 설치 후 실제 읽기
   readClipboard(): Promise<string>;
-  // TODO(네이티브): 연동 앱 패키지명(LINKED_APP_OPTIONS)으로 실행 인텐트
-  openApp(app: MessengerApp): Promise<void>;
+  // 메신저 앱 열기. conversationId(기기 대화방)를 주면 가능할 때 그 대화방을 바로 염. 못 열면 appNotInstalled
+  openApp(app: MessengerApp, conversationId?: string): Promise<void>;
   // 알림의 바로 답장(RemoteInput)을 쓸 수 있는지 (알림이 남아 있을 때만 가능)
   // TODO(네이티브): NotificationListenerService가 가진 알림의 RemoteInput 여부로 교체
   canReplyDirectly(conversationId: string): Promise<boolean>;
@@ -77,4 +77,8 @@ export const CONVERSATION_ERROR_CODE = {
   analysisFailed: "ANALYSIS_FAILED",
   notFound: "CONVERSATION_NOT_FOUND",
   replyUnavailable: "REPLY_UNAVAILABLE", // 알림이 사라져 바로 답장 불가
+  appNotInstalled: "APP_NOT_INSTALLED", // 메신저 앱이 없거나 열 수 없음
+  copyFailed: "COPY_FAILED",
+  // 고른 답장 화면 갈래(입장 먼저 / 말투 바로)와 AI의 결정 판단이 다름 → 화면이 맞는 갈래로 바꿔 감
+  replyStepMismatch: "REPLY_STEP_MISMATCH",
 } as const;

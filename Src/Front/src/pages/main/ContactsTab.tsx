@@ -23,6 +23,9 @@ import * as s from "./ContactsTab_styled";
 // 05 연락 D01 연락 목록 (Figma "05 연락 최종")
 // 앱바: 탭 첫 화면이라 뒤로가기 없이 가운데 "연락" + 🔔, 구분선 없음
 // 오늘의 도움 수준 카드(홈과 같음) → 탭 → 톱니·관계 필터 → 장문 안내 → 목록
+// 목록 맨 앞(머리말)부터 보이는 첫 항목의 위치를 지킴 (FlatList는 머리말이 0번)
+const MAINTAIN_POSITION = { minIndexForVisible: 0 };
+
 const EMPTY_TEXT: Record<ContactTab, { title: string; body: string }> = {
   all: {
     title: "아직 모인 연락이 없어요",
@@ -123,6 +126,9 @@ const ContactsTab = ({ title }: { title: string }) => {
       <FlatList
         data={data}
         keyExtractor={item => item.conversation.id}
+        // 새 메시지로 목록이 자동으로 바뀔 때(#71) 보던 자리를 유지
+        // 맨 위(머리말이 보임)면 새 카드가 머리말 아래에 보이고, 내려서 보는 중이면 보던 카드가 제자리에 있음
+        maintainVisibleContentPosition={MAINTAIN_POSITION}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         contentContainerStyle={s.listContent}

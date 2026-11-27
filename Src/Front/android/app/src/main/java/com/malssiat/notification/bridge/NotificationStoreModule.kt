@@ -13,6 +13,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.WritableMap
 import com.malssiat.notification.MessageNotificationListener
+import com.malssiat.notification.NotificationEvents
 import com.malssiat.notification.data.MonitoredAppsStore
 import com.malssiat.notification.data.NotificationDatabase
 import com.malssiat.notification.data.NotificationEntity
@@ -36,9 +37,21 @@ class NotificationStoreModule(
     private val retention = NotificationRetention(reactContext)
     private val dao by lazy { NotificationDatabase.get(reactContext).notificationDao() }
 
+    // 새 메시지가 저장되면 JS에 이벤트를 보낸다 (#71). 내용 없이 신호만
+    private val onSaved: () -> Unit = {
+        if (reactContext.hasActiveReactInstance()) {
+            reactContext.emitDeviceEvent(EVENT_SAVED, null)
+        }
+    }
+
+    init {
+        NotificationEvents.addListener(onSaved)
+    }
+
     override fun getName(): String = NAME
 
     override fun invalidate() {
+        NotificationEvents.removeListener(onSaved)
         scope.cancel()
         super.invalidate()
     }
@@ -188,6 +201,8 @@ class NotificationStoreModule(
 
     companion object {
         const val NAME = "NotificationStore"
+        /** JS: DeviceEventEmitter.addListener("malssiat.notificationsSaved", ...) (src/native/NotificationStore.ts) */
+        const val EVENT_SAVED = "malssiat.notificationsSaved"
         private const val MAX_LIMIT = 1000
     }
 }

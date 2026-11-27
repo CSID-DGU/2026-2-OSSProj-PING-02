@@ -80,6 +80,8 @@ export const createMockConversationService = ({
   };
 
   return {
+    // mock은 새 메시지가 오지 않음
+    onChange: () => () => {},
     async list({ includeAnalysisOff = false } = {}) {
       await delay(latency);
       if (failList) {
