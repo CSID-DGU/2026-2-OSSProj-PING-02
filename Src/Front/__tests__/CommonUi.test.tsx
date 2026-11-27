@@ -7,6 +7,7 @@ import { BottomSheet, BottomSheetActions } from "../src/core/ui/sheet";
 import { ToastProvider, useToast } from "../src/core/ui/toast";
 import { Switch, SwitchRow } from "../src/core/ui/switch";
 import { UnderlineTabs } from "../src/core/ui/tabs";
+import { TextArea } from "../src/core/ui/field";
 import {
   Calendar,
   DateTimeSheet,
@@ -110,6 +111,38 @@ describe("Switch", () => {
     expect(states()).toEqual([false, false]);
     await pressByRole(root, "switch", "단독");
     expect(states()).toEqual([true, true]);
+    unmount();
+  });
+});
+
+describe("TextArea", () => {
+  test("입력하면 글자 수가 바뀌고, 최대 글자 수를 넘지 않으며, showInput=false면 입력칸이 없다", async () => {
+    const Area = () => {
+      const [text, setText] = useState("");
+      return (
+        <>
+          <TextArea
+            label="답장에 사용해도 되는 내 상황"
+            value={text}
+            onChangeText={setText}
+            maxLength={10}
+          />
+          <TextArea label="칩만" maxLength={500} showInput={false} />
+        </>
+      );
+    };
+    const { root, unmount } = await render(<Area />);
+    const inputs = () =>
+      root.findAll(n => typeof n.type === "string" && !!n.props.onChangeText);
+    expect(inputs()).toHaveLength(1);
+    expect(inputs()[0].props.maxLength).toBe(10);
+    expect(inputs()[0].props.accessibilityLabel).toBe("답장에 사용해도 되는 내 상황");
+    expect(findText(root, "0/10").length).toBe(1);
+    await ReactTestRenderer.act(async () =>
+      inputs()[0].props.onChangeText("시험 준비 중")
+    );
+    expect(findText(root, "7/10").length).toBe(1);
+    expect(findText(root, "0/500").length).toBe(1);
     unmount();
   });
 });

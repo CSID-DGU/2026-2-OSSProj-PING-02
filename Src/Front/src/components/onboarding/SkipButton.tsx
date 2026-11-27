@@ -1,7 +1,7 @@
 import styled from "styled-components/native";
 import { Button, type ButtonProps } from "@core/ui/button";
 
-// 온보딩 하단 "지금은 건너뛰기"·"나중에 할게요" (Figma 11: 주 버튼 위, 브라운 글자)
+// 온보딩 하단 "건너뛰기"·"나중에 할게요" (Figma 07·11 최종: 주 버튼 아래, 브라운 글자)
 // 공통 Button(text)에 글자색·크기만 Figma에 맞춘 라벨을 넣어 씀
 interface SkipButtonProps extends Omit<ButtonProps, "variant" | "children"> {
   children: string;

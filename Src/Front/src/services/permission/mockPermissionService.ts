@@ -8,7 +8,7 @@ import {
 
 // mock 권한 시나리오 (services/index.ts에서 고름)
 // - "allow": 요청하면 허용 (기본값, 실기기에서 09·10까지 진행해 볼 수 있음)
-//   설정 화면 권한(알림 접근·배터리)은 설정에 다녀온 것처럼 처리하고 허용
+//   설정 화면 권한(알림 접근)은 설정에 다녀온 것처럼 처리하고 허용
 // - "deny" : 거부 흐름 확인용. 시스템 팝업 권한(앱 알림·연락처)은
 //   첫 요청 거부 → 두 번째 "다시 묻지 않음"(blocked) → 설정을 열면 허용
 export type MockPermissionScenario = "allow" | "deny";
@@ -20,7 +20,6 @@ export const createMockPermissionService = (
   const status: PermissionStatusMap = {
     notificationListener: "denied",
     postNotifications: "denied",
-    batteryOptimization: "denied",
     contacts: "denied",
   };
   const requests: Partial<Record<PermissionKey, number>> = {};

@@ -5,7 +5,6 @@ import { Card } from "@core/ui/card";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import LoadState from "@components/contact/LoadState";
-import ModelNotice from "@components/contact/ModelNotice";
 import RadioCard from "@components/contact/RadioCard";
 import Notice from "@components/onboarding/Notice";
 import { replyStepFor } from "@constants/contact";
@@ -26,7 +25,7 @@ const ReplyGroup = () => {
   const navigation = useAuthNavigation();
   const { params } = useRoute<RouteProp<AppParamList, "ReplyGroup">>();
   const { conversationId } = params;
-  const { state, modelReady, retry } = useConversationDetail(conversationId);
+  const { state, retry } = useConversationDetail(conversationId);
   const [choice, setChoice] = useState<Choice>();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -45,7 +44,7 @@ const ReplyGroup = () => {
   }
 
   const { conversation, messages, analysis } = state.detail;
-  const analyzed = modelReady && analysis.status === "done";
+  const analyzed = analysis.status === "done";
   const highlighted = analyzed
     ? messages.filter(m => analysis.highlightedMessageIds.includes(m.id))
     : [];
@@ -85,8 +84,6 @@ const ReplyGroup = () => {
             : "단체 대화나 정보 전달은 먼저 요약해드려요."
         }
       />
-
-      <ModelNotice />
 
       <s.Cards>
         <Card>

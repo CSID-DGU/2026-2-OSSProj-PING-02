@@ -1,11 +1,8 @@
 import { Button } from "@core/ui/button";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
-import Illustration from "@components/onboarding/Illustration";
-import Notice from "@components/onboarding/Notice";
 import PermissionGuide from "@components/onboarding/PermissionGuide";
 import SkipButton from "@components/onboarding/SkipButton";
-import { ONBOARDING_IMAGES } from "@constants/onboardingImages";
 import { useOnboardingStep } from "@hooks/useOnboardingStep";
 import {
   permissionActionLabel,
@@ -15,8 +12,9 @@ import * as s from "./ContactsImport_styled";
 
 const LABEL = "연락처";
 
-// 08 / 연락처 가져오기 (READ_CONTACTS 시스템 팝업)
+// 07 / 연락처 가져오기 (READ_CONTACTS 시스템 팝업)
 // 허용하면 09 친구 선택, 건너뛰면 09·10 없이 11 AI 메모리로
+// Figma에 없는 상태(거절·설정 복귀·오류)만 부드러운 안내 상자
 const ContactsImport = () => {
   const { navigation, goNext } = useOnboardingStep("ContactsImport");
   const state = usePermissionStep("contacts", LABEL);
@@ -33,14 +31,12 @@ const ContactsImport = () => {
   const handleSkip = () => navigation.navigate("AiMemory");
 
   return (
-    <AuthLayout backOnly
+    <AuthLayout
+      backOnly
       centered
       gap={24}
       footer={
         <>
-          {(!state.granted || state.guide) && (
-            <SkipButton onPress={handleSkip}>나중에 할게요</SkipButton>
-          )}
           <Button
             variant="primary"
             fullWidth
@@ -55,30 +51,30 @@ const ContactsImport = () => {
               ? "연락처 가져오기"
               : permissionActionLabel(state, "연락처 가져오기")}
           </Button>
+          <SkipButton onPress={handleSkip}>건너뛰기</SkipButton>
         </>
       }
     >
       <AuthIntro
         variant="onboarding"
-        title={"연락처로 친구 목록을\n먼저 만들어볼까요?"}
-        // TODO(Figma): 08 설명 문구가 시안에서 제목과 겹쳐 읽을 수 없어 임시 문구. 확정되면 교체
+        title={"연락처로 친구 목록을\n만들어볼까요?"}
         description={"이름과 전화번호는 기기 안에서만\n친구를 구분하는 데 사용해요"}
       />
-      <Illustration image={ONBOARDING_IMAGES.sittingSeeds} />
-      <s.Boxes>
-        {state.guide || state.load === "error" ? (
+      {/* TODO(에셋): 연락처 책 3D 아이콘 PNG 2x·3x를 받으면 Illustration으로 바꿈 (Figma 07·08, 66×82dp) */}
+      <s.BookPlaceholder
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+      />
+      {(state.guide || state.load === "error") && (
+        <s.Boxes>
           <PermissionGuide
             state={state}
             label={LABEL}
             consequence="연락처 없이도 메신저 알림으로 친구를 하나씩 추가할 수 있어요."
             showGranted={false}
           />
-        ) : (
-          <Notice align="center" title="나중에도 가능해요">
-            건너뛰어도 설정에서 다시 실행할 수 있어요
-          </Notice>
-        )}
-      </s.Boxes>
+        </s.Boxes>
+      )}
     </AuthLayout>
   );
 };

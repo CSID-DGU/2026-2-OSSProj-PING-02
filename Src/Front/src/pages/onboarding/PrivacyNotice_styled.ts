@@ -1,9 +1,10 @@
 import { StyleSheet } from "react-native";
 import styled from "styled-components/native";
 
-// Figma 03: 항목 3개를 가운데 정렬, 항목 사이 약 36dp
+// Figma 03: 항목 3개를 가운데 정렬, 아이콘(보이는 부분) 아래 → 다음 항목 제목까지 약 44dp
+// = 그림 아래 투명 여백 약 9 + 35
 export const Points = styled.View`
-  gap: 36px;
+  gap: 35px;
 `;
 
 // 제목이 한 단어만 줄바꿈되지 않도록 본문 폭을 그대로 다 씀
@@ -28,7 +29,7 @@ export const PointDescription = styled.Text`
   text-align: center;
 `;
 
-// 아이콘이 위로 오면서 제목과의 간격
+// Figma 03: 설명 아래 아이콘(보이는 부분)까지 약 14dp = Point의 gap 4 + 그림 위 투명 여백 약 10
 export const { iconStyle } = StyleSheet.create({
-  iconStyle: { marginBottom: 8 },
+  iconStyle: { marginTop: 0 },
 });

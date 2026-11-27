@@ -1,5 +1,4 @@
 import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
-import { createMockModelService } from "../src/services/model/mockModelService";
 import { services, STORAGE_KEYS } from "../src/services";
 import {
   findText,
@@ -14,10 +13,9 @@ import {
 } from "../test-utils/app";
 
 // 홈·연락 화면 테스트: 로그인 + 온보딩 완료 상태에서 시작
-// - 가리기 모델은 짧은 다운로드로 미리 설치해 둠 (요약이 보이는 상태)
 const USER_ID = "mock-user-demo";
 
-const seedSignedIn = async ({ modelInstalled }: { modelInstalled: boolean }) => {
+const seedSignedIn = async () => {
   const login = await services.auth.login(
     MOCK_DEMO_ACCOUNT.loginId,
     MOCK_DEMO_ACCOUNT.password
@@ -30,16 +28,11 @@ const seedSignedIn = async ({ modelInstalled }: { modelInstalled: boolean }) => 
   );
   // 오늘의 도움 수준은 테스트마다 "아직 선택하지 않음"에서 시작 (앞 테스트가 고른 모드가 남지 않게)
   await services.storage.removeItem(`${STORAGE_KEYS.homeHelp}.${USER_ID}`);
-  services.model = createMockModelService({ durationMs: 200 });
-  if (modelInstalled) {
-    const info = await services.model.getLatest();
-    await services.model.startDownload(info, () => {}).done;
-  }
 };
 
-describe("모델이 준비된 경우", () => {
+describe("홈·연락", () => {
   // 저장 토큰은 테스트마다 비워지므로(test-utils) 매번 준비
-  beforeEach(() => seedSignedIn({ modelInstalled: true }));
+  beforeEach(() => seedSignedIn());
 
   test("홈(C01): 챙길 연락 최신순 3개 · 단체방 요약 · 다가오는 일정 · 안부 · 빠른 기능", async () => {
     const root = await renderApp();

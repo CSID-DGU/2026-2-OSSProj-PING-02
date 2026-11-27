@@ -28,8 +28,10 @@ const img = (
 ): OnboardingImage => ({ source, width, height });
 
 export const ONBOARDING_IMAGES = {
-  // 04·08·12: 씨앗을 안고 앉은 말씨 (remembering-messages)
+  // 04: 씨앗을 안고 앉은 말씨 (remembering-messages)
   sittingSeeds: img(sittingSeeds, 116, 110),
+  // 12: 같은 그림을 04의 0.88배로 (Figma 12 그림 85×97.5dp, 04는 96.5×110.5dp)
+  sittingSeedsDone: img(sittingSeeds, 102, 97),
   // 02-1: 씨앗 덩굴을 건네는 말씨
   introConnection: img(introConnection, 252, 126),
   // 02-3: 씨앗을 심으며 걷는 말씨 (Figma 방향에 맞춰 좌우 반전)
@@ -46,7 +48,8 @@ export const ONBOARDING_ICONS = {
   occasion: img(iconOccasion, 32, 32),
   work: img(iconWork, 32, 32),
   counseling: img(iconCounseling, 32, 32),
-  privacyDevice: img(iconPrivacyDevice, 44, 40),
-  privacyMasked: img(iconPrivacyMasked, 44, 40),
-  privacyConfirm: img(iconPrivacyConfirm, 44, 40),
+  // 03: 그림 파일에 투명 여백이 커서(보이는 부분 약 60%) 표시 크기를 키워 보이는 크기를 시안(약 43×45dp)과 맞춤
+  privacyDevice: img(iconPrivacyDevice, 71, 65),
+  privacyMasked: img(iconPrivacyMasked, 71, 65),
+  privacyConfirm: img(iconPrivacyConfirm, 71, 65),
 };

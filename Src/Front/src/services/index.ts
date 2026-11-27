@@ -19,7 +19,6 @@ import {
   createMockMessengerService,
 } from "./conversation/mockConversationService";
 import { createMockFriendService } from "./friend/mockFriendService";
-import { createMockModelService } from "./model/mockModelService";
 import { createMockNetworkService } from "./network/NetworkService";
 import {
   createMockPermissionService,
@@ -48,8 +47,7 @@ import Messenger, { isMessengerAvailable } from "@native/Messenger";
 //   "mock" → 메모리 mock / "http" → API_CONFIG.baseUrl의 실제 백엔드
 //
 // 실패 화면을 확인하고 싶을 때:
-//   model: createMockModelService({ failFirstAttemptAt: 0.4 })
-//   network: createMockNetworkService("cellular")
+//   network: createMockNetworkService("none") (오프라인이면 AI 답장을 부르지 않음)
 // 개발 옵션: 권한 거부 → 다시 묻지 않음 → 설정 열기 흐름을 보려면 "deny"
 const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 
@@ -141,7 +139,6 @@ export const services = {
   auth: createAuthService(),
   tokens,
   permission,
-  model: createMockModelService(),
   network,
   // 기기 연락처 (Kotlin Contacts 모듈, #70). 네이티브 모듈이 없으면(Jest) mock 42명
   contacts: isContactsAvailable()
@@ -183,7 +180,6 @@ export * from "./config";
 export * from "./auth/AuthService";
 export * from "./auth/tokenStore";
 export * from "./permission/PermissionService";
-export * from "./model/ModelService";
 export * from "./network/NetworkService";
 export * from "./contacts/ContactsService";
 export * from "./conversation/types";

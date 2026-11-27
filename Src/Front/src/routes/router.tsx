@@ -12,14 +12,11 @@ import ServiceIntro from "@pages/onboarding/ServiceIntro";
 import PrivacyNotice from "@pages/onboarding/PrivacyNotice";
 import NotificationAccess from "@pages/onboarding/NotificationAccess";
 import LinkedApps from "@pages/onboarding/LinkedApps";
-import ModelDownload from "@pages/onboarding/ModelDownload";
 import NotificationTypes from "@pages/onboarding/NotificationTypes";
-import BatteryOptimization from "@pages/onboarding/BatteryOptimization";
 import ContactsImport from "@pages/onboarding/ContactsImport";
 import ContactsSelect from "@pages/onboarding/ContactsSelect";
 import FriendsReady from "@pages/onboarding/FriendsReady";
 import AiMemory from "@pages/onboarding/AiMemory";
-import AiMemoryEdit from "@pages/onboarding/AiMemoryEdit";
 import OnboardingDone from "@pages/onboarding/OnboardingDone";
 import MainTabs from "@pages/main/MainTabs";
 import Playground from "@pages/dev/Playground";
@@ -56,17 +53,11 @@ const Router = () => {
       <Stack.Screen name="PrivacyNotice" component={PrivacyNotice} />
       <Stack.Screen name="NotificationAccess" component={NotificationAccess} />
       <Stack.Screen name="LinkedApps" component={LinkedApps} />
-      <Stack.Screen name="ModelDownload" component={ModelDownload} />
       <Stack.Screen name="NotificationTypes" component={NotificationTypes} />
-      <Stack.Screen
-        name="BatteryOptimization"
-        component={BatteryOptimization}
-      />
       <Stack.Screen name="ContactsImport" component={ContactsImport} />
       <Stack.Screen name="ContactsSelect" component={ContactsSelect} />
       <Stack.Screen name="FriendsReady" component={FriendsReady} />
       <Stack.Screen name="AiMemory" component={AiMemory} />
-      <Stack.Screen name="AiMemoryEdit" component={AiMemoryEdit} />
       <Stack.Screen name="OnboardingDone" component={OnboardingDone} />
 
       {/* Main: 하단 탭 + 탭마다 스택 (연락·친구 상세 화면은 routes/tabStacks) */}

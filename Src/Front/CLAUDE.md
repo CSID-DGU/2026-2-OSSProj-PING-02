@@ -30,6 +30,7 @@
 ## 디자인 규칙
 
 - 색·글자: [UI/docs/design-system.md](../../UI/docs/design-system.md) 토큰(`theme.colors`, `theme.fonts`)만. hex·폰트 크기 직접 입력 금지
+- #59에서 추가·수정: `TextArea`(field, 라벨·여러 줄 입력·글자 수가 한 상자 안), 글자 토큰 `captionDense`·`titleSubsection`·`bodySmallRelaxed`·`labelField`·`captionChip`, `Switch` 꺼짐 색 `brandBrown`, `ChoiceGroup` chip 모양
 - 컴포넌트: `@core/ui` 공통 컴포넌트만. 비슷한 컴포넌트를 화면 폴더에 새로 만들지 말고 **조합**으로 해결
 - `@core/ui`에 **새 공통 컴포넌트 추가는 가능** (공통 컴포넌트 담당 팀원 허락, #44). 여러 화면에서 쓰는 것만, 폴더 하나 + `index.ts` + `core/index.ts` export + Playground 예시 + `__tests__/CommonUi.test.tsx`
 - **기존** `src/core` 컴포넌트는 최소한으로만 수정. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 아이콘 등록
@@ -42,7 +43,7 @@
 - 기준 우선순위: **디자인 화면**(02 Auth, 03 Onboarding, 04 연락, 05 친구 등) > **통합본 와이어프레임**(01 Wireframes, 초안)
 - 디자인 화면이 없는 기능(홈, 설정, 캘린더 등)만 통합본을 흐름·구성 참고용으로 쓰고, 스타일은 design-system 기준
 - 통합본과 백엔드가 다르면 **백엔드 기준**
-- 온보딩은 현재 구현 유지. 디자이너 수정본이 나오면 마지막에 반영
+- 온보딩은 Figma "03 온보딩" 최종 시안(초록 배경) 기준으로 반영 중 (#59, `docs/figma/onboarding`)
 - Figma 시안은 각자 PC에서 내보내서 `docs/figma/<영역>/*.png`(gitignore)에 넣어 사용. 이름은 `번호_이름.png`
 - 한 페이지에 여러 버전이 있으면 **초록 배경 프레임이 최종본**
 - PNG는 2x(720×1600) → **수치를 2로 나눠** dp로 읽기
@@ -66,7 +67,7 @@
 - **자동 전송 없음**. 바로 보내기는 **확인 팝업 필수**
 - 터치 영역 48dp 이상, 접근성 라벨, 선택·오류 상태는 색만으로 구분하지 않음
 - 보이는 뒤로가기(온보딩도 왼쪽 위 화살표) + 안드로이드 뒤로가기가 같은 동작
-- 상태(로딩 / 빈 상태 / 오류 / AI 분석 중·모델 미준비·분석 실패)는 시안에 있으면 그대로, 없으면 필요한지 먼저 물어봄
+- 상태(로딩 / 빈 상태 / 오류 / AI 분석 중·분석 실패)는 시안에 있으면 그대로, 없으면 필요한지 먼저 물어봄
 
 ## 데이터
 
@@ -76,7 +77,8 @@
 - **자동 로그인 (팀 확정)**: 토큰은 `services.tokens`(메모리 + react-native-keychain 암호화 저장소, 모드별 service `malssiat.auth.mock|http`). 앱 시작 때 `SessionProvider`가 "loading"으로 시작해 `auth.restoreSession()`(refresh → `GET /users/me`)으로 복구, 저장 토큰이 없거나 실패하면 로그인 화면. 세션 만료(401 등)면 저장 토큰도 지우고, 네트워크 오류면 남겨 다음 실행에서 다시 시도. 로그아웃·비밀번호 재설정 시 저장 토큰 삭제
 - 401이면 `httpClient`가 `/auth/refresh`를 한 곳에서 한 번만 보내 갱신 (자동 로그인도 같은 함수)
 - 테스트: keychain은 `__mocks__/react-native-keychain.js`(메모리), `test-utils`가 테스트마다 비움. 로그인 상태로 시작하려면 `services.tokens.set(login.tokens)` 후 `renderApp()`, 앱 재시작은 `closeApp()`
-- 개발 옵션 (services/index.ts): 권한 `DEV_PERMISSION_SCENARIO = "deny"`로 거부 흐름, 모델 `failFirstAttemptAt`로 다운로드 실패, 네트워크 `"cellular"`
+- 개발 옵션 (services/index.ts): 권한 `DEV_PERMISSION_SCENARIO = "deny"`로 거부 흐름, 네트워크 `"none"`(오프라인이면 AI 답장을 부르지 않음)
+- 온보딩 단계는 `constants/onboarding.ts`의 `ONBOARDING_STEPS`. 없어진 단계(#59: `ModelDownload`·`BatteryOptimization`)가 저장돼 있으면 `resolveSavedStep`이 그다음 단계로 이어 줌
 - **연락 데이터는 기기 알림(로컬 DB)**: `services/conversation/deviceConversationService.ts`가 Kotlin 알림 수집 모듈(#42)의 메시지로 연락 목록·상세를 만듦. 네이티브 모듈이 없으면(Jest) mock을 씀. 화면만 작업하면서 예시 대화를 보려면 `services/index.ts`의 `USE_DEVICE_CONVERSATIONS = false` (커밋 전에 되돌리기)
   - 목록 분석(질문·멘션·답장 필요)은 기기 안 규칙만. **AI는 대화방을 열 때 그 방 하나만 한 번** 부르고 결과를 저장해 답장 화면에서 다시 씀. 기관·번호 발신자, 안내 문구(`isPlaceholder`)만 있는 대화는 보내지 않음
   - **자동 갱신 (#71)**: 알림 리스너가 새 메시지를 저장하면 `NotificationEvents` → `NotificationStoreModule`이 JS 이벤트(`malssiat.notificationsSaved`, 내용 없음)를 보냄 → `ConversationService.onChange` → `useConversations`가 화면이 보이는 동안 0.5초 안의 이벤트를 묶어 다시 읽음. 앱이 앞으로 올 때도 다시 읽음. 로딩 표시 없이 내용만 바뀌고 AI는 부르지 않음. 연락 탭 목록은 `maintainVisibleContentPosition`으로 보던 자리 유지. 당겨서 새로고침은 없음
@@ -118,14 +120,16 @@
   - 토스트 진한 갈색 #4F3832 → `actionPrimaryBg`(brown700 #4D3932), 체크 원 #7A6560 → `brandBrown`(brown600 #644B40)
   - "연결됨" 연한 초록 칩 바탕 ≈#EEF5EA·글자 ≈#6B9A5B → `feedbackSuccessBg`(green50 #F5F9F2)·`feedbackSuccessText`(green600 #527A40) (화면 구현 때 적용)
   - 원문 말풍선 영역 연한 파랑 ≈#EBF2F9 → `feedbackInfoBg`(info50 #EEF5FA) (화면 구현 때 적용)
-  - 스위치 켜짐 ≈#F5D66F → `brandSeed`(seed300), 꺼짐은 시안 없음 → `borderStrong`
+  - 스위치 켜짐 #F7D876 = `brandSeed`(seed300), 꺼짐 #644B40 = `brandBrown`(brown600) (#59에서 시안이 생겨 회색 → 갈색, core 수정)
   - 밑줄 탭 바탕선 ≈#F3EEEB → `borderDefault`(neutral200), 선택 밑줄 ≈#3A2B27 → `textPrimary`, 시트 손잡이 → `borderDefault`
 - #44 달력 날짜 칸은 시안대로 세로 32(선택 원 지름 32). 줄이 붙어 있어 터치 영역은 세로 약 36dp(줄 간격 절반씩 `hitSlop`)로 48dp 미만, 디자이너 요청으로 시안 우선
 - #44 Figma와 다르게 간 부분: 시간 드롭다운 폭 88→148dp("오전 10시 30분"), 시간 칩은 알약 대신 `ChoiceGroup` option 모양, 🔔 SVG 없음(임시 `BellIcon`), 상세 화면 앱바 제목은 지금처럼 왼쪽 정렬(시안은 가운데), 알림 센터 시안 없음
 - 연동 앱 아이콘 2x·3x (지금 60px 한 장), 탭바 아이콘 SVG 5개, 홈·탭바 시안
-- 07·08 설명 문구 (시안에서 제목과 겹침, 임시 문구)
-- 11 AI 메모리 상세 작성 시안 (입력창 + 예시 칩으로 임시)
-- Figma와 다르게 간 부분: 온보딩 뒤로가기 화살표 추가, 03 아이콘을 위로, 05 버튼 "다음", 11 버튼 "‘요즘 나의 상태’부터 쓰기", AI 모델 다운로드 화면 추가
+- Figma와 다르게 간 부분: 온보딩 뒤로가기 화살표 추가, 04 "나중에 할게요"·권한 안내 상자 유지 (05 버튼 "다음"은 디자이너 확인 완료, #59)
+- #59 Figma와 다르게 간 부분 (PR 본문에 적기): 11 "먼저 꺼내지 않을 이야기" 칩은 상자 폭에 맞춰 자연스럽게 줄바꿈 (시안은 첫 줄 5개, 앱은 화면 폭에 따라 6~7개), 06 "전체 알림"은 항목이 모두 켜져 있으면 켜짐으로 표시 (시안은 꺼짐 모양), 06-1은 안드로이드 시스템 팝업이라 시안 문구·모양을 쓸 수 없음
+- 에뮬레이터 비교 주의: `adb shell wm density`로 밀도를 바꾼 채 오래 쓰면 Android 17 에뮬레이터에서 Modal(바텀시트·팝업) 창이 화면에 안 올라오고 터치만 받음 (#59에서 11-1이 안 보인 원인). 이상하면 `wm density reset` 후 에뮬레이터를 cold boot
+- #59 공통 칩(`ChoiceGroup` chip)을 온보딩 11·02-4 시안 값으로 바꿈 (높이 28 · 바탕 seed100 · 테두리 brown700 · 가로 3 세로 4 · 글자 `captionChip` 10/13.5). 연락 말투·미루기·필터 칩도 같이 바뀜. 터치 영역은 세로로만 48dp
+- #59 글자 크기는 PNG로 재지 말고 Figma 텍스트 스타일 이름으로 확인 (06·10·11·12 반영 완료)
 - 04 연락: 앱바 햄버거·프로필 생략, "Label" 자리는 화면 이름, ○/● 카드는 `RadioCard`(Card 조합), 09-C는 ○ 3줄+버튼 2개 → 안내 줄 + ○ 2개 + 버튼 1개로 합침, 09-C 질문 있을 때 제목·설명(임시), 10 "복사하고 메신저 열기" 추가, 08 "친구 정보 보기" 텍스트 버튼 추가
 - 05 친구: 14 "연결된 계정" 카드(합치기·따로 보기)·얼려두기 버튼, 15 "직접 쓰기" 버튼, 15 두 번째 후보 "연락이 늦었어…" → 사과 없는 문장으로 바꿈, 16(잘린 메시지) "{앱} 열어서 복사하기" 추가, 관계 메모·생일 편집 시안 없음
 - 인증(백엔드 기준): 01-3 이메일 칸 도움말 "찾기에 쓰여요", 01-4 아이디 찾기는 이메일만 받고 메일로 아이디(다이얼로그에 아이디 표시 안 함), 01-5 비밀번호 찾기는 임시 비밀번호 대신 코드 + 새 비밀번호 2단계
@@ -133,8 +137,6 @@
 팀 결정 필요
 - 오프라인으로 앱을 켰을 때: 지금은 로그인 화면(저장 토큰은 남김). "다시 시도" 안내를 둘지 (`TODO(디자이너 공유)` in SessionProvider)
 - 로그인 `deviceId`(선택)를 보낼지 (기기별 세션 구분)
-- 11 예시 칩을 다시 누르면 빠지는 동작이 맞는지
-- AI 모델 다운로드 화면(`ModelDownload`)과 `ModelService`: 기기 안 모델을 쓰지 않기로 해서 받을 모델이 없음. 온보딩에서 뺄지
 - 얼려둔 관계를 알림·제안(홈 작은 행동 등)에서도 뺄지
 - 알림 메시지 기본 보관 기간 (지금 30일, `NotificationRetention.DEFAULT_DAYS`)과 설정 화면에서 바꿀 수 있게 할지
 - 단톡 AI 요약: 지금은 1:1처럼 방을 열면 자동으로 보냄. "요약하기 버튼을 누를 때만" 제안(PR #43 리뷰)은 보류 (버튼 시안도 없음)
@@ -143,13 +145,14 @@
 - 09 연락처 검색창
 
 네이티브·API 연결
-- 권한(알림 접근·앱 알림·배터리)·모델 다운로드·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70에서 구현)
+- 권한(알림 접근·앱 알림)·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70에서 구현. 모델 다운로드·배터리 최적화는 #59에서 온보딩에서 뺌)
 - 연락: `MessengerService`의 `canReplyDirectly`·`sendReply`(바로 답장, 정책 확인 후), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
 - 친구: `services.friends`(`FriendService`)를 기기 안 암호화 DB의 person·account로 교체, 15 첫마디 후보는 가린 메모로 외부 AI
 - 저장소: 친구 목록·대화 상태가 커지면 기기 안 암호화 DB로 (로그인 토큰·온보딩·연락 상태·AI 답장은 keychain 완료)
 
 ## 다음 작업
 
+- 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 남은 것: 07(아이콘)·08·09는 민재 #73 머지 후 + 에셋(연락처 책 PNG·아바타·돋보기 SVG)과 함께. 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영
 - 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)
 

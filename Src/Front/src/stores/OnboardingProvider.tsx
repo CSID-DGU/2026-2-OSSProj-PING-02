@@ -8,19 +8,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  getErrorCode,
-  MODEL_ERROR_CODE,
-  services,
-  STORAGE_KEYS,
-  type DownloadTask,
-  type ModelInfo,
-} from "@services";
+import { services, STORAGE_KEYS } from "@services";
 import {
   NOTIFICATION_PREF_OPTIONS,
   ONBOARDING_STEPS,
+  resolveSavedStep,
+  type AvoidTopic,
   type LinkedApp,
-  type MemoryCategory,
   type NotificationPref,
   type OnboardingStep,
 } from "@constants/onboarding";
@@ -36,26 +30,20 @@ export interface OnboardingData {
   notificationPrefs: NotificationPref[];
   // TODO(네이티브): 친구 목록은 기기 안 암호화 DB로 옮기기. 지금은 온보딩 저장소에 함께 둠
   friends: Contact[];
-  memory: Record<MemoryCategory, string>;
+  memory: MemoryData;
 }
 
-// 모델 다운로드는 화면을 벗어나도 계속되므로 여기서 들고 있음
-export type ModelState =
-  | { status: "idle" }
-  | { status: "loadingInfo" }
-  | { status: "infoError" }
-  | { status: "ready"; info: ModelInfo }
-  | { status: "downloading"; info: ModelInfo; received: number }
-  | { status: "failed"; info: ModelInfo; received: number }
-  | { status: "done"; info: ModelInfo };
+// 11 AI 메모리 (예전 저장값 { status, avoid }도 그대로 읽힘, avoidTopics만 빈 배열로 채움)
+export interface MemoryData {
+  status: string;
+  avoid: string;
+  avoidTopics: AvoidTopic[];
+}
 
 interface OnboardingContextValue {
   hydrated: boolean;
   data: OnboardingData;
   update: (patch: Partial<OnboardingData>) => Promise<void>;
-  model: ModelState;
-  loadModelInfo: () => Promise<void>;
-  startModelDownload: () => void;
 }
 
 const DEFAULT_DATA: OnboardingData = {
@@ -65,7 +53,7 @@ const DEFAULT_DATA: OnboardingData = {
   // Figma 06: 전체 선택이 기본값
   notificationPrefs: NOTIFICATION_PREF_OPTIONS.map(o => o.value),
   friends: [],
-  memory: { status: "", avoid: "" },
+  memory: { status: "", avoid: "", avoidTopics: [] },
 };
 
 // 저장된 진행 상황(JSON)을 지금 단계 구성에 맞춰 읽음
@@ -75,10 +63,8 @@ const parseSaved = (raw: string): OnboardingData => {
     ...DEFAULT_DATA,
     ...saved,
     memory: { ...DEFAULT_DATA.memory, ...saved.memory },
-    // 단계 구성이 바뀌어 없는 단계가 저장돼 있으면 처음부터
-    lastStep: ONBOARDING_STEPS.includes(saved.lastStep)
-      ? saved.lastStep
-      : DEFAULT_DATA.lastStep,
+    // 단계 구성이 바뀌어 없어진 단계면 그다음 단계부터 (모르는 값이면 처음부터, #59)
+    lastStep: resolveSavedStep(saved.lastStep),
   };
 };
 
@@ -106,10 +92,6 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const dataRef = useRef(data);
   // 저장된 값을 한 번이라도 제대로 읽었는지. 못 읽었으면 저장된 값을 덮어쓰지 않도록 쓰기 전에 다시 읽음
   const loadedOkRef = useRef(false);
-  const [model, setModel] = useState<ModelState>({ status: "idle" });
-  const modelRef = useRef(model);
-  modelRef.current = model;
-  const taskRef = useRef<DownloadTask | null>(null);
 
   // 로그인한 사용자가 바뀌면 그 사람의 진행 상황을 불러옴
   useEffect(() => {
@@ -118,8 +100,6 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     dataRef.current = DEFAULT_DATA;
     setData(DEFAULT_DATA);
     loadedOkRef.current = false;
-    taskRef.current?.cancel();
-    setModel({ status: "idle" });
 
     if (!storageKey) {
       setLoadedKey(null);
@@ -159,8 +139,6 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [storageKey]);
 
-  useEffect(() => () => taskRef.current?.cancel(), []);
-
   // 상태는 바로 바꾸고 저장 결과를 돌려줌 (저장 실패를 화면에서 알려야 할 때 await)
   // 저장된 값을 아직 못 읽었으면 먼저 다시 읽음
   // - 또 실패: 저장하지 않고 오류 (기본값으로 저장된 completed 등을 덮어쓰지 않게)
@@ -188,56 +166,9 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     [storageKey]
   );
 
-  const loadModelInfo = useCallback(async () => {
-    setModel({ status: "loadingInfo" });
-    try {
-      const info = await services.model.getLatest();
-      const installed = await services.model.isInstalled(info.version);
-      setModel(installed ? { status: "done", info } : { status: "ready", info });
-    } catch {
-      setModel({ status: "infoError" });
-    }
-  }, []);
-
-  const startModelDownload = useCallback(() => {
-    const prev = modelRef.current;
-    if (prev.status !== "ready" && prev.status !== "failed") return;
-
-    const { info } = prev;
-    // 연속으로 눌러도 한 번만 시작되도록 ref를 먼저 바꿈
-    modelRef.current = { status: "downloading", info, received: 0 };
-    setModel(modelRef.current);
-    const task = services.model.startDownload(info, ({ receivedBytes }) => {
-      setModel(cur =>
-        cur.status === "downloading" ? { ...cur, received: receivedBytes } : cur
-      );
-    });
-    taskRef.current = task;
-    task.done
-      .then(() => setModel({ status: "done", info }))
-      .catch(error => {
-        if (getErrorCode(error) === MODEL_ERROR_CODE.canceled) return;
-        setModel(cur => ({
-          status: "failed",
-          info,
-          received: cur.status === "downloading" ? cur.received : 0,
-        }));
-      })
-      .finally(() => {
-        if (taskRef.current === task) taskRef.current = null;
-      });
-  }, []);
-
   const value = useMemo(
-    () => ({
-      hydrated,
-      data,
-      update,
-      model,
-      loadModelInfo,
-      startModelDownload,
-    }),
-    [hydrated, data, update, model, loadModelInfo, startModelDownload]
+    () => ({ hydrated, data, update }),
+    [hydrated, data, update]
   );
 
   return (

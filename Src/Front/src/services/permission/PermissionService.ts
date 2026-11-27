@@ -3,15 +3,11 @@
 // | key                  | Android                                              | 요청 방식       | 화면 |
 // |----------------------|------------------------------------------------------|-----------------|------|
 // | notificationListener | NotificationListenerService 접근 허용                | 설정 화면 이동  | 04   |
-// | postNotifications    | POST_NOTIFICATIONS (Android 13+)                     | 시스템 팝업     | 06   |
-// | batteryOptimization  | REQUEST_IGNORE_BATTERY_OPTIMIZATIONS                 | 설정 화면 이동  | 07   |
-// | contacts             | READ_CONTACTS                                        | 시스템 팝업     | 08   |
+// | postNotifications    | POST_NOTIFICATIONS (Android 13+)                     | 시스템 팝업     | 06-1 |
+// | contacts             | READ_CONTACTS                                        | 시스템 팝업     | 07   |
+// (배터리 최적화 예외는 최종 시안에서 빠져 온보딩에서 묻지 않음, #59)
 
-export type PermissionKey =
-  | "notificationListener"
-  | "postNotifications"
-  | "batteryOptimization"
-  | "contacts";
+export type PermissionKey = "notificationListener" | "postNotifications" | "contacts";
 
 // blocked: 시스템 팝업에서 "다시 묻지 않음" 등으로 더 이상 팝업을 띄울 수 없음 → 설정에서만 켤 수 있음
 export type PermissionStatus = "granted" | "denied" | "blocked";
@@ -33,7 +29,6 @@ export interface PermissionService {
 export const PERMISSION_KEYS: PermissionKey[] = [
   "notificationListener",
   "postNotifications",
-  "batteryOptimization",
   "contacts",
 ];
 

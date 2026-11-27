@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Button } from "@core/ui/button";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
-import CheckRow from "@components/onboarding/CheckRow";
-import Notice from "@components/onboarding/Notice";
 import PermissionGuide from "@components/onboarding/PermissionGuide";
 import SkipButton from "@components/onboarding/SkipButton";
+import SwitchLine from "@components/onboarding/SwitchLine";
 import {
   NOTIFICATION_PREF_OPTIONS,
   type NotificationPref,
@@ -19,9 +18,12 @@ import { useOnboarding } from "@stores/OnboardingProvider";
 import * as s from "./NotificationTypes_styled";
 
 const LABEL = "앱 알림";
+const ALL = NOTIFICATION_PREF_OPTIONS.map(o => o.value);
 
-// 06 / 받을 알림 선택 → "다음"에서 시스템 알림 권한(POST_NOTIFICATIONS) 팝업
-// 하나도 고르지 않으면 권한을 묻지 않고 넘어감
+// 06 / 받을 알림 선택 → "확인했어요"에서 06-1 시스템 알림 권한(POST_NOTIFICATIONS) 팝업
+// - 줄마다 스위치, "전체 알림"은 모두 켜져 있으면 켜짐 / 누르면 모두 켜기·끄기
+// - 하나도 켜지 않으면 권한을 묻지 않고 넘어감
+// - 06-1은 안드로이드 시스템 팝업이라 모양·문구는 바꿀 수 없음 (Figma 06-1은 참고용)
 const NotificationTypes = () => {
   const { goNext } = useOnboardingStep("NotificationTypes");
   const { data, update } = useOnboarding();
@@ -31,10 +33,11 @@ const NotificationTypes = () => {
   );
   // 팝업에서 거절한 뒤에는 "이대로 넘어갈게요"를 주 버튼으로
   const askedAndOff = !state.granted && !!state.guide;
+  const allOn = ALL.every(v => selected.includes(v));
 
-  const toggle = (value: NotificationPref) =>
+  const setOne = (value: NotificationPref, on: boolean) =>
     setSelected(prev =>
-      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
+      on ? [...prev.filter(v => v !== value), value] : prev.filter(v => v !== value)
     );
 
   const handleNext = async () => {
@@ -48,16 +51,13 @@ const NotificationTypes = () => {
   };
 
   return (
-    <AuthLayout backOnly
-      centered
-      gap={24}
+    <AuthLayout
+      backOnly
+      gap={32}
+      // 마지막 항목 아래 여백(18.5)이 이미 있어서 화면 아래 여백은 0 (Figma 06처럼 버튼 위 구분선 없이 들어감)
+      paddingBottom={0}
       footer={
         <>
-          {askedAndOff && (
-            <SkipButton onPress={state.request} disabled={state.requesting}>
-              {permissionActionLabel(state, "다시 요청하기")}
-            </SkipButton>
-          )}
           <Button
             variant="primary"
             fullWidth
@@ -68,47 +68,47 @@ const NotificationTypes = () => {
               disabled: state.requesting,
             }}
           >
-            {askedAndOff ? "이대로 넘어갈게요" : "다음"}
+            {askedAndOff ? "이대로 넘어갈게요" : "확인했어요"}
           </Button>
+          {askedAndOff && (
+            <SkipButton onPress={state.request} disabled={state.requesting}>
+              {permissionActionLabel(state, "다시 요청하기")}
+            </SkipButton>
+          )}
         </>
       }
     >
-      <AuthIntro
-        variant="onboarding"
-        title={"받을 알림을\n선택해 주세요"}
-        description={
-          "전체 선택이 기본값이에요. 원하지 않는 알림은\n체크를 해제할 수 있어요."
-        }
-      />
+      <AuthIntro variant="onboarding" title={"받을 알림을\n선택해 주세요"} />
 
       <s.Options>
+        <s.AllBox>
+          <SwitchLine
+            box
+            label="전체 알림"
+            value={allOn}
+            onValueChange={on => setSelected(on ? ALL : [])}
+          />
+        </s.AllBox>
         {NOTIFICATION_PREF_OPTIONS.map(option => (
-          <CheckRow
+          <SwitchLine
             key={option.value}
-            card="default"
-            cardStyle={s.cardStyle}
-            checked={selected.includes(option.value)}
-            onToggle={() => toggle(option.value)}
             label={option.title}
             description={option.description}
+            value={selected.includes(option.value)}
+            onValueChange={on => setOne(option.value, on)}
+            style={s.lineStyle}
           />
         ))}
       </s.Options>
 
-      {askedAndOff || state.load === "error" ? (
+      {/* Figma에 없는 상태: 팝업에서 거절했거나 권한 확인 오류일 때만 부드러운 안내 (Q4) */}
+      {(askedAndOff || state.load === "error") && (
         <PermissionGuide
           align="left"
           state={state}
           label={LABEL}
           consequence="꺼 두면 선택한 알림을 받을 수 없고, 앱을 열었을 때만 확인할 수 있어요."
         />
-      ) : (
-        !state.granted &&
-        selected.length > 0 && (
-          <Notice title="다음 단계에서 기기 권한을 요청해요">
-            선택한 알림을 보내려면 시스템 알림 권한이 필요해요
-          </Notice>
-        )
       )}
     </AuthLayout>
   );

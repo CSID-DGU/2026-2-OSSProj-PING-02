@@ -67,6 +67,11 @@ export const fonts = {
   captionSmall: fontGenerator(11, fontFamily.regular, 16),
   captionXSmall: fontGenerator(10, fontFamily.regular, 14),
   captionCard: fontGenerator(10, fontFamily.regular, 16), // #53 홈 연락 카드 요약
+  captionDense: fontGenerator(11, fontFamily.regular, 12), // #59 온보딩 06 알림 항목 설명
+  titleSubsection: fontGenerator(16, fontFamily.bold, 24), // #59 온보딩 11 "AI 답장 맞춤 설정"
+  bodySmallRelaxed: fontGenerator(13, fontFamily.regular, 20), // #59 온보딩 11 소제목 설명
+  labelField: fontGenerator(12, fontFamily.semiBold, 18), // #59 TextArea 상자 라벨
+  captionChip: fontGenerator(10, fontFamily.regular, 13.5), // #59 공통 칩 글자 (135%)
 };
 
 export const FontList = Object.keys(fonts);

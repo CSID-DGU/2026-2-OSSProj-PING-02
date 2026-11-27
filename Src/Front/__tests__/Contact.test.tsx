@@ -1,5 +1,4 @@
 import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
-import { createMockModelService } from "../src/services/model/mockModelService";
 import {
   createMockConversationService,
   createMockMessengerService,
@@ -27,7 +26,7 @@ import {
 // 로그인 + 온보딩 완료 상태에서 연락 탭으로 시작. 테스트마다 연락·메신저 mock을 새로 만듦
 const USER_ID = "mock-user-demo";
 
-const seed = async ({ modelInstalled }: { modelInstalled: boolean }) => {
+const seed = async () => {
   const login = await services.auth.login(
     MOCK_DEMO_ACCOUNT.loginId,
     MOCK_DEMO_ACCOUNT.password
@@ -40,11 +39,6 @@ const seed = async ({ modelInstalled }: { modelInstalled: boolean }) => {
   );
   services.conversation = createMockConversationService({ latency: 50 });
   services.messenger = createMockMessengerService();
-  services.model = createMockModelService({ durationMs: 50 });
-  if (modelInstalled) {
-    const info = await services.model.getLatest();
-    await services.model.startDownload(info, () => {}).done;
-  }
 };
 
 // 자동 로그인(저장 토큰 복구)이 끝나 탭바가 보일 때까지
@@ -88,8 +82,8 @@ const isDisabled = (root: Instance, text: string) =>
     .map(n => n.props.accessibilityState?.disabled ?? n.props.disabled)
     .at(-1);
 
-describe("가리기 모델이 준비된 경우", () => {
-  beforeEach(() => seed({ modelInstalled: true }));
+describe("연락 흐름", () => {
+  beforeEach(() => seed());
 
   test("1:1 질문: 08 → 09-A 입장 → 10 말투 조절 → 확인 팝업을 거쳐 보낸다", async () => {
     const root = await openContacts();
@@ -361,22 +355,9 @@ describe("가리기 모델이 준비된 경우", () => {
   });
 });
 
-describe("가리기 모델이 없는 경우", () => {
-  beforeEach(() => seed({ modelInstalled: false }));
-
-  test("08은 요약 없이 받은 메시지만 보여 주고 직접 답장 쓰기를 둔다", async () => {
-    const root = await openContacts();
-    await openCard(root, "민지");
-    await waitForText(root, "받은 메시지를 그대로 보여 드려요.");
-    await waitForText(root, "요약은 가리기 모델을 받은 뒤에 보여요");
-    expect(findText(root, "답장 후보 살펴보기").length).toBe(0);
-    expect(findText(root, "직접 답장 쓰기").length).toBe(1);
-  });
-});
-
 describe("오류·빈 상태", () => {
   test("목록을 불러오지 못하면 다시 불러오기를 보여 준다", async () => {
-    await seed({ modelInstalled: true });
+    await seed();
     services.conversation = createMockConversationService({ failList: true });
     const root = await renderApp();
     await waitForTabs(root);
@@ -386,7 +367,7 @@ describe("오류·빈 상태", () => {
   });
 
   test("연락이 없으면 빈 상태 안내", async () => {
-    await seed({ modelInstalled: true });
+    await seed();
     services.conversation = createMockConversationService({ empty: true });
     const root = await renderApp();
     await waitForTabs(root);

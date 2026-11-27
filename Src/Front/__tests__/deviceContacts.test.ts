@@ -91,7 +91,7 @@ describe("연락처 권한", () => {
     const all = await service.checkAll();
     expect(all.notificationListener).toBe("denied");
     expect((await service.request("postNotifications")).status).toBe("granted");
-    await service.openSettings("batteryOptimization");
+    await service.openSettings("notificationListener");
     expect(calls.filter(c => c.startsWith("request") || c === "settings")).toEqual([]);
   });
 });

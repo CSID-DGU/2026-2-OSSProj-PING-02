@@ -2,7 +2,8 @@ import { Pressable } from "react-native";
 import styled from "styled-components/native";
 
 // Figma: 05 연락 Screens "메신저 연결 관리" 시트의 "이 계정의 연락 분석" 토글
-// 트랙 46×28dp · 손잡이 24dp · 켜짐 노랑(brandSeed) / 꺼짐 회색(borderStrong)
+// 트랙 46×28dp · 손잡이 24dp · 켜짐 노랑(brandSeed) / 꺼짐 진한 갈색(brandBrown)
+// (꺼짐 색은 Figma 03 온보딩 06·05 연락 Control 시안 #644B40 = brown600, #59에서 회색 → 갈색)
 // 켜짐·꺼짐은 색뿐 아니라 손잡이 위치로도 구분, 스크린리더에는 switch 역할 + checked 상태
 export interface SwitchProps {
   value: boolean;
@@ -87,7 +88,7 @@ const Track = styled.View<{ $on: boolean; $disabled: boolean }>`
   border-radius: ${TRACK_HEIGHT / 2}px;
   opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
   background-color: ${({ theme, $on }) =>
-    $on ? theme.colors.brandSeed : theme.colors.borderStrong};
+    $on ? theme.colors.brandSeed : theme.colors.brandBrown};
 `;
 
 const Thumb = styled.View<{ $on: boolean }>`

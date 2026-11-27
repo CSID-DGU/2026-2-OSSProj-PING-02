@@ -2,7 +2,6 @@ import { AppState } from "react-native";
 import ReactTestRenderer from "react-test-renderer";
 import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
 import { createMockConversationService } from "../src/services/conversation/mockConversationService";
-import { createMockModelService } from "../src/services/model/mockModelService";
 import { RELOAD_BATCH_MS } from "../src/hooks/useConversations";
 import {
   services,
@@ -85,10 +84,7 @@ const openContactsTab = async () => {
     `${STORAGE_KEYS.onboarding}.${USER_ID}`,
     JSON.stringify({ completed: true, lastStep: "OnboardingDone" })
   );
-  // 가리기 모델이 있어야 분석(analyze)이 돌아서, 다시 불러올 때 AI를 새로 부르지 않는지 볼 수 있음
-  services.model = createMockModelService({ durationMs: 10 });
-  const info = await services.model.getLatest();
-  await services.model.startDownload(info, () => {}).done;
+  // 분석(analyze)은 기기 안 규칙 마스킹이라 준비물 없이 바로 돎(#59) → 다시 불러올 때 AI를 새로 부르지 않는지 볼 수 있음
   const root = await renderApp();
   await waitForText(root, "오늘의 도움 수준");
   await pressByRole(root, "tab", "연락");

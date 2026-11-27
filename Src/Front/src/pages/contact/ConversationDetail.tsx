@@ -4,7 +4,6 @@ import { Card } from "@core/ui/card";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import LoadState from "@components/contact/LoadState";
-import ModelNotice from "@components/contact/ModelNotice";
 import Notice from "@components/onboarding/Notice";
 import { formatRemind, replyStepFor, withWa } from "@constants/contact";
 import { useAuthNavigation } from "@hooks/useAuthNavigation";
@@ -14,7 +13,7 @@ import type { AppParamList } from "@routes/types";
 import * as s from "./Contact_styled";
 
 // 04 / 08 1:1 연락 상세 (와이어프레임 구조·문구, 색·컴포넌트는 design-system)
-// - 요약: 가리기 모델이 있고 분석이 끝났을 때만. 분석 실패·모델 없음은 요약 없이 받은 메시지만 (기본 카드)
+// - 요약: 분석이 끝났을 때만. 분석 실패는 요약 없이 받은 메시지만 (기본 카드)
 // - 답장 후보는 요약이 있을 때만. 없으면 직접 답장 쓰기
 // TODO(디자인): 시안 앱바 제목 "Label" 자리는 화면 이름("연락")으로 둠
 const ConversationDetail = () => {
@@ -22,7 +21,7 @@ const ConversationDetail = () => {
   const { params } =
     useRoute<RouteProp<AppParamList, "ConversationDetail">>();
   const { conversationId } = params;
-  const { state, modelReady, retry, reload } =
+  const { state, retry, reload } =
     useConversationDetail(conversationId);
 
   if (state.status !== "ready") {
@@ -39,9 +38,8 @@ const ConversationDetail = () => {
   }
 
   const { conversation, messages, analysis, deferred } = state.detail;
-  const summaryReady =
-    modelReady && analysis.status === "done" && !!analysis.summary;
-  const analyzing = modelReady && analysis.status === "pending";
+  const summaryReady = analysis.status === "done" && !!analysis.summary;
+  const analyzing = analysis.status === "pending";
   const truncated = messages.some(m => m.truncated);
 
   const openCandidates = () =>
@@ -67,8 +65,6 @@ const ConversationDetail = () => {
         }
       />
 
-      <ModelNotice />
-
       {deferred && (
         <Notice title={formatRemind(deferred.remindAt)}>
           <s.Muted>그 전에는 재촉하지 않고 조용히 기다릴게요.</s.Muted>
@@ -91,7 +87,7 @@ const ConversationDetail = () => {
             <s.BlockBody>정리하는 중이에요…</s.BlockBody>
           </Card>
         )}
-        {modelReady && analysis.status === "failed" && (
+        {analysis.status === "failed" && (
           // 분석 실패: 요약 없이 기본 카드. 실패를 탓하지 않는 문장으로
           <s.Muted>
             이번 메시지는 정리하지 못했어요. 받은 메시지는 그대로 볼 수 있어요.

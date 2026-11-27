@@ -6,7 +6,6 @@ import { Card, CardDescription } from "@core/ui/card";
 import { ChoiceGroup } from "@core/ui/choice";
 import AuthIntro from "@components/auth/AuthIntro";
 import ConversationCard from "@components/contact/ConversationCard";
-import ModelNotice from "@components/contact/ModelNotice";
 import TabScreen from "@components/main/TabScreen";
 import Notice from "@components/onboarding/Notice";
 import { formatRemind } from "@constants/contact";
@@ -52,7 +51,7 @@ const isImportant = (item: ConversationSummary) =>
 
 const ContactsTab = ({ title }: { title: string }) => {
   const theme = useTheme();
-  const { state, modelReady, retry } = useConversations();
+  const { state, retry } = useConversations();
   const [filter, setFilter] = useState<Filter>("all");
 
   // 단톡은 09-C로, 1:1은 08 연락 상세로
@@ -91,9 +90,7 @@ const ContactsTab = ({ title }: { title: string }) => {
     filter === "later"
       ? later
       : filter === "important"
-      ? modelReady
-        ? items.filter(isImportant)
-        : []
+      ? items.filter(isImportant)
       : items;
 
   const header = (
@@ -104,7 +101,6 @@ const ContactsTab = ({ title }: { title: string }) => {
         // 정렬 기능이 아직 없어 약속하지 않는 문구로 둠
         description="편한 순서대로 천천히 살펴봐도 괜찮아요."
       />
-      <ModelNotice />
       <ChoiceGroup
         shape="chip"
         options={FILTER_OPTIONS.map(o => ({
@@ -125,14 +121,11 @@ const ContactsTab = ({ title }: { title: string }) => {
     </s.Header>
   );
 
-  const empty =
-    filter === "important" && !modelReady ? (
-      <s.Muted>가리기 모델을 받으면 중요한 연락을 골라 드려요.</s.Muted>
-    ) : (
-      <Notice align="center" title={EMPTY_TEXT[filter].title}>
-        {EMPTY_TEXT[filter].body}
-      </Notice>
-    );
+  const empty = (
+    <Notice align="center" title={EMPTY_TEXT[filter].title}>
+      {EMPTY_TEXT[filter].body}
+    </Notice>
+  );
 
   return (
     <TabScreen title={title}>
@@ -166,7 +159,6 @@ const ContactsTab = ({ title }: { title: string }) => {
           ) : (
             <ConversationCard
               item={item}
-              modelReady={modelReady}
               onPress={() => open(item.conversation)}
             />
           )

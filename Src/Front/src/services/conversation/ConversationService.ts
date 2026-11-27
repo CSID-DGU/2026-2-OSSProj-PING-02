@@ -11,14 +11,14 @@ import type {
 } from "./types";
 
 // 연락·요약·답장 후보 (나중에 Kotlin 네이티브 모듈의 로컬 DB + 분석 파이프라인으로 교체)
-// - 원문은 기기 안, 가리기 모델이 이름·전화번호를 가린 뒤 중간 서버를 거쳐 외부 AI로
+// - 원문은 기기 안, 기기 안 규칙 마스킹(utils/masking)으로 이름·전화번호를 가린 뒤 중간 서버를 거쳐 외부 AI로
 // - 자동 전송은 없음: 보내기는 MessengerService.sendReply를 사용자가 확인한 뒤에만
 export interface ConversationService {
   list(): Promise<ConversationSummary[]>;
   // 새 메시지가 들어와 목록이 바뀌었을 수 있을 때 부름 (#71). 구독을 끊는 함수를 돌려줌
   onChange(listener: () => void): () => void;
   get(conversationId: string): Promise<ConversationDetail>;
-  // 분석이 끝나지 않은(pending) 대화를 분석 (가리기 모델이 준비돼 있어야 함)
+  // 분석이 끝나지 않은(pending) 대화를 분석
   analyze(conversationId: string): Promise<Analysis>;
   getReplyCandidates(
     conversationId: string,
