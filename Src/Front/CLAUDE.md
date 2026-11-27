@@ -84,7 +84,8 @@
 - 연락 mock (`services/conversation`): 목록 `{ empty: true }` / `{ failList: true }`, 메신저 `createMockMessengerService({ directReplyIds, failSend })`. 바로 답장 가능한 대화는 `mockConversationData.ts`의 `DIRECT_REPLY_IDS` (하늘·대학교 친구들은 불가)
 - mock 저장소는 메모리라 앱을 완전히 끄면 진행 상황·mock 회원이 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
-- AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계·결정 여부 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. 지금 `services.ai`는 mock
+- AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. `services.ai`는 API 모드가 `http`면 실서버(`createHttpAiReplyService`, 인증과 같은 `httpClient`로 토큰 갱신), 아니면 mock
+  - **결정 여부는 AI가 판단**: 응답의 `needsDecision`이 true면 답장 9개(입장 `ACCEPT/HOLD/DECLINE` × 말투 `SHORT/WARM/POLITE`), false면 말투 3개. AI 결과가 있으면 그 판단으로 `question` 태그를 정해 답장 화면 갈래(09-A 입장 먼저 / 09-B 말투 바로)가 AI를 따름. 목록처럼 AI 결과가 없을 때만 기기 규칙(`classifyNeedsDecision`)
 
 ## 팀 Git 규칙
 
