@@ -41,6 +41,43 @@ export interface AiReplyResponse {
   replies: AiReplyCandidate[];
 }
 
+const isFilledText = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+/**
+ * 서버 응답(또는 저장해 둔 결과)이 지금 형식(#65)인지 확인해서, 맞으면 필요한 칸만 담아 돌려주고 틀리면 null.
+ * - needsDecision이 true면 입장 3 × 말투 3 = 9개가 빠짐없이·겹치지 않게, false면 입장 없는 말투 3개
+ * - 순서에는 기대지 않음 (입장·말투로 찾아 씀)
+ * 예전 형식(replies[{ label, text }], needsDecision 없음)이나 개수가 모자란 응답을 걸러,
+ * 답장 화면이 빈 목록이 되거나 오류가 나지 않게 함
+ */
+export const parseAiReplyResponse = (body: unknown): AiReplyResponse | null => {
+  if (!body || typeof body !== "object") return null;
+  const { summary, needsDecision, replies } = body as Record<string, unknown>;
+  if (!isFilledText(summary) || typeof needsDecision !== "boolean" || !Array.isArray(replies)) {
+    return null;
+  }
+
+  const parsed: AiReplyCandidate[] = [];
+  for (const reply of replies) {
+    if (!reply || typeof reply !== "object") return null;
+    const { stance, tone, text } = reply as Record<string, unknown>;
+    if (!AI_TONES.includes(tone as AiTone) || !isFilledText(text)) return null;
+    if (needsDecision) {
+      if (!AI_STANCES.includes(stance as AiStance)) return null;
+      parsed.push({ stance: stance as AiStance, tone: tone as AiTone, text });
+    } else {
+      if (stance != null) return null;
+      parsed.push({ tone: tone as AiTone, text });
+    }
+  }
+
+  const expected = needsDecision ? AI_STANCES.length * AI_TONES.length : AI_TONES.length;
+  const combos = new Set(parsed.map(r => `${r.stance ?? ""}|${r.tone}`));
+  if (parsed.length !== expected || combos.size !== expected) return null;
+  return { summary, needsDecision, replies: parsed };
+};
+
 /** 서버 입력 길이 상한 (서버 AI_MAX_INPUT_CHARS 기본값과 맞춤) */
 export const AI_MAX_INPUT_CHARS = 1000;
 
@@ -133,7 +170,21 @@ export const createHttpAiReplyService = ({
       if (!res.ok) {
         throw await toServiceError(res);
       }
-      return (await res.json()) as AiReplyResponse;
+      // 본문이 JSON이 아니거나 형식이 틀리면 저장하지 않고 오류로 (메시지에 응답 본문은 넣지 않음)
+      let body: unknown = null;
+      try {
+        body = JSON.parse(await res.text());
+      } catch {
+        body = null;
+      }
+      const parsed = parseAiReplyResponse(body);
+      if (!parsed) {
+        throw new ServiceError(
+          AI_ERROR_CODE.responseInvalid,
+          "답장을 만들지 못했어요. 잠시 후 다시 시도해 주세요"
+        );
+      }
+      return parsed;
     },
   };
 };

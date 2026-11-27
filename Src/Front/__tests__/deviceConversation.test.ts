@@ -9,6 +9,7 @@ import {
   createMockAiReplyService,
   type AiReplyRequest,
   type AiReplyService,
+  type SavedAiReply,
 } from "../src/services";
 import { createMemoryStorage } from "../src/services/storage/memoryStorage";
 
@@ -295,6 +296,42 @@ describe("AI 답장 후보", () => {
     expect((await service.get(key)).analysis.summary).toBeUndefined();
     await service.getReplyCandidates(key, { tone: "warm", stance: "accept" });
     expect((await service.get(key)).analysis.summary).toBeTruthy();
+  });
+
+  test("예전 형식으로 저장된 AI 결과는 쓰지 않고 다시 받는다 (#81)", async () => {
+    const { ai, calls } = spyAi();
+    const storage = createMemoryStorage();
+    const aiReplies = createKeyValueAiReplyStore(storage);
+    const key = toConversationKey(KAKAO, "room-1");
+    // #65 전 형식: replies[{ label, text }] (마지막 메시지보다 뒤에 만든 결과라 예전에는 그대로 썼음)
+    await aiReplies.save({
+      id: "old",
+      conversationId: key,
+      createdAt: 5_000,
+      relation: "FRIEND",
+      needsDecision: false,
+      summary: "예전 요약",
+      replies: [
+        { label: "짧게", text: "응" },
+        { label: "다정하게", text: "고마워" },
+        { label: "공손하게", text: "감사해" },
+      ],
+    } as unknown as SavedAiReply);
+    const service = createDeviceConversationService({
+      source: fakeSource([row({ text: "잘 지내지?" })]),
+      storage,
+      ai,
+      aiReplies,
+    });
+
+    // 예전 결과는 없는 것으로 봄 → 상세는 다시 분석 대기, 요약도 예전 것을 쓰지 않음
+    const detail = await service.get(key);
+    expect(detail.analysis.status).toBe("pending");
+    expect(detail.analysis.summary).toBeUndefined();
+
+    const tones = await service.getReplyCandidates(key, { tone: "short" });
+    expect(tones).toHaveLength(3);
+    expect(calls).toHaveLength(1);
   });
 
   test("내용 없는 알림만 있는 대화는 AI로 보내지 않고 안내한다", async () => {

@@ -1,6 +1,11 @@
 import type { StoredNotification } from "@native/NotificationStore";
 import { ServiceError } from "../common";
-import type { AiReplyService, AiStance, AiTone } from "../ai/AiReplyService";
+import {
+  parseAiReplyResponse,
+  type AiReplyService,
+  type AiStance,
+  type AiTone,
+} from "../ai/AiReplyService";
 import type { AiReplyStore, SavedAiReply } from "../ai/AiReplyStore";
 import { classifyNeedsDecision, looksLikeInstitution } from "../ai/classifyMessage";
 import { requestAiReply, type ConversationMessage } from "../ai/requestAiReply";
@@ -235,10 +240,13 @@ export const createDeviceConversationService = ({
     return [...rows].sort(byTimeAsc);
   };
 
-  /** 마지막 메시지 이후에 만든 AI 결과 (그 전 것은 지난 대화라 쓰지 않음) */
+  /**
+   * 마지막 메시지 이후에 만든 AI 결과 (그 전 것은 지난 대화라 쓰지 않음).
+   * 예전 형식으로 저장된 결과(#65 전, replies[{ label }])는 답장 화면에서 쓸 수 없어 없는 것으로 보고 다시 받음
+   */
   const latestAiReply = async (key: string, lastMessageTime: number) => {
     const saved = await aiReplies.listByConversation(key);
-    return saved.find(r => r.createdAt >= lastMessageTime);
+    return saved.find(r => r.createdAt >= lastMessageTime && parseAiReplyResponse(r) !== null);
   };
 
   /** AI로 보낼 대화 내용이 있는지 (안내 문구만 있거나 기관·번호 발신자면 보내지 않음) */
