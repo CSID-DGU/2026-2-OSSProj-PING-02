@@ -130,7 +130,7 @@ describe("13 친구 목록", () => {
 });
 
 describe("14 친구 상세", () => {
-  test("메모·마지막 대화·생일을 보여 주고, 마지막 대화는 08로, 08에서 다시 친구로", async () => {
+  test("메모·마지막 대화·생일을 보여 주고, 마지막 대화는 연락 상세로", async () => {
     const root = await openFriends();
     await openFriend(root, "민지");
 
@@ -141,8 +141,6 @@ describe("14 친구 상세", () => {
 
     await pressByRole(root, "button", `마지막 대화. ${last}`);
     await waitForText(root, "최근 연락");
-    await press(root, "친구 정보 보기");
-    await waitForText(root, "생일: 5월 18일");
   });
 
   test("안드로이드 뒤로가기는 친구 목록으로", async () => {

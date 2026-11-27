@@ -292,22 +292,6 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
                 </Button>
               </Block>
             )}
-            {/* 친구로 연결된 1:1만 → 05 / 14 친구 상세. #30부터 있던 시안 밖 텍스트 버튼 (유지, 확인 필요)
-                TODO(디자이너 공유) */}
-            {!group && conversation.personId && (
-              <Block $top={12}>
-                <Button
-                  variant="text"
-                  onPress={() =>
-                    navigation.navigate("FriendDetail", {
-                      personId: conversation.personId!,
-                    })
-                  }
-                >
-                  친구 정보 보기
-                </Button>
-              </Block>
-            )}
           </>
         )}
       </ScrollView>
