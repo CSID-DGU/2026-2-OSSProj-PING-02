@@ -102,6 +102,14 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   // 저장된 값을 한 번이라도 제대로 읽었는지. 못 읽었으면 저장된 값을 덮어쓰지 않도록 쓰기 전에 다시 읽음
   const loadedOkRef = useRef(false);
 
+  // 로그인하지 않은 상태(로그아웃·세션 만료·처음 실행)에서는 알림을 모으지 않음 (#83)
+  // 이미 쌓인 알림은 지우지 않고, 다시 로그인하면 그 사람의 연동 앱으로 다시 맞춤
+  useEffect(() => {
+    if (session.status === "signedOut") {
+      services.collection.setApps([]).catch(() => {});
+    }
+  }, [session.status]);
+
   // 로그인한 사용자가 바뀌면 그 사람의 진행 상황을 불러옴
   useEffect(() => {
     let alive = true;
@@ -126,6 +134,8 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
             const next = parseSaved(raw);
             dataRef.current = next;
             setData(next);
+            // 이미 온보딩을 마친 사용자·다시 로그인한 사용자도 그 사람의 연동 앱으로 수집 목록을 맞춤 (#83)
+            syncCollection(next.linkedApps);
           }
           setLoadedKey(storageKey);
         })
