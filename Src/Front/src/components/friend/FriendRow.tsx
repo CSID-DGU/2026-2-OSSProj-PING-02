@@ -1,4 +1,5 @@
 import styled from "styled-components/native";
+import { HeartIcon, SproutIcon, StarIcon } from "@core/ui/icon";
 import { APP_LABEL } from "@constants/contact";
 import {
   favoriteShape,
@@ -9,7 +10,6 @@ import {
 } from "@constants/friend";
 import { appsOf, type FriendSummary } from "@services";
 import FriendAvatar from "./FriendAvatar";
-import { HeartIcon, SproutIcon, StarIcon } from "./TempIcons";
 
 // 06 친구 E01 목록 한 줄 (720px 시안 ÷2)
 // 줄 높이 72 · 왼쪽 28 · 아바타 44 → 12 → 이름(NEW는 새싹 + 이름) / 관계 칩 → 16 → 메신저 로고(15, 사이 2)
@@ -84,9 +84,9 @@ const FriendRow = ({ item, onPress, onToggleFavorite }: FriendRowProps) => {
           accessibilityState={{ checked: favorite }}
         >
           {shape === "star" ? (
-            <StarIcon filled={favorite} />
+            <StarIcon active={favorite} />
           ) : (
-            <HeartIcon filled={favorite} />
+            <HeartIcon active={favorite} />
           )}
         </Favorite>
       )}
@@ -168,15 +168,11 @@ const Time = styled.Text`
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-// 시안: 아이콘 위 16(줄 위에서) · 오른쪽 30
+// 시안: 아이콘 위 16(줄 위에서) · 오른쪽 30 (별 18×17, 하트 15×14)
 const Favorite = styled.Pressable`
   position: absolute;
   top: 16px;
-  right: 29px;
-  width: 16px;
-  height: 16px;
-  align-items: center;
-  justify-content: center;
+  right: 30px;
 `;
 
 export default FriendRow;

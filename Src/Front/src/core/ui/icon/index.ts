@@ -14,4 +14,9 @@ export {
   ClipboardIcon,
   PersonAddIcon,
   AvatarDefaultIcon,
+  SearchIcon,
+  CloseIcon,
+  StarIcon,
+  HeartIcon,
+  SproutIcon,
 } from "./Icon";

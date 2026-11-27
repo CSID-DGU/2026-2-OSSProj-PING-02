@@ -3,11 +3,11 @@ import { ActivityIndicator, FlatList } from "react-native";
 import styled, { useTheme } from "styled-components/native";
 import { Button } from "@core/ui/button";
 import { Input } from "@core/ui/field";
+import { SearchIcon } from "@core/ui/icon";
 import { UnderlineTabs } from "@core/ui/tabs";
 import TabScreen from "@components/main/TabScreen";
 import Notice from "@components/onboarding/Notice";
 import FriendRow from "@components/friend/FriendRow";
-import { SearchIcon } from "@components/friend/TempIcons";
 import {
   FRIEND_TABS,
   inFriendTab,
@@ -100,7 +100,6 @@ const FriendsTab = ({ title }: { title: string }) => {
           <NewEmptyText>
             {"새롭게 발견된 친구가 없어요.\n기존 친구들에게 답장을 해보거나,\n먼저 연락을 해볼까요?"}
           </NewEmptyText>
-          {/* TODO(에셋): 시안 PNG 한 장(172×158)을 임시로 씀. 2x·3x를 받으면 교체 */}
           <NewEmptyImage source={newEmptyImage} accessible={false} />
           <NewEmptyActions>
             <Button
@@ -196,9 +195,10 @@ const SearchInput = styled(Input)`
   ${({ theme }) => theme.fonts.captionRegular};
 `;
 
+// 돋보기 16, 상자 오른쪽 안에서 약 19
 const SearchIconBox = styled.View`
   position: absolute;
-  right: 16px;
+  right: 19px;
 `;
 
 const Tabs = styled.View`
@@ -221,9 +221,10 @@ const NewEmptyText = styled.Text`
   text-align: center;
 `;
 
+// malssi-new-empty@2x.png 240×220 → 120×110
 const NewEmptyImage = styled.Image`
-  width: 112px;
-  height: 103px;
+  width: 120px;
+  height: 110px;
   margin-top: 41px;
 `;
 
