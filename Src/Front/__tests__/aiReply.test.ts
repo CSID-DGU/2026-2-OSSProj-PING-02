@@ -275,13 +275,17 @@ describe("createHttpAiReplyService", () => {
       return calls.length === 1 ? jsonResponse(401, {}) : jsonResponse(200, ok);
     }) as unknown as typeof fetch;
 
+    const refreshAccessToken = jest.fn(async () => "new");
     const service = createHttpAiReplyService({
       baseUrl: "https://api.test/v1",
       getAccessToken: async () => "old",
-      refreshAccessToken: async () => "new",
+      refreshAccessToken,
       fetchImpl,
     });
     await expect(service.reply(request)).resolves.toEqual(ok);
+    // 401을 받은 요청이 보낸 토큰을 넘김 → 그사이 이미 갱신됐으면 다시 갱신하지 않을 수 있음 (#81)
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(refreshAccessToken).toHaveBeenCalledWith("old");
     expect(calls.map((c) => [c.url, c.auth])).toEqual([
       ["https://api.test/v1/ai/reply", "Bearer old"],
       ["https://api.test/v1/ai/reply", "Bearer new"],

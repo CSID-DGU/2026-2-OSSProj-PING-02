@@ -101,8 +101,11 @@ export interface HttpAiReplyServiceOptions {
   /** 예: https://api.example.com/v1 (끝에 / 없이) */
   baseUrl: string;
   getAccessToken(): Promise<string | null>;
-  /** 401일 때 한 번만 부름. 새 액세스 토큰을 돌려주고, 갱신 실패면 null */
-  refreshAccessToken?(): Promise<string | null>;
+  /**
+   * 401일 때 한 번만 부름. 401을 받은 요청이 보낸 토큰(sentWith)을 넘김 (그사이 이미 갱신됐는지 보려고).
+   * 새 액세스 토큰을 돌려주고, 갱신 실패면 null
+   */
+  refreshAccessToken?(sentWith: string | null): Promise<string | null>;
   fetchImpl?: typeof fetch;
   /** 서버 시간 제한(30초)보다 길게 */
   timeoutMs?: number;
@@ -160,9 +163,10 @@ export const createHttpAiReplyService = ({
 
   return {
     async reply(request) {
-      let res = await post(request, await getAccessToken());
+      const sentWith = await getAccessToken();
+      let res = await post(request, sentWith);
       if (res.status === 401 && refreshAccessToken) {
-        const refreshed = await refreshAccessToken();
+        const refreshed = await refreshAccessToken(sentWith);
         if (refreshed) {
           res = await post(request, refreshed);
         }

@@ -98,9 +98,13 @@ const ai = httpClient
       baseUrl: API_CONFIG.baseUrl,
       getAccessToken: async () => tokens.get()?.accessToken ?? null,
       // 갱신 실패(세션 만료)면 null → 401 오류를 그대로 올림. 토큰 정리는 httpClient가 함
-      refreshAccessToken: async () => {
+      // 그사이 다른 요청이 이미 갱신했으면 다시 갱신하지 않고 그 토큰을 씀 (httpClient.request와 같은 규칙)
+      refreshAccessToken: async sentWith => {
         try {
-          return (await httpClient.refreshTokens()).accessToken;
+          const next = sentWith
+            ? await httpClient.refreshAfterUnauthorized(sentWith)
+            : await httpClient.refreshTokens();
+          return next.accessToken;
         } catch {
           return null;
         }
