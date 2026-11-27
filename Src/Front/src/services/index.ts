@@ -24,9 +24,12 @@ import { createMemoryStorage } from "./storage/memoryStorage";
 import { createMockAiReplyService } from "./ai/AiReplyService";
 import { createKeyValueAiReplyStore } from "./ai/AiReplyStore";
 import { createDeviceConversationService } from "./conversation/deviceConversationService";
+import { createDeviceMessengerService } from "./conversation/deviceMessengerService";
+import { createMaskNameStore } from "./ai/maskNames";
 import NotificationStore, {
   isNotificationStoreAvailable,
 } from "@native/NotificationStore";
+import Messenger, { isMessengerAvailable } from "@native/Messenger";
 
 // 서비스 교체 지점
 // API·네이티브 모듈이 준비되면 여기서 mock 대신 실제 구현을 넣으면 됨. 화면 코드는 바꿀 필요 없음
@@ -43,6 +46,8 @@ const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 // 연락 데이터: 기기에 쌓인 알림(Kotlin 알림 수집 모듈의 로컬 DB)을 씀. 네이티브 모듈이 없으면(Jest) mock
 // 화면만 작업하면서 예시 대화를 보고 싶으면 false로 바꿈 (커밋 전에 되돌리기)
 const USE_DEVICE_CONVERSATIONS = true;
+// AI로 보내기 전에 가릴 이름 (사용자 본인. SessionProvider가 로그인·로그아웃 때 바꿈, #69)
+const maskNames = createMaskNameStore();
 
 // 기기 저장소 (mock은 메모리). AI 답장 결과도 같은 저장소에 둠
 const storage = createMemoryStorage();
@@ -59,7 +64,8 @@ const conversation =
         ai,
         aiReplies,
         network,
-        // TODO(친구): 사용자 본인·친구 이름·별명을 넘겨 마스킹
+        // TODO(친구): 친구 이름·별명도 넘겨 마스킹 (연락처 연동 #70 이후)
+        getMaskNames: async () => maskNames.get(),
       })
     : // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
       createMockConversationService();
@@ -89,12 +95,16 @@ export const services = {
   network,
   contacts: createMockContactsService(),
   conversation,
-  messenger: createMockMessengerService(),
+  // 복사·메신저 열기: Kotlin Messenger 모듈 (#69). 네이티브 모듈이 없으면(Jest) mock
+  messenger: isMessengerAvailable()
+    ? createDeviceMessengerService(Messenger)
+    : createMockMessengerService(),
   // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
   friends: createMockFriendService(),
   storage,
   ai,
   aiReplies,
+  maskNames,
 };
 
 export type Services = typeof services;
@@ -130,3 +140,4 @@ export * from "./ai/AiReplyService";
 export * from "./ai/AiReplyStore";
 export * from "./ai/classifyMessage";
 export * from "./ai/requestAiReply";
+export * from "./ai/maskNames";

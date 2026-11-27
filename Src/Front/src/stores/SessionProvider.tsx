@@ -102,6 +102,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     [session, signIn, signOut]
   );
 
+  // AI로 보내기 전 마스킹에 내 이름을 넣음 (#69). 로그아웃하면 비움
+  const userName = session.status === "signedIn" ? session.user.name : null;
+  useEffect(() => {
+    services.maskNames.setUserName(userName);
+  }, [userName]);
+
   return (
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
   );
