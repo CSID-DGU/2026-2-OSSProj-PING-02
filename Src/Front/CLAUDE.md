@@ -79,6 +79,7 @@
 - 개발 옵션 (services/index.ts): 권한 `DEV_PERMISSION_SCENARIO = "deny"`로 거부 흐름, 모델 `failFirstAttemptAt`로 다운로드 실패, 네트워크 `"cellular"`
 - **연락 데이터는 기기 알림(로컬 DB)**: `services/conversation/deviceConversationService.ts`가 Kotlin 알림 수집 모듈(#42)의 메시지로 연락 목록·상세를 만듦. 네이티브 모듈이 없으면(Jest) mock을 씀. 화면만 작업하면서 예시 대화를 보려면 `services/index.ts`의 `USE_DEVICE_CONVERSATIONS = false` (커밋 전에 되돌리기)
   - 목록 분석(질문·멘션·답장 필요)은 기기 안 규칙만. **AI는 대화방을 열 때 그 방 하나만 한 번** 부르고 결과를 저장해 답장 화면에서 다시 씀. 기관·번호 발신자, 안내 문구(`isPlaceholder`)만 있는 대화는 보내지 않음
+  - **자동 갱신 (#71)**: 알림 리스너가 새 메시지를 저장하면 `NotificationEvents` → `NotificationStoreModule`이 JS 이벤트(`malssiat.notificationsSaved`, 내용 없음)를 보냄 → `ConversationService.onChange` → `useConversations`가 화면이 보이는 동안 0.5초 안의 이벤트를 묶어 다시 읽음. 앱이 앞으로 올 때도 다시 읽음. 로딩 표시 없이 내용만 바뀌고 AI는 부르지 않음. 연락 탭 목록은 `maintainVisibleContentPosition`으로 보던 자리 유지. 당겨서 새로고침은 없음
   - 기기에 데이터를 쌓으려면 개발용 `NotificationDebug` 화면에서 알림 접근 허용 + 수집 앱 선택
   - 알림 DB는 SQLCipher로 암호화돼 있음 (암호는 Android Keystore로 감싸 보관, 예전 평문 DB는 처음 열 때 옮김). DB는 다시 열 수 없는 게 확실할 때(키 없음·영구 무효·AEADBadTag, SQLITE_NOTADB·CORRUPT)만 지우고, 일시적인 실패는 지우지 않고 다시 시도. 메시지는 보관 기간(기본 30일)이 지나면 지움 → `NotificationStore.get/setRetentionDays`. 자세한 내용은 README "알림 수집"
 - **복사하고 메신저 열기 (#69)**: `services.messenger`는 Kotlin `Messenger` 모듈(`android/.../messenger/MessengerModule.kt`, JS `src/native/Messenger.ts`) 위의 `deviceMessengerService`. 네이티브 모듈이 없으면(Jest) mock
