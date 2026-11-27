@@ -136,7 +136,7 @@
 
 ## 다음 작업
 
-- **#77 origin/main merge 이어서 할 것 (push 전)**: merge 커밋은 했지만 `__tests__/autoRefresh.test.tsx`(#74) 4개가 새 D01 화면에서 실패 → 테스트가 기다리는 글자·화면을 새 목록에 맞추기. 그 뒤 typecheck·lint·test 통과 확인 → push → PR. Kotlin `MessengerModule`에 클립보드 읽기(readText) 추가는 `TODO(네이티브)`(지금 기기에서는 D04 붙여넣기가 "복사한 내용이 없어요"). merge 때 #81 갈래 엇갈림은 `useReplyFlow`로 옮김(테스트 없음), #72 openApp에 대화 id 넘김, #74 목록 스크롤 위치 유지 반영. 에뮬레이터 비교는 메모리 부족으로 못 함(실기기 APK로 예정)
+- **#77 origin/main merge 완료, PR 대기**: #81 갈래 엇갈림은 `useReplyFlow`로 옮김(연락 테스트 "갈래 엇갈림" 2개), #72 openApp에 대화 id 넘김, #74 목록 스크롤 위치 유지, autoRefresh 테스트는 새 D01 머리말을 기다리게 바꿈. 남은 것: Kotlin `MessengerModule`에 클립보드 읽기(readText) 추가(`TODO(네이티브)`, 지금 기기에서는 D04 붙여넣기가 "복사한 내용이 없어요"), 실기기 APK로 시안 비교·스크린샷(에뮬레이터는 메모리 부족)
 
 - 진행: **05 연락 최종 시안 반영** `feat/#77-contact` (시안 `docs/figma/contact`). 끝난 것: D01 목록·D02 분석 대화방 관리·D03 상세(최근 연락·관계·관련 일정 빈 상태)·답장 단계·D05 단체방, 아이콘 교체. D01·D02·D03 에뮬레이터 비교 완료. 연락 본문 바탕 흰색(`TabScreen`·`FooterLayout` `background="surface"`), 나중에 답하기 시트(`DeferSheet`, ReplyDefer 삭제)·보내기 팝업 완료, D04 긴 메시지 보완 완료 (시트·팝업·D04 에뮬레이터 비교는 06 작업이 끝난 뒤, 사용자가 알려 줌). "친구 정보 보기"·"미뤄두기 그만하기"는 삭제(팀 확정)
   - D04(팀 확정): D01 안내·홈 빠른 기능 → 모든 대화의 잘린 메시지를 시작 화면부터 / D03 안내 → 그 대화만 2단계부터. 씨앗(`SeedProgress`, seed-gray·seed-color, 1x는 2x 복사)은 지금 보완하는 건까지 색, 많으면 줄바꿈. "붙여넣기"는 `services.messenger.readClipboard`(mock, `TODO(네이티브)`), 확인 완료 → `listTruncated`/`summarizePasted(…, messageId)`로 보완 표시 → 다음 건, 끝나면 토스트 + 돌아감. 없으면 안내 상자. "{앱} 열어서 복사하기"는 #72 기능이라 작은 텍스트 버튼으로 유지. 글자: 제목 titleSubsection, 설명 bodyCompact, 카드 이름 titleSection, 본문 captionDense, 시간 captionHero (`SummaryBlock` variant="message")

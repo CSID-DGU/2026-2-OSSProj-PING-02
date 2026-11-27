@@ -4,7 +4,12 @@ import {
   createMockMessengerService,
   MOCK_CLIPBOARD_TEXT,
 } from "../src/services/conversation/mockConversationService";
-import { services, STORAGE_KEYS } from "../src/services";
+import {
+  CONVERSATION_ERROR_CODE,
+  ServiceError,
+  services,
+  STORAGE_KEYS,
+} from "../src/services";
 import {
   deferButtonLabel,
   deferRemindAt,
@@ -264,6 +269,56 @@ describe("05 연락 D03 상세·답장", () => {
     await waitForText(root, "어떤 말투로 전할까요?");
     await pressByRole(root, "radio", "다정하게");
     await waitForText(root, "선택한 말투에 맞는 답장 3개가 준비됐어요.");
+  });
+
+  // #78·#81: AI의 결정 판단이 화면 갈래(입장 먼저 / 말투 바로)와 엇갈리면 맞는 갈래로 바꿔 감
+  const mismatchWhen = (needsStance: boolean) => {
+    const base = createMockConversationService({ latency: 50 });
+    services.conversation = {
+      ...base,
+      getReplyCandidates: (id, options) =>
+        !!options.stance !== needsStance
+          ? Promise.reject(
+              new ServiceError(
+                CONVERSATION_ERROR_CODE.replyStepMismatch,
+                "이 메시지에 맞는 답장 화면이 달라요"
+              )
+            )
+          : base.getReplyCandidates(id, options),
+    };
+  };
+
+  test("갈래 엇갈림: 입장을 골랐는데 AI가 결정이 필요 없다고 보면 입장 없이 말투로, 뒤로가기는 시작으로", async () => {
+    mismatchWhen(false);
+    const root = await openDetail("민지");
+    await press(root, "답장 추천 받기");
+    await waitForText(root, "어떻게 답하고 싶으세요?");
+    await pressByRole(root, "radio", "거절");
+
+    await waitForText(root, "어떤 말투로 전할까요?");
+    expect(findText(root, "다시 시도하기").length).toBe(0);
+    await pressByRole(root, "radio", "짧게");
+    await waitForText(root, "선택한 말투에 맞는 답장 3개가 준비됐어요.");
+
+    // 입장 단계는 빠졌으니 말투 → 시작으로
+    await pressBack();
+    await waitForText(root, "어떤 말투로 전할까요?");
+    await pressBack();
+    await waitForText(root, "답장 추천 받기");
+    expect(findText(root, "어떻게 답하고 싶으세요?").length).toBe(0);
+  });
+
+  test("갈래 엇갈림: 말투로 바로 갔는데 AI가 수락·보류·거절이 필요하다고 보면 입장 고르기로", async () => {
+    mismatchWhen(true);
+    const root = await openDetail("하늘");
+    await press(root, "답장 추천 받기");
+    await waitForText(root, "어떻게 답하고 싶으세요?");
+    expect(findText(root, "다시 시도하기").length).toBe(0);
+
+    await pressByRole(root, "radio", "수락");
+    await waitForText(root, "어떤 말투로 전할까요?");
+    await pressByRole(root, "radio", "다정하게");
+    await waitForText(root, "선택한 입장과 말투에 맞는 답장 3개가 준비됐어요.");
   });
 
   test("도움 수준 '추천 수정'이면 후보 아래 버튼이 수정하기 / 직접 답장 쓰기", async () => {
