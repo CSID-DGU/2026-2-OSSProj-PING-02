@@ -48,6 +48,8 @@ export type TabStackParamList = {
   // 14 친구 상세 / 15 첫마디 제안
   FriendDetail: { personId: string };
   FirstWords: { personId: string };
+  // 06 친구 E05 첫마디 보내기: 친구 고르기 → FirstWords
+  FirstWordsPick: undefined;
 };
 
 // 하단 탭: 탭 이름 = MainTabKey

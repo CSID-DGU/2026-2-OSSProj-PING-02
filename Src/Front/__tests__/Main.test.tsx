@@ -126,7 +126,25 @@ describe("홈·연락", () => {
     await waitForText(root, "오늘은 어떻게 도와드릴까요?");
   });
 
-  test("모드 화면의 버튼은 고른 줄에 따라 연락 탭·친구 탭으로 간다", async () => {
+  test("모드 화면에서 안부 줄을 고르면 첫마디 보내기(친구 고르기)로 간다", async () => {
+    const root = await renderApp();
+    await waitForText(root, "오늘은 어떻게 도와드릴까요?");
+    await pressByRole(root, "button", "상태 바꾸기");
+    await waitForText(root, "오늘은 어느 정도 도움이 필요하세요?");
+    await press(root, "이대로 시작");
+    await waitForText(root, "한 줄 뼈대부터 시작해요");
+    await waitForText(root, "꼭 챙길 연락 3개");
+    await pressByRole(
+      root,
+      "radio",
+      "오랜만에 안부 전하기, 먼저 연락하고 싶은 친구에게 보낼 말을 추천받아요"
+    );
+    await press(root, "추천 답장 수정하기");
+    await waitForText(root, "첫마디 보내기");
+    expect(selectedTab(root)).toEqual(["홈"]);
+  });
+
+  test("모드 화면의 버튼은 고른 줄에 따라 연락 탭으로 간다", async () => {
     const root = await renderApp();
     await waitForText(root, "오늘은 어떻게 도와드릴까요?");
     await pressByRole(root, "button", "상태 바꾸기");

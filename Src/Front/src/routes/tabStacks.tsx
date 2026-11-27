@@ -9,6 +9,7 @@ import ReplyDefer from "@pages/contact/ReplyDefer";
 import TruncatedMessage from "@pages/contact/TruncatedMessage";
 import FriendDetail from "@pages/friend/FriendDetail";
 import FirstWords from "@pages/friend/FirstWords";
+import FirstWordsPick from "@pages/friend/FirstWordsPick";
 import Notifications from "@pages/main/Notifications";
 import HelpLevel from "@pages/home/HelpLevel";
 import HelpMode from "@pages/home/HelpMode";
@@ -53,6 +54,7 @@ export const createTabStack = (
       {/* Friend (05 친구) */}
       <Stack.Screen name="FriendDetail" component={FriendDetail} />
       <Stack.Screen name="FirstWords" component={FirstWords} />
+      <Stack.Screen name="FirstWordsPick" component={FirstWordsPick} />
     </Stack.Navigator>
   );
   TabStack.displayName = `${rootName}Stack`;

@@ -162,7 +162,7 @@ describe("06 E01 친구 목록", () => {
     await waitUntil(() => favoriteChecked(root, "민지") === false, "민지 색칠 끔");
   });
 
-  test("NEW가 없으면 빈 상태: 답장하러 가기 → 연락 탭, 연락하러 가기 → 홈 탭", async () => {
+  test("NEW가 없으면 빈 상태: 답장하러 가기 → 연락 탭, 연락하러 가기 → 첫마디 보내기", async () => {
     services.friends = createMockFriendService({ latency: 50, noNew: true });
     const root = await openFriends();
     await waitForText(root, "민지");
@@ -178,7 +178,40 @@ describe("06 E01 친구 목록", () => {
     await pressByRole(root, "tab", "친구");
     await waitForText(root, "답장하러 가기");
     await press(root, "연락하러 가기");
-    await waitUntil(() => tabSelected(root, "홈"), "홈 탭으로");
+    // E05: 친구 탭 안에 쌓임 (뒤로가기 있음)
+    await waitForText(root, "첫마디 보내기");
+    expect(tabSelected(root, "친구")).toBe(true);
+    await pressBack();
+    await waitForNoText(root, "첫마디 보내기");
+  });
+
+  test("E05 첫마디 보내기: 홈 안부 카드 → 친구 고르기 → 15 첫마디, 뒤로가기로 하나씩 돌아온다", async () => {
+    services.friends = createMockFriendService({ latency: 50, noNew: true });
+    const root = await renderApp();
+    await waitForText(root, "오랜만에 안부 전하기");
+    await pressByRole(root, "button", "오랜만에 안부 전하기");
+    await waitForText(root, "첫마디 보내기");
+    // 홈 탭 안에 쌓임
+    expect(tabSelected(root, "홈")).toBe(true);
+
+    await waitForText(root, "민지");
+    await pressByRole(root, "button", "민지");
+    await waitForText(root, "짧은 안부부터 시작해볼까요?");
+
+    await pressBack();
+    await waitForNoText(root, "짧은 안부부터 시작해볼까요?");
+    await waitForText(root, "첫마디 보내기");
+
+    // E05에서 NEW가 비어 있으면 "연락하러 가기"는 전체 탭으로 (이미 이 화면이라)
+    await pressByRole(root, "tab", "NEW");
+    await waitForText(root, "답장하러 가기");
+    await press(root, "연락하러 가기");
+    await waitForNoText(root, "답장하러 가기");
+    await waitForText(root, "민지");
+
+    await pressBack();
+    await waitForText(root, "오늘의 도움 수준");
+    await waitForNoText(root, "첫마디 보내기");
   });
 
   test("관계 탭이 비면 한 줄 안내", async () => {
