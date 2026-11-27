@@ -7,7 +7,13 @@ import { createHttpAuthService } from "./auth/httpAuthService";
 import { createTokenStore } from "./auth/tokenStore";
 import { API_CONFIG, AUTH_FEATURES } from "./config";
 import { createHttpClient } from "./http/httpClient";
-import { createMockContactsService } from "./contacts/ContactsService";
+import { Linking, PermissionsAndroid, type Permission } from "react-native";
+import {
+  createDeviceContactsService,
+  createMockContactsService,
+} from "./contacts/ContactsService";
+import Contacts, { isContactsAvailable } from "@native/Contacts";
+import { createDevicePermissionService } from "./permission/devicePermissionService";
 import {
   createMockConversationService,
   createMockMessengerService,
@@ -27,9 +33,12 @@ import {
 } from "./ai/AiReplyService";
 import { createKeyValueAiReplyStore } from "./ai/AiReplyStore";
 import { createDeviceConversationService } from "./conversation/deviceConversationService";
+import { createDeviceMessengerService } from "./conversation/deviceMessengerService";
+import { createMaskNameStore } from "./ai/maskNames";
 import NotificationStore, {
   isNotificationStoreAvailable,
 } from "@native/NotificationStore";
+import Messenger, { isMessengerAvailable } from "@native/Messenger";
 
 // 서비스 교체 지점
 // API·네이티브 모듈이 준비되면 여기서 mock 대신 실제 구현을 넣으면 됨. 화면 코드는 바꿀 필요 없음
@@ -43,9 +52,24 @@ import NotificationStore, {
 // 개발 옵션: 권한 거부 → 다시 묻지 않음 → 설정 열기 흐름을 보려면 "deny"
 const DEV_PERMISSION_SCENARIO: MockPermissionScenario = "allow";
 
+// 권한: 연락처는 실제(PermissionsAndroid, #70), 나머지는 아직 mock. 네이티브 모듈이 없으면(Jest) 모두 mock
+const mockPermission = createMockPermissionService(DEV_PERMISSION_SCENARIO);
+const permission = isContactsAvailable()
+  ? createDevicePermissionService(
+      {
+        check: p => PermissionsAndroid.check(p as Permission),
+        request: p => PermissionsAndroid.request(p as Permission),
+        openSettings: () => Linking.openSettings(),
+      },
+      mockPermission
+    )
+  : mockPermission;
+
 // 연락 데이터: 기기에 쌓인 알림(Kotlin 알림 수집 모듈의 로컬 DB)을 씀. 네이티브 모듈이 없으면(Jest) mock
 // 화면만 작업하면서 예시 대화를 보고 싶으면 false로 바꿈 (커밋 전에 되돌리기)
 const USE_DEVICE_CONVERSATIONS = true;
+// AI로 보내기 전에 가릴 이름 (사용자 본인. SessionProvider가 로그인·로그아웃 때 바꿈, #69)
+const maskNames = createMaskNameStore();
 
 // 로그인 토큰 (메모리 + 암호화 저장소, 자동 로그인용). HTTP 클라이언트와 SessionProvider가 같이 씀
 // mock과 실서버 토큰이 섞이지 않게 모드별로 따로 저장
@@ -93,7 +117,8 @@ const conversation =
         ai,
         aiReplies,
         network,
-        // TODO(친구): 사용자 본인·친구 이름·별명을 넘겨 마스킹
+        // TODO(친구): 친구 이름·별명도 넘겨 마스킹 (연락처 연동 #70 이후)
+        getMaskNames: async () => maskNames.get(),
       })
     : // 빈 상태·오류 확인: createMockConversationService({ empty: true }) / ({ failList: true })
       createMockConversationService();
@@ -106,17 +131,24 @@ const createAuthService = () =>
 export const services = {
   auth: createAuthService(),
   tokens,
-  permission: createMockPermissionService(DEV_PERMISSION_SCENARIO),
+  permission,
   model: createMockModelService(),
   network,
-  contacts: createMockContactsService(),
+  // 기기 연락처 (Kotlin Contacts 모듈, #70). 네이티브 모듈이 없으면(Jest) mock 42명
+  contacts: isContactsAvailable()
+    ? createDeviceContactsService(Contacts)
+    : createMockContactsService(),
   conversation,
-  messenger: createMockMessengerService(),
+  // 복사·메신저 열기: Kotlin Messenger 모듈 (#69). 네이티브 모듈이 없으면(Jest) mock
+  messenger: isMessengerAvailable()
+    ? createDeviceMessengerService(Messenger)
+    : createMockMessengerService(),
   // 빈 상태·오류 확인: createMockFriendService({ empty: true }) / ({ failList: true })
   friends: createMockFriendService(),
   storage,
   ai,
   aiReplies,
+  maskNames,
 };
 
 export type Services = typeof services;
@@ -152,3 +184,4 @@ export * from "./ai/AiReplyService";
 export * from "./ai/AiReplyStore";
 export * from "./ai/classifyMessage";
 export * from "./ai/requestAiReply";
+export * from "./ai/maskNames";

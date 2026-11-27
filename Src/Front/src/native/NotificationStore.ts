@@ -1,4 +1,4 @@
-import { NativeModules } from "react-native";
+import { DeviceEventEmitter, NativeModules } from "react-native";
 
 // Kotlin 네이티브 모듈 래퍼
 // 구현: android/app/src/main/java/com/malssiat/notification/bridge/NotificationStoreModule.kt
@@ -80,7 +80,18 @@ export const MESSENGER_PACKAGES = [
   "com.google.android.apps.messaging", // Google 메시지
 ];
 
+/** NotificationStoreModule.EVENT_SAVED와 같은 이름 */
+const EVENT_SAVED = "malssiat.notificationsSaved";
+
 const NotificationStore = {
+  /**
+   * 알림 리스너가 새 메시지를 저장할 때마다 부름 (#71, 내용 없이 신호만). 구독을 끊는 함수를 돌려줌
+   * 앱 화면이 살아 있을 때만 옴 (앱이 꺼져 있던 동안 저장된 것은 화면에 들어올 때 다시 읽어서 반영)
+   */
+  onSaved: (listener: () => void) => {
+    const sub = DeviceEventEmitter.addListener(EVENT_SAVED, listener);
+    return () => sub.remove();
+  },
   /** 설정 → 알림 접근 허용에서 말씨앗이 켜져 있는지 */
   isPermissionGranted: () => getNative().isPermissionGranted(),
   /** 알림 접근 허용 설정 화면 열기 */

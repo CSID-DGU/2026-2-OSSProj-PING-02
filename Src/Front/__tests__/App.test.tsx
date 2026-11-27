@@ -55,9 +55,13 @@ describe("자동 로그인", () => {
 
     let root = await renderApp();
     await waitForText(root, "오늘의 도움 수준");
+    // 로그인하면 AI 마스킹에 내 이름이 들어가고 (#69)
+    expect(services.maskNames.get()).toEqual([MOCK_DEMO_ACCOUNT.name]);
     await pressByRole(root, "tab", "설정");
     await press(root, "로그아웃 (개발용)");
     await waitForText(root, "시작하기");
+    // 로그아웃하면 비워짐
+    expect(services.maskNames.get()).toEqual([]);
     // 서버 로그아웃 요청(mock 200ms)이 끝나면 저장소에서도 지워짐
     await new Promise<void>(resolve => setTimeout(() => resolve(), 400));
     expect(await savedTokens()).toBeNull();

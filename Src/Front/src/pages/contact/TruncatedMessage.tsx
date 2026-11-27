@@ -93,7 +93,10 @@ const TruncatedMessage = () => {
       <Button
         variant="text"
         onPress={() =>
-          services.messenger.openApp(conversation.app).catch(() => {})
+          // 가능하면 그 대화방을 바로 열어 전체 메시지를 복사하기 쉽게 (#69)
+          services.messenger
+            .openApp(conversation.app, conversationId)
+            .catch(() => {})
         }
       >
         {`${appName} 열어서 복사하기`}

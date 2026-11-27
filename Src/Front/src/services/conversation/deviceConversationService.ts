@@ -73,6 +73,8 @@ const TONES: ReplyTone[] = ["short", "warm", "polite"];
 /** 알림 메시지 출처. 기본은 네이티브 NotificationStore, 테스트에서는 가짜를 넣음 */
 export interface DeviceMessageSource {
   getNotifications(options: { limit?: number }): Promise<StoredNotification[]>;
+  /** 새 메시지가 저장될 때마다 부름 (#71). 없으면 목록은 화면에 들어올 때만 바뀜 */
+  onSaved?(listener: () => void): () => void;
   getConversationMessages(
     packageName: string,
     conversationId: string,
@@ -104,7 +106,7 @@ const emptyState = (): StoredState => ({ replied: {}, checked: {}, deferred: {} 
 const SEPARATOR = "::";
 export const toConversationKey = (packageName: string, conversationId: string) =>
   `${packageName}${SEPARATOR}${conversationId}`;
-const parseConversationKey = (key: string) => {
+export const parseConversationKey = (key: string) => {
   const i = key.indexOf(SEPARATOR);
   if (i < 0) {
     throw new ServiceError(CONVERSATION_ERROR_CODE.notFound, "대화를 찾을 수 없습니다.");
@@ -316,6 +318,7 @@ export const createDeviceConversationService = ({
   };
 
   const service: ConversationService = {
+    onChange: listener => source.onSaved?.(listener) ?? (() => {}),
     async list() {
       const [rows, state] = await Promise.all([
         source.getNotifications({ limit: LIST_LIMIT }),
