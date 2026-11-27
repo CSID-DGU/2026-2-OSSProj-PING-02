@@ -9,6 +9,7 @@ import type {
   ReplyCandidate,
   ReplyStance,
   ReplyTone,
+  TruncatedItem,
 } from "./types";
 
 // 연락·요약·답장 후보 (나중에 Kotlin 네이티브 모듈의 로컬 DB + 분석 파이프라인으로 교체)
@@ -33,8 +34,15 @@ export interface ConversationService {
     conversationId: string,
     options: { tone: ReplyTone; stance?: ReplyStance }
   ): Promise<ReplyCandidate[]>;
+  // 05 연락 D04: 알림에서 잘린 메시지 (최근 순, 분석을 끈 방은 빠짐). conversationId면 그 대화만
+  listTruncated(conversationId?: string): Promise<TruncatedItem[]>;
   // 잘린 메시지: 메신저에서 복사해 붙여 넣은 전체 내용을 기기 안에서 요약
-  summarizePasted(conversationId: string, text: string): Promise<string>;
+  // 요약하면 그 메시지(messageId, 없으면 그 대화의 잘린 메시지 전부)는 보완된 것으로 표시
+  summarizePasted(
+    conversationId: string,
+    text: string,
+    messageId?: string
+  ): Promise<string>;
   // 답장 없이 확인만 (단톡·정보)
   markChecked(conversationId: string): Promise<void>;
   markReplied(conversationId: string): Promise<void>;
@@ -53,6 +61,9 @@ export interface ConversationService {
 export interface MessengerService {
   // TODO(네이티브): @react-native-clipboard/clipboard 설치 후 실제 복사
   copyText(text: string): Promise<void>;
+  // 05 연락 D04 "붙여넣기": 클립보드 글자 (비어 있으면 "")
+  // TODO(네이티브): @react-native-clipboard/clipboard 설치 후 실제 읽기
+  readClipboard(): Promise<string>;
   // TODO(네이티브): 연동 앱 패키지명(LINKED_APP_OPTIONS)으로 실행 인텐트
   openApp(app: MessengerApp): Promise<void>;
   // 알림의 바로 답장(RemoteInput)을 쓸 수 있는지 (알림이 남아 있을 때만 가능)

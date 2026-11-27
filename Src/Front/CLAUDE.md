@@ -136,7 +136,9 @@
 
 ## 다음 작업
 
-- 진행: **05 연락 최종 시안 반영** `feat/#77-contact` (시안 `docs/figma/contact`). 끝난 것: D01 목록·D02 분석 대화방 관리·D03 상세(최근 연락·관계·관련 일정 빈 상태)·답장 단계·D05 단체방, 아이콘 교체. D01·D02·D03 에뮬레이터 비교 완료. 연락 본문 바탕 흰색(`TabScreen`·`FooterLayout` `background="surface"`), 나중에 답하기 시트(`DeferSheet`, ReplyDefer 삭제)·보내기 팝업 완료(에뮬레이터 비교는 06 작업이 끝난 뒤, 사용자가 알려 줌). 남은 것: D04 긴 메시지 보완. "친구 정보 보기"·"미뤄두기 그만하기"는 삭제(팀 확정)
+- 진행: **05 연락 최종 시안 반영** `feat/#77-contact` (시안 `docs/figma/contact`). 끝난 것: D01 목록·D02 분석 대화방 관리·D03 상세(최근 연락·관계·관련 일정 빈 상태)·답장 단계·D05 단체방, 아이콘 교체. D01·D02·D03 에뮬레이터 비교 완료. 연락 본문 바탕 흰색(`TabScreen`·`FooterLayout` `background="surface"`), 나중에 답하기 시트(`DeferSheet`, ReplyDefer 삭제)·보내기 팝업 완료, D04 긴 메시지 보완 완료 (시트·팝업·D04 에뮬레이터 비교는 06 작업이 끝난 뒤, 사용자가 알려 줌). "친구 정보 보기"·"미뤄두기 그만하기"는 삭제(팀 확정)
+  - D04(팀 확정): D01 안내·홈 빠른 기능 → 모든 대화의 잘린 메시지를 시작 화면부터 / D03 안내 → 그 대화만 2단계부터. 씨앗(`SeedProgress`, seed-gray·seed-color, 1x는 2x 복사)은 지금 보완하는 건까지 색, 많으면 줄바꿈. "붙여넣기"는 `services.messenger.readClipboard`(mock, `TODO(네이티브)`), 확인 완료 → `listTruncated`/`summarizePasted(…, messageId)`로 보완 표시 → 다음 건, 끝나면 토스트 + 돌아감. 없으면 안내 상자. "{앱} 열어서 복사하기"는 #72 기능이라 작은 텍스트 버튼으로 유지. 글자: 제목 titleSubsection, 설명 bodyCompact, 카드 이름 titleSection, 본문 captionDense, 시간 captionHero (`SummaryBlock` variant="message")
+  - mock 잘린 메시지 5건: 민지·서연 선배·상담센터·하늘·대학교 친구들(첫 메시지). 클립보드 mock은 `createMockMessengerService({ clipboard })`
   - 나중에 답하기(팀 확정): 칩 오늘 저녁(오후 6시, 지나면 못 고름)·내일(기본)·3일 뒤·1주일 뒤(오전 9시), 버튼 "{칩} 다시 알려주기", 토스트 "오늘/내일/11월 30일 오전 9시에 다시 알려드릴게요"(직접 선택은 항상 날짜), 저장 후 상세에 남음. 직접 선택에서 취소·뒤로가기면 첫 시트로
   - 보내기 팝업(팀 확정): `canReplyDirectly`면 "…바로 보내볼까요?"+바로 보내기 → 토스트 "답장을 보냈어요"+목록 / 실패 토스트 "보내지 못했어요. 복사해서 메신저에서 보내 주세요". 아니면 누를 때 복사 → "…지금 보내볼까요?"+메신저 열기 → "보냈다고 표시하기". 닫기는 그대로. 토스트 문구는 `TODO(Figma 문구 확인)`
   - 글자(팀 확정): 시트 칩 = `labelChip` 12/18 Medium(공통 pill 칩 전체), "날짜와 시간 직접 선택" = `captionRelaxed` 12/20 Regular
@@ -144,7 +146,7 @@
   - 꼭 챙길 연락·"!" = 별/하트 친구 + 직장 + 경조사 (관계·별은 mock, `TODO(06 친구)`). 관계 필터 단일 선택
   - 도움 수준별 버튼: 추천 선택(미루기·안 고름 포함) 복사/수정, 추천 수정 수정/직접 쓰기, 직접 쓰기는 처음부터 작성 상자
   - core 변경(PR에 적기): `UnderlineTabs` 글자 labelTab·칸 32+hitSlop, `ChoiceGroup` shape="pill"(글자 labelChip)·항목별 `disabled`, `DateTimeSheet` 시간 칩 pill·`minDateTime`(지난 시간 막기), `FooterLayout` background, `TextArea` typo, `TabScreen` onBack·divider·background, 토큰 labelNotice·labelMenu·titleProfile·bodyReply·labelChip·captionRelaxed, 아이콘 9개(Avatar·WarningBadge·SettingsSmall·Filter·Edit·Phone·Birthday·Copy·CalendarSmall)
-  - Figma와 다르게 간 부분(PR에 적기): D02 버튼 영역 흰 바탕(시안은 목록이 비침, 글자가 겹쳐 읽기 힘듦), 관계 메뉴 항목 높이 31(48dp 미만, 시안 우선), 직접 쓰기 시작 화면의 "나중에 답하기" 텍스트 버튼, "보냈다고 표시하기", "친구 정보 보기" 텍스트 버튼 유지, 입장 설명 고정 문구(`TODO(디자이너 문구 확인)`), 로고 1x 파일은 2x를 그대로 씀
+  - Figma와 다르게 간 부분(PR에 적기): D02 버튼 영역 흰 바탕(시안은 목록이 비침, 글자가 겹쳐 읽기 힘듦), D04 "{앱} 열어서 복사하기" 작은 텍스트 버튼(#72 대화방 바로 열기), D04 씨앗 1x 파일은 2x를 그대로 씀, 관계 메뉴 항목 높이 31(48dp 미만, 시안 우선), 직접 쓰기 시작 화면의 "나중에 답하기" 텍스트 버튼, "보냈다고 표시하기", "친구 정보 보기" 텍스트 버튼 유지, 입장 설명 고정 문구(`TODO(디자이너 문구 확인)`), 로고 1x 파일은 2x를 그대로 씀
 
 - 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 남은 것: 07(아이콘)·08·09는 민재 #73 머지 후 + 에셋(연락처 책 PNG·아바타·돋보기 SVG)과 함께. 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영

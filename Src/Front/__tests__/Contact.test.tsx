@@ -2,6 +2,7 @@ import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
 import {
   createMockConversationService,
   createMockMessengerService,
+  MOCK_CLIPBOARD_TEXT,
 } from "../src/services/conversation/mockConversationService";
 import { services, STORAGE_KEYS } from "../src/services";
 import {
@@ -26,6 +27,9 @@ import {
 // 05 연락 흐름 테스트 (D01 목록·D02 분석 대화방·D03 상세·답장·D05 단체방, 잘린 메시지)
 // 로그인 + 온보딩 완료 상태에서 연락 탭으로 시작. 테스트마다 연락·메신저 mock을 새로 만듦
 const USER_ID = "mock-user-demo";
+
+// 답장 단계·보내기·D04처럼 여러 화면을 거치는 테스트가 많아, 기기가 바쁠 때도 넘치지 않게
+jest.setTimeout(15000);
 
 const seed = async () => {
   const login = await services.auth.login(
@@ -229,7 +233,7 @@ describe("05 연락 D03 상세·답장", () => {
     await waitForText(root, "보내지 못했어요. 복사해서 메신저에서 보내 주세요");
     expect(findText(root, "최근 연락").length).toBe(1);
     expect(await repliedTo("minji")).toBeFalsy();
-  });
+  }, 15000);
 
   test("뒤로가기는 답장 단계를 한 단계씩 되돌리고, 첫 단계에서 화면을 나간다", async () => {
     const root = await openDetail("민지");
@@ -428,22 +432,52 @@ describe("05 연락 D03 상세·답장", () => {
     expect(new Date(deferred!.remindAt!).getHours()).toBe(18);
   });
 
-  test("잘린 메시지: 장문 안내 → 붙여 넣어 정리하면 상세 요약이 정리한 내용으로", async () => {
+  test("D04 상세 장문 안내: 그 대화만 2단계부터, 붙여넣기 → 확인 완료하면 상세로 돌아와 요약이 바뀐다", async () => {
     const root = await openDetail("민지");
     await press(root, "인식에 실패한 장문 메시지가 있어요");
-    await waitForText(root, "긴 메시지를 붙여넣어 주세요");
-    expect(isDisabled(root, "요약하고 답장 찾기")).toBe(true);
-    await type(
-      root,
-      "붙여넣을 메시지",
-      "이번 주말에 성수에서 밥 먹자. 토요일 1시 어때?"
-    );
-    await press(root, "요약하고 답장 찾기");
+    await waitForText(root, "인식에 실패한 장문 메시지 1건 중 1번째 건을 보완해요");
+    expect(findText(root, "보완 시작하기").length).toBe(0);
+    expect(findText(root, "확인된 내용").length).toBe(1);
+    // 시안에 없지만 남긴 작은 텍스트 버튼 (#72)
+    expect(findText(root, "카카오톡 열어서 복사하기").length).toBe(1);
+    expect(isDisabled(root, "확인 완료")).toBe(true);
+
+    await press(root, "붙여넣기");
+    await waitForText(root, "붙여넣기 성공!");
+    expect(inputValue(root, "전체 내용")).toBe(MOCK_CLIPBOARD_TEXT);
+    // 빈 상자 글자 수는 실제 글자 수
+    expect(findText(root, `${MOCK_CLIPBOARD_TEXT.length}/500`).length).toBe(1);
+
+    await press(root, "확인 완료");
+    await waitForText(root, "긴 메시지를 모두 보완했어요");
+    await waitForText(root, "최근 연락");
     await waitForText(
       root,
-      "붙여 넣은 내용을 정리했어요: 이번 주말에 성수에서 밥 먹자. 토요일 1시 어때?"
+      `붙여 넣은 내용을 정리했어요: ${MOCK_CLIPBOARD_TEXT.slice(0, 60)}…`
     );
-    expect(findText(root, "긴 메시지를 붙여넣어 주세요").length).toBe(0);
+    // 보완했으니 상세의 장문 안내는 사라짐 (목록 것만 남음)
+    expect(findText(root, "인식에 실패한 장문 메시지가 있어요").length).toBe(1);
+  });
+
+  test("D04 클립보드가 비어 있으면 토스트, 정리에 실패하면 그 메시지에 머문다", async () => {
+    services.messenger = createMockMessengerService({ clipboard: "" });
+    const base = createMockConversationService({ latency: 50 });
+    services.conversation = {
+      ...base,
+      summarizePasted: () => Promise.reject(new Error("실패")),
+    };
+    const root = await openDetail("민지");
+    await press(root, "인식에 실패한 장문 메시지가 있어요");
+    await waitForText(root, "확인된 내용");
+    await press(root, "붙여넣기");
+    await waitForText(root, "복사한 내용이 없어요. 메신저에서 먼저 복사해 주세요");
+    expect(inputValue(root, "전체 내용")).toBe("");
+
+    await type(root, "전체 내용", "직접 붙여 넣은 긴 메시지");
+    await press(root, "확인 완료");
+    await waitForText(root, "정리하지 못했어요. 다시 시도해 주세요");
+    expect(inputValue(root, "전체 내용")).toBe("직접 붙여 넣은 긴 메시지");
+    expect(findText(root, "확인된 내용").length).toBe(1);
   });
 });
 
@@ -484,10 +518,46 @@ describe("05 연락 D01 목록·D02 분석 대화방 관리", () => {
     expect(rowNames(root)).toContain("하늘");
   });
 
-  test("장문 안내를 누르면 잘린 메시지 보완 화면으로", async () => {
+  test("D04 목록 장문 안내: 모든 잘린 메시지를 시작 화면부터, 확인 완료하면 다음 씨앗·다음 메시지로", async () => {
     const root = await openContacts();
     await press(root, "인식에 실패한 장문 메시지가 있어요");
-    await waitForText(root, "긴 메시지를 붙여넣어 주세요");
+    await waitForText(root, "인식에 실패한 장문 메시지가 5건 있어요");
+    const progress = () =>
+      root.find(
+        n => typeof n.type === "string" && n.props.accessibilityRole === "progressbar"
+      ).props.accessibilityValue;
+    expect(progress()).toEqual({ min: 0, max: 5, now: 0 });
+
+    await press(root, "보완 시작하기");
+    await waitForText(root, "인식에 실패한 장문 메시지 5건 중 1번째 건을 보완해요");
+    expect(progress()).toEqual({ min: 0, max: 5, now: 1 });
+    // 최근 순: 민지(1시간 전) → 마음숲 상담센터(3시간 전)
+    expect(findText(root, "민지").length).toBeGreaterThan(0);
+
+    await type(root, "전체 내용", "민지의 긴 메시지 전체");
+    await press(root, "확인 완료");
+    await waitForText(root, "인식에 실패한 장문 메시지 5건 중 2번째 건을 보완해요");
+    expect(progress()).toEqual({ min: 0, max: 5, now: 2 });
+    expect(findText(root, "마음숲 상담센터").length).toBeGreaterThan(0);
+    expect(inputValue(root, "전체 내용")).toBe("");
+    expect(findText(root, "문자 메신저 열어서 복사하기").length).toBe(1);
+  });
+
+  test("D04 홈 빠른 기능 '긴 메시지 붙여넣기'로도 연다", async () => {
+    const root = await renderApp();
+    // 홈 내용(연락)을 불러온 뒤 빠른 기능이 보임
+    await waitForText(root, "빠른 기능");
+    await pressByRole(root, "button", "긴 메시지 붙여넣기");
+    await waitForText(root, "인식에 실패한 장문 메시지가 5건 있어요");
+  });
+
+  test("D04 잘린 메시지가 없으면 안내 상자만", async () => {
+    services.conversation = createMockConversationService({ empty: true });
+    const root = await renderApp();
+    await waitForText(root, "아직 모인 연락이 없어요");
+    await pressByRole(root, "button", "긴 메시지 붙여넣기");
+    await waitForText(root, "지금은 보완할 메시지가 없어요");
+    expect(findText(root, "보완 시작하기").length).toBe(0);
   });
 
   test("상태 바꾸기는 홈과 같은 도움 수준 화면을 연다", async () => {

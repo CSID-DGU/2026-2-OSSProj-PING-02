@@ -79,8 +79,8 @@ const ContactsTab = ({ title }: { title: string }) => {
   const { items } = state;
   const laterCount = items.filter(i => i.deferred).length;
   const data = filterConversations(items, tab, relation);
-  // 알림에 앞부분만 온 메시지 → 가장 최근 대화의 긴 메시지 보완(D04)으로
-  const truncated = items.find(i => i.lastMessage.truncated);
+  // 알림에 앞부분만 온 메시지 → 모든 대화의 긴 메시지 보완(D04)으로
+  const truncated = items.some(i => i.lastMessage.truncated);
 
   const header = (
     <>
@@ -103,11 +103,7 @@ const ContactsTab = ({ title }: { title: string }) => {
       {truncated && (
         <s.NoticeSlot>
           <LongMessageNotice
-            onPress={() =>
-              navigation.navigate("TruncatedMessage", {
-                conversationId: truncated.conversation.id,
-              })
-            }
+            onPress={() => navigation.navigate("TruncatedMessage")}
           />
         </s.NoticeSlot>
       )}

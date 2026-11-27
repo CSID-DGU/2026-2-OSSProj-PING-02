@@ -17,6 +17,7 @@ import type {
   ConversationDetail,
   ConversationSummary,
   DeferredReply,
+  Message,
   ReplyCandidate,
   ReplyTone,
 } from "./types";
@@ -59,11 +60,19 @@ export const createMockConversationService = ({
     return seed;
   };
 
+  // 붙여넣기로 보완한 메시지는 더 이상 잘린 메시지가 아님
+  const resolved = new Set<string>();
+  const messagesOf = (id: string): Message[] =>
+    find(id).messages.map(m =>
+      m.truncated && resolved.has(m.id) ? { ...m, truncated: false } : m
+    );
+
   const summarize = (id: string): ConversationSummary => {
     const seed = find(id);
+    const messages = messagesOf(id);
     return {
       conversation: { ...seed.conversation, ...relations.get(id) },
-      lastMessage: seed.messages[seed.messages.length - 1],
+      lastMessage: messages[messages.length - 1],
       analysis: analyses.get(id)!,
       deferred: deferred.get(id),
       replied: replied.has(id),
@@ -109,7 +118,7 @@ export const createMockConversationService = ({
       const seed = find(id);
       const detail: ConversationDetail = {
         ...summarize(id),
-        messages: seed.messages,
+        messages: messagesOf(id),
         events: seed.events ?? [],
       };
       return detail;
@@ -146,7 +155,24 @@ export const createMockConversationService = ({
       }));
     },
 
-    async summarizePasted(id, text) {
+    async listTruncated(conversationId) {
+      await delay(latency);
+      return seeds
+        .filter(s =>
+          conversationId
+            ? s.conversation.id === conversationId
+            : !analysisOff.has(s.conversation.id)
+        )
+        .flatMap(s => {
+          const conversation = { ...s.conversation, ...relations.get(s.conversation.id) };
+          return messagesOf(s.conversation.id)
+            .filter(m => m.truncated)
+            .map(message => ({ conversation, message }));
+        })
+        .sort((a, b) => b.message.receivedAt.localeCompare(a.message.receivedAt));
+    },
+
+    async summarizePasted(id, text, messageId) {
       await delay(1200);
       find(id);
       const trimmed = text.trim();
@@ -162,6 +188,9 @@ export const createMockConversationService = ({
       // 정리한 내용을 분석 결과로 남겨 09 답장 후보에서도 보이게 함 (원문은 저장하지 않음)
       const current = analyses.get(id);
       if (current) analyses.set(id, { ...current, status: "done", summary });
+      messagesOf(id)
+        .filter(m => m.truncated && (!messageId || m.id === messageId))
+        .forEach(m => resolved.add(m.id));
       return summary;
     },
 
@@ -232,16 +261,28 @@ interface MockMessengerOptions {
   directReplyIds?: string[];
   // true면 보내기가 실패 (오류 안내 확인용)
   failSend?: boolean;
+  // 클립보드 글자 ("": 비어 있음). 기본은 예시 긴 메시지
+  clipboard?: string;
 }
+
+export const MOCK_CLIPBOARD_TEXT =
+  "오랜만이야. 지난번에 이야기했던 일정이 확정이 되었거든! 그래서 혹시 이날 오전 10시부터 시험 감독을 도와줄 수 있을까? 편하게 답장해줘!";
 
 export const createMockMessengerService = ({
   directReplyIds = DIRECT_REPLY_IDS,
   failSend = false,
+  clipboard = MOCK_CLIPBOARD_TEXT,
 }: MockMessengerOptions = {}): MessengerService => {
   const available = new Set(directReplyIds);
+  let clipboardText = clipboard;
   return {
-    async copyText() {
+    async copyText(text) {
       await delay(100);
+      clipboardText = text;
+    },
+    async readClipboard() {
+      await delay(100);
+      return clipboardText;
     },
     async openApp() {
       await delay(200);

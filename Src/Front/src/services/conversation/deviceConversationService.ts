@@ -426,6 +426,12 @@ export const createDeviceConversationService = ({
         }));
     },
 
+    // 지금은 알림에서 잘린 메시지를 판별하지 않아 항상 없음 (위 truncated: false)
+    // TODO(알림 수집): 판별 규칙이 생기면 잘린 메시지를 돌려주고, summarizePasted에서 보완 표시
+    async listTruncated() {
+      return [];
+    },
+
     async summarizePasted(key, text) {
       const trimmed = text.trim();
       if (!trimmed) {

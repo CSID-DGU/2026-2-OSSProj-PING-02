@@ -39,7 +39,8 @@ export type TabStackParamList = {
       }
     | { personId: string; text: string };
   // 08 "메시지가 잘린 상태 보기" (시안 없음)
-  TruncatedMessage: { conversationId: string };
+  // 05 연락 D04 긴 메시지 보완: conversationId 없으면 모든 대화(D01 안내·홈 빠른 기능), 있으면 그 대화만(D03)
+  TruncatedMessage: { conversationId?: string } | undefined;
   // 05 친구
   // 14 친구 상세 / 15 첫마디 제안
   FriendDetail: { personId: string };

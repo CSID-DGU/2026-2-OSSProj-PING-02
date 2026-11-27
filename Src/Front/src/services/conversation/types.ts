@@ -127,6 +127,12 @@ export interface ConversationSummary {
   replied: boolean;
 }
 
+// 05 연락 D04 긴 메시지 보완: 알림에서 잘린 메시지 하나
+export interface TruncatedItem {
+  conversation: Conversation;
+  message: Message;
+}
+
 export interface ConversationDetail extends ConversationSummary {
   messages: Message[];
   events: ContactEvent[];

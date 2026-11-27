@@ -127,7 +127,8 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
   const [tab, setTab] = useState<DetailTab>("recent");
   const [copied, setCopied] = useState(false);
   const [contact, setContact] = useState<ContactInfo | null>(null);
-  const [direct, setDirect] = useState(false);
+  // null = 아직 확인 중
+  const [direct, setDirect] = useState<boolean | null>(null);
   const [sendDialog, setSendDialog] = useState<SendDialogState | null>(null);
   const [deferOpen, setDeferOpen] = useState(false);
   const [deferSaving, setDeferSaving] = useState(false);
@@ -201,7 +202,13 @@ const DetailBody = ({ detail, onReload, onLeave }: DetailBodyProps) => {
   // - 바로 답장이 되는 대화: "바로 보내기" 팝업 (자동 전송 없음, 팝업에서 눌러야 보냄)
   // - 안 되는 대화: 누르는 순간 복사 → "메신저 열기" 팝업
   const send = async (text: string, kind: ReplySendKind) => {
-    if (direct) {
+    // 화면을 열자마자 눌러 아직 모르면 그때 확인
+    const canDirect =
+      direct ??
+      (await services.messenger
+        .canReplyDirectly(conversation.id)
+        .catch(() => false));
+    if (canDirect) {
       setSendDialog({ mode: "direct", kind, text });
       return;
     }

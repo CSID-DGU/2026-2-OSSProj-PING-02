@@ -18,7 +18,19 @@ interface SummaryBlockProps {
   receivedAt: string;
   // 원문 확인하기로 보여 줄 메시지 (없으면 버튼 없음)
   messages: Message[];
+  // "message": D04 "확인된 내용" 잘린 메시지 카드
+  //   보낸 사람(cardTitle, titleSection 14/20 SemiBold) · 본문 captionDense 11/12 두 줄 ·
+  //   시각은 받은 시각(captionHero 11/17, 오늘이면 "8:45")을 이름 줄 높이에
+  variant?: "summary" | "message";
 }
+
+// "8:45" (오늘) / 그 전은 "11월 25일"
+const formatClock = (iso: string, now = new Date()) => {
+  const d = new Date(iso);
+  return d.toDateString() === now.toDateString()
+    ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`
+    : `${d.getMonth() + 1}월 ${d.getDate()}일`;
+};
 
 const SummaryBlock = ({
   title,
@@ -28,10 +40,12 @@ const SummaryBlock = ({
   app,
   receivedAt,
   messages,
+  variant = "summary",
 }: SummaryBlockProps) => {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
-  const time = formatRelative(receivedAt);
+  const message = variant === "message";
+  const time = message ? formatClock(receivedAt) : formatRelative(receivedAt);
 
   return (
     <Wrapper>
@@ -82,9 +96,13 @@ const SummaryBlock = ({
         <Logo source={APP_ICON[app]} accessible={false} />
         <Texts>
           {cardTitle && <CardTitle>{cardTitle}</CardTitle>}
-          <Body>{body}</Body>
+          {message ? (
+            <MessageBody numberOfLines={2}>{body}</MessageBody>
+          ) : (
+            <Body>{body}</Body>
+          )}
         </Texts>
-        <Time>{time}</Time>
+        <Time $top={message ? 17 : 9}>{time}</Time>
       </Card>
     </Wrapper>
   );
@@ -198,10 +216,15 @@ const Body = styled.Text`
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-// TODO(Figma 스타일 확인): 받은 시각은 목록과 같은 captionHero 11/17
-const Time = styled.Text`
+const MessageBody = styled.Text`
+  ${({ theme }) => theme.fonts.captionDense};
+  color: ${({ theme }) => theme.colors.textSecondary};
+`;
+
+// 받은 시각 captionHero 11/17 (D04에서 디자이너 확인)
+const Time = styled.Text<{ $top: number }>`
   position: absolute;
-  top: 9px;
+  top: ${({ $top }) => $top}px;
   right: 27px;
   ${({ theme }) => theme.fonts.captionHero};
   color: ${({ theme }) => theme.colors.textSecondary};
