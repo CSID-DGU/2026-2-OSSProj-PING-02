@@ -82,7 +82,7 @@
 - **연락 데이터는 기기 알림(로컬 DB)**: `services/conversation/deviceConversationService.ts`가 Kotlin 알림 수집 모듈(#42)의 메시지로 연락 목록·상세를 만듦. 네이티브 모듈이 없으면(Jest) mock을 씀. 화면만 작업하면서 예시 대화를 보려면 `services/index.ts`의 `USE_DEVICE_CONVERSATIONS = false` (커밋 전에 되돌리기)
   - 목록 분석(질문·멘션·답장 필요)은 기기 안 규칙만. **AI는 대화방을 열 때 그 방 하나만 한 번** 부르고 결과를 저장해 답장 화면에서 다시 씀. 기관·번호 발신자, 안내 문구(`isPlaceholder`)만 있는 대화는 보내지 않음
   - **자동 갱신 (#71)**: 알림 리스너가 새 메시지를 저장하면 `NotificationEvents` → `NotificationStoreModule`이 JS 이벤트(`malssiat.notificationsSaved`, 내용 없음)를 보냄 → `ConversationService.onChange` → `useConversations`가 화면이 보이는 동안 0.5초 안의 이벤트를 묶어 다시 읽음. 앱이 앞으로 올 때도 다시 읽음. 로딩 표시 없이 내용만 바뀌고 AI는 부르지 않음. 연락 탭 목록은 `maintainVisibleContentPosition`으로 보던 자리 유지. 당겨서 새로고침은 없음
-  - 기기에 데이터를 쌓으려면 개발용 `NotificationDebug` 화면에서 알림 접근 허용 + 수집 앱 선택
+  - **알림 수집 켜기 (#83)**: 알림 리스너는 알림 접근 허용 + 수집 앱 목록(`services.collection`, 네이티브 `MonitoredAppsStore`)에 있는 앱만 저장. 온보딩 04가 알림 접근 설정을 실제로 열고(`devicePermissionService`의 `notificationListener`), 05 연동 앱이 수집 목록이 됨(`collectPackagesFor`, 문자는 삼성·Google 메시지 둘 다). `OnboardingProvider`가 진행 상황을 읽을 때·연동 앱을 바꿀 때 맞추고(연동 앱이 비면 그대로), 로그인하지 않은 상태면 비움(쌓인 알림은 그대로). 개발용 `NotificationDebug` 화면에서 직접 바꿀 수도 있음(다음 로그인 때 연동 앱 기준으로 다시 맞춰짐)
   - 알림 DB는 SQLCipher로 암호화돼 있음 (암호는 Android Keystore로 감싸 보관, 예전 평문 DB는 처음 열 때 옮김). DB는 다시 열 수 없는 게 확실할 때(키 없음·영구 무효·AEADBadTag, SQLITE_NOTADB·CORRUPT)만 지우고, 일시적인 실패는 지우지 않고 다시 시도. 메시지는 보관 기간(기본 30일)이 지나면 지움 → `NotificationStore.get/setRetentionDays`. 자세한 내용은 README "알림 수집"
 - **복사하고 메신저 열기 (#69)**: `services.messenger`는 Kotlin `Messenger` 모듈(`android/.../messenger/MessengerModule.kt`, JS `src/native/Messenger.ts`) 위의 `deviceMessengerService`. 네이티브 모듈이 없으면(Jest) mock
   - 복사는 `ClipboardManager`(라이브러리 없음). 앱 열기 순서: 알림에 담긴 동작으로 그 대화방(`ConversationIntents`, 메모리에만, 앱 재시작하면 남은 알림으로 다시 채움) → 알림 보낸 앱 첫 화면 → (첫마디) 문자는 기본 문자 앱, 나머지는 `LINKED_APP_OPTIONS` 패키지. 못 열면 `APP_NOT_INSTALLED`
@@ -98,7 +98,7 @@
 - mock 회원·친구 편집 등 mock 서비스 안의 데이터는 여전히 메모리라 앱을 완전히 끄면 초기화됨 (자동 로그인은 테스트 계정만 복구, 새로 가입한 mock 계정은 로그인 화면으로)
 - 서버·외부 AI로 보내는 대화는 반드시 `maskPii`를 거친 `text`만 보냄. `mapping`(자리표시↔원래 값)은 기기 밖으로 보내지 않고, 답장은 `unmaskPii`로 되돌림
 - **기기 연락처 (#70)**: `services.contacts`는 Kotlin `Contacts` 모듈(`android/.../contacts/ContactsModule.kt`, JS `src/native/Contacts.ts`)로 `ContactsContract`에서 id·이름·전화번호만 읽음(대표 번호 하나, 가나다순). 네이티브 모듈이 없으면(Jest) mock 42명. 연락처와 고른 친구는 기기에만 두고 서버로 보내지 않음
-  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)만 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근·앱 알림·배터리는 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
+  - 권한: `services.permission`은 연락처(`READ_CONTACTS`)가 실제(`devicePermissionService`, RN `PermissionsAndroid` + `Linking.openSettings`), 알림 접근은 #83에서 실제(`NotificationStore` 설정 화면), 앱 알림은 아직 mock. "다시 묻지 않음"은 요청 결과로만 알 수 있어 켜질 때까지 `blocked`로 기억
 - AI 답장은 화면에서 `requestAiReply`(src/services/ai)만 부르면 됨: 관계 규칙 판별 → 마스킹 → `services.ai` 호출 → 되돌리기 → `services.aiReplies`에 로컬 저장. `services.ai`는 API 모드가 `http`면 실서버(`createHttpAiReplyService`, 인증과 같은 `httpClient`로 토큰 갱신), 아니면 mock
   - **결정 여부는 AI가 판단**: 응답의 `needsDecision`이 true면 답장 9개(입장 `ACCEPT/HOLD/DECLINE` × 말투 `SHORT/WARM/POLITE`), false면 말투 3개. AI 결과가 있으면 그 판단으로 `question` 태그를 정해 답장 화면 갈래(09-A 입장 먼저 / 09-B 말투 바로)가 AI를 따름. 목록처럼 AI 결과가 없을 때만 기기 규칙(`classifyNeedsDecision`)
   - **갈래가 엇갈리면 (#81)**: AI 분석 전에 기기 규칙으로 들어간 화면과 AI 판단이 다르면 `getReplyCandidates`가 `REPLY_STEP_MISMATCH`를 던지고, `ReplyStance`/`ReplyTone`이 `navigation.replace`로 반대쪽 화면으로 감(뒤로가기는 이전 화면). 단톡(`ReplyGroup`)은 분석 전에도 "답장 만들기"를 누를 수 있어 이 경로로 처리
@@ -145,14 +145,15 @@
 - 09 연락처 검색창
 
 네이티브·API 연결
-- 권한(알림 접근·앱 알림)·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70에서 구현. 모델 다운로드·배터리 최적화는 #59에서 온보딩에서 뺌)
+- 권한(앱 알림)·바로 답장: Kotlin 모듈로 교체 (클립보드·메신저 열기는 #69, 연락처·연락처 권한은 #70, 알림 접근·수집 앱 목록은 #83에서 구현. 모델 다운로드·배터리 최적화는 #59에서 온보딩에서 뺌)
 - 연락: `MessengerService`의 `canReplyDirectly`·`sendReply`(바로 답장, 정책 확인 후), 11 다시 볼 때 로컬 알림 예약, 잘린 메시지 클립보드 읽기·공유 인텐트
 - 친구: `services.friends`(`FriendService`)를 기기 안 암호화 DB의 person·account로 교체, 15 첫마디 후보는 가린 메모로 외부 AI
 - 저장소: 친구 목록·대화 상태가 커지면 기기 안 암호화 DB로 (로그인 토큰·온보딩·연락 상태·AI 답장은 keychain 완료)
 
 ## 다음 작업
 
-- 진행: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding`. 끝난 것: 모델·배터리 제거, 03·04·05·06·06-1·10·11·11-1·12 (에뮬레이터 360×800dp로 시안과 비교). 07 연락처 책 그림·08 불러오는 중(막대가 천천히 차다가 다 받으면 꽉 채우고 09, 실패하면 이 화면에 Notice + 다시 불러오기)·09 친구 선택(검색은 목록만 거름, 전체 선택은 전체 기준, 0명이면 저장 비활성 + 건너뛰기)도 끝남. 아이콘(`SearchIcon`·`AvatarDefaultIcon` 등 6개)·`FriendAvatar`는 #79와 같은 코드. 남은 것: 에뮬레이터 비교(07~09). 11은 공통 `TextArea`(core/ui/field, #59 추가) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
+- 진행: **온보딩 07~09 연락처** `feat/#59-onboarding-contacts` (worktree `C:\dev\ping-59`). 07 연락처 책 그림·08 불러오는 중(막대가 천천히 차다가 다 받으면 꽉 채우고 09, 실패하면 이 화면에 Notice + 다시 불러오기, 실패 때만 화살표)·09 친구 선택(검색은 목록만 거름, 전체 선택은 전체 기준, 0명이면 저장 비활성 + 아래 건너뛰기, 연락처가 없으면 예전 안내 유지). 아이콘(`SearchIcon`·`AvatarDefaultIcon` 등 6개)·`FriendAvatar`는 #79와 같은 코드. 남은 것: 실기기 APK로 시안 비교
+- 머지됨: **온보딩 최종 시안 반영 + AI 모델·배터리 단계 제거** `feat/#59-onboarding` (PR #76, squash). 03·04·05·06·06-1·10·11·11-1·12. 11은 공통 `TextArea`(core/ui/field) 사용, 칩은 여러 개 선택 + "직접 입력"을 고르면 입력칸, 비어 있으면 저장하기도 11-1 시트
 - 진행: **공통 컴포넌트 + 탭 안 스택** `feat/#44-common` (시안: Figma "05 연락 Screens", "06 친구 Screens"). 다음은 새 컴포넌트로 연락·친구 새 시안 화면 반영
 - 대기: `feat/#45-real-server` (서버 확인 대기, 건드리지 않음)
 
