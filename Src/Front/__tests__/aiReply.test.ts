@@ -1,5 +1,10 @@
 import {
   AI_ERROR_CODE,
+  AI_STANCES,
+  AI_TONES,
+  createMockAiReplyService,
+  NETWORK_ERROR,
+  TIMEOUT_ERROR,
   classifyNeedsDecision,
   classifyRelation,
   createHttpAiReplyService,
@@ -107,10 +112,11 @@ describe("requestAiReply", () => {
         sent.push(request);
         return {
           summary: "[이름1]가 금요일 저녁을 제안했어요.",
+          needsDecision: true,
           replies: [
-            { label: "수락", text: "[이름1]아 좋아! [주소1]로 갈게" },
-            { label: "보류", text: "일정 보고 알려줄게" },
-            { label: "거절", text: "이번엔 어려워 미안" },
+            { stance: "ACCEPT", tone: "SHORT", text: "[이름1]아 좋아! [주소1]로 갈게" },
+            { stance: "HOLD", tone: "SHORT", text: "일정 보고 알려줄게" },
+            { stance: "DECLINE", tone: "SHORT", text: "이번엔 어려워 미안" },
           ],
         };
       },
@@ -140,8 +146,9 @@ describe("requestAiReply", () => {
     expect(sent[0]).toEqual({
       text: "[이름1]: 이번 주 금요일에 저녁 먹을래?\n[이름1]: [주소1]로 와. 내 번호 [전화번호1]",
       relation: "FRIEND",
-      needsDecision: true,
     });
+    // 결정 여부는 AI가 판단하므로 보내지 않음
+    expect(sent[0]).not.toHaveProperty("needsDecision");
     // 원문 개인정보는 서버로 가지 않음
     expect(sent[0].text).not.toMatch(/지은|010|월드컵로/);
 
@@ -154,17 +161,32 @@ describe("requestAiReply", () => {
       summary: "지은이 금요일 저녁을 제안했어요.",
       replies: [
         {
-          label: "수락",
+          stance: "ACCEPT",
+          tone: "SHORT",
           text: "지은아 좋아! 서울특별시 마포구 월드컵로 212로 갈게",
         },
-        { label: "보류", text: "일정 보고 알려줄게" },
-        { label: "거절", text: "이번엔 어려워 미안" },
+        { stance: "HOLD", tone: "SHORT", text: "일정 보고 알려줄게" },
+        { stance: "DECLINE", tone: "SHORT", text: "이번엔 어려워 미안" },
       ],
     });
     expect(await store.listByConversation("room-1")).toEqual([saved]);
   });
 
-  test("내 메시지는 관계·결정 판단에서 빼고, 기관 발신자 이름은 가리지 않는다", async () => {
+  test("앱이 결정 여부를 정해 넘긴 경우만 needsDecision을 보낸다", async () => {
+    const { sent, ai, store } = makeDeps();
+    await requestAiReply(
+      {
+        conversationId: "room-5",
+        names: [],
+        messages: [{ sender: "민수", text: "뭐해?" }],
+        needsDecision: false,
+      },
+      { ai, store }
+    );
+    expect(sent[0].needsDecision).toBe(false);
+  });
+
+  test("내 메시지는 관계 판단에서 빼고, 기관 발신자 이름은 가리지 않는다", async () => {
     const { sent, ai, store } = makeDeps();
     await requestAiReply(
       {
@@ -178,7 +200,6 @@ describe("requestAiReply", () => {
       { ai, store }
     );
     expect(sent[0].relation).toBe("INSTITUTION");
-    expect(sent[0].needsDecision).toBe(false);
     expect(sent[0].text).toContain("국민건강보험: [Web발신]");
   });
 
@@ -224,10 +245,11 @@ describe("requestAiReply", () => {
 describe("createHttpAiReplyService", () => {
   const ok = {
     summary: "요약",
+    needsDecision: false,
     replies: [
-      { label: "짧게", text: "응" },
-      { label: "다정하게", text: "고마워" },
-      { label: "공손하게", text: "감사합니다" },
+      { tone: "SHORT", text: "응" },
+      { tone: "WARM", text: "고마워" },
+      { tone: "POLITE", text: "감사합니다" },
     ],
   };
   const jsonResponse = (status: number, body: unknown) =>
@@ -239,7 +261,6 @@ describe("createHttpAiReplyService", () => {
   const request: AiReplyRequest = {
     text: "[이름1]: 뭐해?",
     relation: "FRIEND",
-    needsDecision: false,
   };
 
   test("401이면 토큰을 한 번 갱신하고 다시 보낸다", async () => {
@@ -278,5 +299,60 @@ describe("createHttpAiReplyService", () => {
       code: AI_ERROR_CODE.unmaskedContent,
       message: "개인정보가 남아 있어요",
     });
+  });
+
+  test("서버에 닿지 못하면 NETWORK_ERROR, 시간 제한이 지나면 TIMEOUT_ERROR", async () => {
+    const offline = createHttpAiReplyService({
+      baseUrl: "https://api.test/v1",
+      getAccessToken: async () => "t",
+      fetchImpl: (async () => {
+        throw new TypeError("Network request failed");
+      }) as unknown as typeof fetch,
+    });
+    await expect(offline.reply(request)).rejects.toMatchObject({
+      code: NETWORK_ERROR,
+    });
+
+    const slow = createHttpAiReplyService({
+      baseUrl: "https://api.test/v1",
+      getAccessToken: async () => "t",
+      timeoutMs: 10,
+      fetchImpl: ((_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+        })) as unknown as typeof fetch,
+    });
+    await expect(slow.reply(request)).rejects.toMatchObject({
+      code: TIMEOUT_ERROR,
+    });
+  });
+});
+
+describe("createMockAiReplyService", () => {
+  const mock = createMockAiReplyService();
+
+  test("결정이 필요한 메시지면 입장 3 × 말투 3 = 9개", async () => {
+    const res = await mock.reply({
+      text: "[이름1]: 이번 주 금요일에 저녁 먹을래?",
+      relation: "FRIEND",
+    });
+    expect(res.needsDecision).toBe(true);
+    expect(res.replies).toHaveLength(9);
+    expect(res.replies.map((r) => `${r.stance}-${r.tone}`)).toEqual(
+      AI_STANCES.flatMap((st) => AI_TONES.map((t) => `${st}-${t}`))
+    );
+  });
+
+  test("안부 인사면 입장 없이 말투 3개", async () => {
+    const res = await mock.reply({
+      text: "[이름1]: 잘 지내지? 오랜만이야",
+      relation: "FRIEND",
+    });
+    expect(res.needsDecision).toBe(false);
+    expect(res.replies.map((r) => [r.stance, r.tone])).toEqual([
+      [undefined, "SHORT"],
+      [undefined, "WARM"],
+      [undefined, "POLITE"],
+    ]);
   });
 });
