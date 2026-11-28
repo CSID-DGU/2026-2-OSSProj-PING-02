@@ -22,6 +22,7 @@ export interface AuthUser {
   name: string;
   email?: string;
   birthdate?: string; // YYYY-MM-DD (GET /users/me. 로그인 응답에는 없을 수 있음)
+  createdAt?: string; // 가입 시각 ISO (GET /users/me). 원문 보관 주기의 시작 (#60)
 }
 
 export interface AuthTokens {

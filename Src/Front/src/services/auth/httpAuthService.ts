@@ -18,6 +18,7 @@ interface ServerUser {
   name: string;
   email?: string;
   birthdate?: string;
+  createdAt?: string;
 }
 
 interface ServerAuthResult {
@@ -25,12 +26,20 @@ interface ServerAuthResult {
   tokens: AuthTokens;
 }
 
-const toUser = ({ id, username, name, email, birthdate }: ServerUser): AuthUser => ({
+const toUser = ({
+  id,
+  username,
+  name,
+  email,
+  birthdate,
+  createdAt,
+}: ServerUser): AuthUser => ({
   id,
   loginId: username,
   name,
   email,
   birthdate,
+  createdAt,
 });
 
 const toResult = ({ user, tokens }: ServerAuthResult): AuthResult => ({

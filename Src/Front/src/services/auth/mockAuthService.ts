@@ -129,6 +129,8 @@ export const createMockAuthService = ({
         name: MOCK_DEMO_ACCOUNT.name,
         email: MOCK_DEMO_ACCOUNT.email,
         birthdate: MOCK_DEMO_ACCOUNT.birthdate,
+        // 시안 H07처럼 가입한 지 며칠 지난 계정
+        createdAt: new Date(now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
         password: MOCK_DEMO_ACCOUNT.password,
         verified: true,
         failedLogins: 0,
@@ -143,12 +145,20 @@ export const createMockAuthService = ({
   let nextId = 1;
   let issued = 0;
 
-  const toUser = ({ id, loginId, name, email, birthdate }: MockUser): AuthUser => ({
+  const toUser = ({
     id,
     loginId,
     name,
     email,
     birthdate,
+    createdAt,
+  }: MockUser): AuthUser => ({
+    id,
+    loginId,
+    name,
+    email,
+    birthdate,
+    createdAt,
   });
 
   // 갱신 토큰: mock-refresh.<아이디>.<시각>.<번호> (아이디에는 '.'이 없음)
@@ -228,6 +238,7 @@ export const createMockAuthService = ({
         name,
         email,
         birthdate: input.birthdate,
+        createdAt: new Date(now()).toISOString(),
         password: input.password,
         verified: !verify,
         failedLogins: 0,

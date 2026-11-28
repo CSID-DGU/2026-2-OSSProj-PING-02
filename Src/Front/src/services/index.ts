@@ -42,6 +42,10 @@ import {
   createDeviceCollectionService,
   createMockCollectionService,
 } from "./collection/CollectionService";
+import {
+  createDeviceRawMessageService,
+  createMockRawMessageService,
+} from "./rawMessages/RawMessageService";
 import Messenger, { isMessengerAvailable } from "@native/Messenger";
 
 // 서비스 교체 지점
@@ -160,6 +164,10 @@ export const services = {
   collection: isNotificationStoreAvailable()
     ? createDeviceCollectionService(NotificationStore)
     : createMockCollectionService(),
+  // 수집 원문 보관 (#60 설정 H07): 30일마다 전체 삭제·지금 삭제. 네이티브가 없으면(Jest) mock
+  rawMessages: isNotificationStoreAvailable()
+    ? createDeviceRawMessageService(NotificationStore)
+    : createMockRawMessageService(),
   // 복사·메신저 열기: Kotlin Messenger 모듈 (#69). 네이티브 모듈이 없으면(Jest) mock
   messenger: isMessengerAvailable()
     ? createDeviceMessengerService(Messenger)
@@ -200,6 +208,7 @@ export * from "./contacts/ContactsService";
 export * from "./conversation/types";
 export * from "./conversation/ConversationService";
 export * from "./collection/CollectionService";
+export * from "./rawMessages/RawMessageService";
 export * from "./friend/FriendService";
 export * from "./storage/KeyValueStorage";
 export * from "./storage/userScopedStorage";
