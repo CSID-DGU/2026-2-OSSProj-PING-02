@@ -84,7 +84,7 @@ const SettingsMain = () => {
       toast.show(SETTINGS_COPY.withdrawFailed, { icon: "error" });
       return "failed" as const;
     }
-    if (user) await clearLocalAccountData(services.storage, user.id);
+    if (user) await clearLocalAccountData(services, user.id);
     setPopup("none");
     // 서버에서 계정과 세션이 지워졌으므로 로그아웃 요청 없이 이 기기 토큰만 지움
     services.tokens.set(null);

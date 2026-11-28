@@ -64,9 +64,7 @@ export const BottomSheet = ({
       onRequestClose={onClose}
     >
       {/* 키보드 높이에는 아래 내비게이션 영역이 빠져 있어(창이 화면 끝까지 그려짐) 그만큼 더 올림 */}
-      <Container
-        style={{ paddingBottom: keyboard > 0 ? keyboard + insets.bottom : 0 }}
-      >
+      <Container $keyboard={keyboard > 0 ? keyboard + insets.bottom : 0}>
         <Dim
           style={StyleSheet.absoluteFill}
           onPress={dismissOnBackdrop ? onClose : undefined}
@@ -164,9 +162,10 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingBottom: 8 },
 });
 
-const Container = styled.View`
+const Container = styled.View<{ $keyboard: number }>`
   flex: 1;
   justify-content: flex-end;
+  padding-bottom: ${({ $keyboard }) => $keyboard}px;
 `;
 
 const Dim = styled.Pressable`

@@ -56,7 +56,7 @@ const LIST_LIMIT = 1000;
 const DETAIL_LIMIT = 200;
 /** AI에 넘길 최근 메시지 수 (서버 1,000자 상한은 requestAiReply가 오래된 것부터 잘라 맞춤) */
 const AI_MESSAGE_LIMIT = 20;
-const STATE_KEY = "malssiat.deviceConversationState";
+export const STATE_KEY = "malssiat.deviceConversationState";
 
 // 기기 안 규칙 (요약은 AI가 만든 것만 씀)
 const OCCASION_RE = /결혼|청첩|부고|별세|장례|발인|조문|돌잔치|칠순|팔순|환갑/;
