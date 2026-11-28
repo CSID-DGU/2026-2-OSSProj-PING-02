@@ -11,6 +11,9 @@ import FriendDetail from "@pages/friend/FriendDetail";
 import FirstWords from "@pages/friend/FirstWords";
 import Notifications from "@pages/main/Notifications";
 import StoredData from "@pages/settings/StoredData";
+import ProfileInfo from "@pages/settings/ProfileInfo";
+import PasswordChange from "@pages/settings/PasswordChange";
+import LinkedAppsSettings from "@pages/settings/LinkedAppsSettings";
 import ReplyGuide from "@pages/settings/ReplyGuide";
 import NotificationSettings from "@pages/settings/NotificationSettings";
 import HelpLevel from "@pages/home/HelpLevel";
@@ -41,6 +44,9 @@ export const createTabStack = (
       <Stack.Screen name="Notifications" component={Notifications} />
 
       {/* Settings (08 설정, #60) */}
+      <Stack.Screen name="SettingsProfile" component={ProfileInfo} />
+      <Stack.Screen name="SettingsPassword" component={PasswordChange} />
+      <Stack.Screen name="SettingsLinkedApps" component={LinkedAppsSettings} />
       <Stack.Screen name="SettingsStoredData" component={StoredData} />
       <Stack.Screen name="SettingsReplyGuide" component={ReplyGuide} />
       <Stack.Screen

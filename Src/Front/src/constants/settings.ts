@@ -180,3 +180,68 @@ export const REPLY_GUIDE_COPY = {
   saved: "답장 기준을 저장했어요!",
   saveFailed: "저장하지 못했어요. 다시 시도해주세요.",
 } as const;
+
+// H04 확인할 메신저 앱 (Figma 518:16861 첫 화면, 526:19126 저장 성공, 526:18996 저장 실패)
+export const LINKED_APPS_COPY = {
+  title: "확인할 메신저 앱",
+  heading: "도움을 받을 앱을 선택해요",
+  description: "선택한 앱에서 도착하는 알림만 확인해요",
+  all: "전체 선택",
+  save: "저장하기",
+  saved: "확인할 메신저 앱 설정을 업데이트 했어요",
+  saveFailed: "저장하지 못했어요. 다시 시도해주세요.",
+  // TODO(디자이너 공유): 하나도 고르지 않은 상태는 시안에 없음. 온보딩 05처럼 하나 이상 골라야 저장
+  emptyHint: "앱을 하나 이상 고르면 저장할 수 있어요",
+} as const;
+
+// H02 내 정보 (Figma 507:13428 보기, 507:14401 수정, 507:13996·507:14205 비밀번호 확인 팝업,
+// 507:14574·515:15304·515:15179 비밀번호 재설정, 518:15542 변경 완료)
+export const PROFILE_COPY = {
+  title: "내 정보",
+  name: "이름",
+  loginId: "아이디",
+  password: "비밀번호",
+  resetChip: "재설정",
+  email: "이메일",
+  birthdate: "생년월일",
+  gender: "성별",
+  edit: "수정하기",
+  save: "저장하기",
+  confirmTitle: "정보를 수정하려면\n비밀번호를 입력해주세요",
+  confirmLabel: "비밀번호 입력",
+  passwordPlaceholder: "비밀번호를 입력해주세요",
+  confirmSubmit: "입력했어요",
+  goReset: "비밀번호 재설정",
+  // TODO(디자이너 공유): 아래 두 문구는 시안에 없는 상태
+  saved: "내 정보를 수정했어요",
+  saveFailed: "저장하지 못했어요. 다시 시도해주세요.",
+} as const;
+
+export const PASSWORD_CHANGE_COPY = {
+  title: "비밀번호 재설정",
+  current: "현재 비밀번호",
+  currentPlaceholder: "현재 비밀번호를 입력해주세요",
+  check: "확인",
+  next: "새 비밀번호",
+  nextPlaceholder: "새로운 비밀번호를 입력해주세요",
+  confirm: "새 비밀번호 확인",
+  confirmPlaceholder: "새로운 비밀번호를 다시 입력해주세요",
+  submit: "비밀번호 재설정 하기",
+  changed: "비밀번호가 변경됐어요",
+  // TODO(디자이너 공유): 시안에 없는 상태
+  verified: "비밀번호를 확인했어요.",
+  sameAsCurrent: "지금 비밀번호와 다른 비밀번호로 정해 주세요.",
+  verifyFirst: "현재 비밀번호를 먼저 확인해 주세요.",
+} as const;
+
+/** 생년월일 표기 "1997년 02월 12일" (시안 H02) */
+export const formatKoreanDate = (birthdate?: string) => {
+  const [y, m, d] = (birthdate ?? "").split("-");
+  return y && m && d ? `${y}년 ${m}월 ${d}일` : "-";
+};
+
+export const GENDER_LABEL: Record<string, string> = {
+  FEMALE: "여성",
+  MALE: "남성",
+  OTHER: "기타",
+};

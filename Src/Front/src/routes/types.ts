@@ -22,6 +22,10 @@ export type TabStackParamList = {
   Notifications: undefined;
   // 08 설정 (#60): H07 저장된 데이터
   SettingsStoredData: undefined;
+  // H02 내 정보 / 비밀번호 재설정, H04 확인할 메신저 앱
+  SettingsProfile: undefined;
+  SettingsPassword: undefined;
+  SettingsLinkedApps: undefined;
   // H05 내 상황과 답장 기준 / H06 알림 설정
   SettingsReplyGuide: undefined;
   SettingsNotifications: undefined;

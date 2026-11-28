@@ -22,17 +22,13 @@ import { useSession } from "@stores/SessionProvider";
 import * as s from "./SettingsMain_styled";
 
 // 08 설정 H01 설정 메인 + H08 로그아웃·회원 탈퇴 (Figma "08 설정 · 개인정보 · 계정")
-// - 메뉴: 화면이 생긴 것만 누를 수 있음 (H02~H07은 이어서 작업)
+// - 메뉴: 화면이 생긴 것만 누를 수 있음 (H03은 #87 머지 후)
 // - 로그아웃: 확인 팝업 → 서버 세션 종료 → 스플래시
 // - 회원 탈퇴: 확인 팝업("탈퇴 진행하기") → 비밀번호 시트 → DELETE /users/me → 기기 데이터 삭제 → 스플래시
 type Popup = "none" | "logout" | "withdrawConfirm" | "withdrawSheet";
 
-// 아직 화면이 없는 메뉴 (H02~H04). 화면을 만들면 여기서 빼고 handleMenu에 이동을 추가
-const NOT_READY = new Set<SettingsMenuItem["key"]>([
-  "profile",
-  "contacts",
-  "linkedApps",
-]);
+// 아직 화면이 없는 메뉴 (H03: 온보딩 07~09 새 시안 #87 머지 후). 화면을 만들면 여기서 빼고 handleMenu에 이동을 추가
+const NOT_READY = new Set<SettingsMenuItem["key"]>(["contacts"]);
 
 const SettingsMain = () => {
   const navigation = useAuthNavigation();
@@ -53,6 +49,8 @@ const SettingsMain = () => {
   const handleMenu = (item: SettingsMenuItem) => {
     if (item.key === "logout") setPopup("logout");
     if (item.key === "withdraw") setPopup("withdrawConfirm");
+    if (item.key === "profile") navigation.navigate("SettingsProfile");
+    if (item.key === "linkedApps") navigation.navigate("SettingsLinkedApps");
     if (item.key === "storedData") navigation.navigate("SettingsStoredData");
     if (item.key === "replyGuide") navigation.navigate("SettingsReplyGuide");
     if (item.key === "notifications")
