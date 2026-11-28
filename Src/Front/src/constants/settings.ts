@@ -1,3 +1,5 @@
+import { NOTIFICATION_PREF_OPTIONS } from "./onboarding";
+
 // 08 설정 (Figma "08 설정 · 개인정보 · 계정" H01 설정 메인) 메뉴 구성
 // 문구는 시안 그대로. 화면이 생기면 route를 채움 (없으면 누를 수 없음)
 
@@ -26,7 +28,11 @@ export const SETTINGS_SECTIONS: SettingsMenuSection[] = [
   {
     title: "내 계정",
     items: [
-      { key: "profile", title: "내 정보", description: "내 기본 정보를 관리해요" },
+      {
+        key: "profile",
+        title: "내 정보",
+        description: "내 기본 정보를 관리해요",
+      },
     ],
   },
   {
@@ -132,15 +138,45 @@ export const STORED_DATA_COPY = {
     `${n}건 ${formatDotDate(next)} 삭제 예정`,
   rawDeleteButton: (n: number) => `원문 ${n}개 지금 바로 삭제하기`,
   aiDeleteButton: (n: number) => `요약·답장 기록 ${n}건 삭제하기`,
-  rawDeleteTitle: (n: number) => `말씨앗에 저장된 원문 ${n}개를\n모두 삭제할까요?`,
+  rawDeleteTitle: (n: number) =>
+    `말씨앗에 저장된 원문 ${n}개를\n모두 삭제할까요?`,
   // 시안 "자동 삭제 돼요" → 맞춤법대로 붙여 씀
   rawDeleteNote: (next: number) => {
     const d = new Date(next);
-    return `지금 삭제하지 않아도 ${d.getMonth() + 1}월 ${d.getDate()}일에 자동 삭제돼요.`;
+    return `지금 삭제하지 않아도 ${
+      d.getMonth() + 1
+    }월 ${d.getDate()}일에 자동 삭제돼요.`;
   },
-  aiDeleteTitle: (n: number) => `저장된 요약·답장 기록 ${n}개를\n모두 삭제할까요?`,
+  aiDeleteTitle: (n: number) =>
+    `저장된 요약·답장 기록 ${n}개를\n모두 삭제할까요?`,
   deleteAll: (n: number) => `${n}개 모두 삭제하기`,
   // 시안의 삭제 완료 토스트 숫자(128 → 0 등)는 오류로 보고 실제 지운 개수로 (팀 확정)
   rawDeleted: (n: number) => `원문 ${n}개가 모두 삭제됐어요`,
   aiDeleted: (n: number) => `저장된 요약·답장 기록 ${n}개가 모두 삭제됐어요`,
+} as const;
+
+// H06 알림 설정: 온보딩 06의 6개 + 재연결 제안 (Figma 530:21022)
+// 재연결 제안은 온보딩에서 고르지 않으므로 처음에는 꺼져 있고, 그래서 "전체 알림"도 꺼져 보임 (시안 H06 첫 화면과 같음)
+export const SETTINGS_NOTIFICATION_PREF_OPTIONS = [
+  ...NOTIFICATION_PREF_OPTIONS,
+  {
+    value: "RECONNECT" as const,
+    title: "재연결 제안",
+    description: "오래 연락하지 않은 친구의 안부를 제안해요",
+  },
+];
+
+export const NOTIFICATION_SETTINGS_COPY = {
+  title: "알림 설정",
+  save: "저장하기",
+  saved: "알림 설정을 저장했어요",
+  saveFailed: "알림 설정 저장에 실패했어요. 다시 시도해주세요.",
+} as const;
+
+// H05 내 상황과 답장 기준 (Figma 526:19250, 521:17358 처음, 521:18012 저장 성공, 521:17897 저장 실패)
+export const REPLY_GUIDE_COPY = {
+  title: "내 상황과 답장 기준",
+  save: "답장 기준 저장하기",
+  saved: "답장 기준을 저장했어요!",
+  saveFailed: "저장하지 못했어요. 다시 시도해주세요.",
 } as const;

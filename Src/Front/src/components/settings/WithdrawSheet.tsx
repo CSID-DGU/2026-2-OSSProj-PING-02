@@ -12,10 +12,16 @@ interface WithdrawSheetProps {
   visible: boolean;
   onClose: () => void;
   // 비밀번호가 틀렸으면 "wrongPassword"를 돌려줌 (그 밖의 실패는 부르는 쪽이 알림)
-  onWithdraw: (password: string) => Promise<"done" | "wrongPassword" | "failed">;
+  onWithdraw: (
+    password: string
+  ) => Promise<"done" | "wrongPassword" | "failed">;
 }
 
-const WithdrawSheet = ({ visible, onClose, onWithdraw }: WithdrawSheetProps) => {
+const WithdrawSheet = ({
+  visible,
+  onClose,
+  onWithdraw,
+}: WithdrawSheetProps) => {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [wrongPassword, setWrongPassword] = useState(false);
@@ -50,12 +56,14 @@ const WithdrawSheet = ({ visible, onClose, onWithdraw }: WithdrawSheetProps) => 
       testID="withdraw-sheet"
     >
       <Body>
-        <Title accessibilityRole="header">{SETTINGS_COPY.withdrawSheetTitle}</Title>
+        <Title accessibilityRole="header">
+          {SETTINGS_COPY.withdrawSheetTitle}
+        </Title>
         <Fields>
           <TextField
             label="비밀번호"
             value={password}
-            onChangeText={value => {
+            onChangeText={(value) => {
               setPassword(value);
               setWrongPassword(false);
             }}

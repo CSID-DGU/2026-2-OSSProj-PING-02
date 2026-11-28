@@ -16,9 +16,19 @@ interface DataRowProps {
   expanded?: boolean;
 }
 
-const ROTATION: Record<Chevron, string> = { right: "0deg", down: "90deg", up: "-90deg" };
+const ROTATION: Record<Chevron, string> = {
+  right: "0deg",
+  down: "90deg",
+  up: "-90deg",
+};
 
-export const DataRow = ({ title, description, chevron, onPress, expanded }: DataRowProps) => {
+export const DataRow = ({
+  title,
+  description,
+  chevron,
+  onPress,
+  expanded,
+}: DataRowProps) => {
   const theme = useTheme();
   return (
     <Row
@@ -47,10 +57,19 @@ interface DataDetailProps {
   actionDisabled?: boolean;
 }
 
-export const DataDetail = ({ rows, actionLabel, onAction, actionDisabled }: DataDetailProps) => (
+export const DataDetail = ({
+  rows,
+  actionLabel,
+  onAction,
+  actionDisabled,
+}: DataDetailProps) => (
   <Box>
-    {rows.map(row => (
-      <DetailRow key={row.label} accessible accessibilityLabel={`${row.label} ${row.value}`}>
+    {rows.map((row) => (
+      <DetailRow
+        key={row.label}
+        accessible
+        accessibilityLabel={`${row.label} ${row.value}`}
+      >
         <DetailLabel>{row.label}</DetailLabel>
         <DetailValue>{row.value}</DetailValue>
       </DetailRow>

@@ -14,9 +14,17 @@ interface SettingsLayoutProps {
   gap?: number;
   // 없으면 이전 화면으로
   onBack?: () => void;
+  // 아래 고정 버튼 (시안 Content / Screen: 탭바 위 안쪽 20)
+  footer?: ReactNode;
 }
 
-const SettingsLayout = ({ title, children, gap = 12, onBack }: SettingsLayoutProps) => {
+const SettingsLayout = ({
+  title,
+  children,
+  gap = 12,
+  onBack,
+  footer,
+}: SettingsLayoutProps) => {
   const insets = useSafeAreaInsets();
   const navigation = useAuthNavigation();
   return (
@@ -30,6 +38,7 @@ const SettingsLayout = ({ title, children, gap = 12, onBack }: SettingsLayoutPro
       <ScrollView contentContainerStyle={[styles.content, { gap }]}>
         {children}
       </ScrollView>
+      {footer && <Footer>{footer}</Footer>}
     </Screen>
   );
 };
@@ -38,6 +47,10 @@ const Screen = styled.View<{ $top: number }>`
   flex: 1;
   padding-top: ${({ $top }) => $top}px;
   background-color: ${({ theme }) => theme.colors.surfaceDefault};
+`;
+
+const Footer = styled.View`
+  padding: 20px;
 `;
 
 const styles = StyleSheet.create({

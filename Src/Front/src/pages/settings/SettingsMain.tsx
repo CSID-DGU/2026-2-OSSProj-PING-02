@@ -13,10 +13,7 @@ import {
   SETTINGS_SECTIONS,
   type SettingsMenuItem,
 } from "@constants/settings";
-import {
-  getRootNavigation,
-  useAuthNavigation,
-} from "@hooks/useAuthNavigation";
+import { getRootNavigation, useAuthNavigation } from "@hooks/useAuthNavigation";
 import { AUTH_ERROR_CODE, services } from "@services";
 import { clearLocalAccountData } from "@services/account/clearLocalData";
 import { ServiceError } from "@services/common";
@@ -30,13 +27,11 @@ import * as s from "./SettingsMain_styled";
 // - 회원 탈퇴: 확인 팝업("탈퇴 진행하기") → 비밀번호 시트 → DELETE /users/me → 기기 데이터 삭제 → 스플래시
 type Popup = "none" | "logout" | "withdrawConfirm" | "withdrawSheet";
 
-// 아직 화면이 없는 메뉴 (H02~H06). 화면을 만들면 여기서 빼고 handleMenu에 이동을 추가
+// 아직 화면이 없는 메뉴 (H02~H04). 화면을 만들면 여기서 빼고 handleMenu에 이동을 추가
 const NOT_READY = new Set<SettingsMenuItem["key"]>([
   "profile",
   "contacts",
   "linkedApps",
-  "replyGuide",
-  "notifications",
 ]);
 
 const SettingsMain = () => {
@@ -59,6 +54,9 @@ const SettingsMain = () => {
     if (item.key === "logout") setPopup("logout");
     if (item.key === "withdraw") setPopup("withdrawConfirm");
     if (item.key === "storedData") navigation.navigate("SettingsStoredData");
+    if (item.key === "replyGuide") navigation.navigate("SettingsReplyGuide");
+    if (item.key === "notifications")
+      navigation.navigate("SettingsNotifications");
   };
 
   const handleLogout = async () => {
@@ -94,24 +92,24 @@ const SettingsMain = () => {
       // 시안 H01에 뒤로가기가 있음: 탭 첫 화면이라 홈 탭으로 (안드로이드 뒤로가기와 같음)
       onBack={() => navigation.navigate("Home", { screen: "home" })}
     >
-        {user && (
-          <ProfileCard
-            name={user.name}
-            loginId={user.loginId}
-            birthdate={user.birthdate}
-            linkedApps={data.linkedApps}
+      {user && (
+        <ProfileCard
+          name={user.name}
+          loginId={user.loginId}
+          birthdate={user.birthdate}
+          linkedApps={data.linkedApps}
+        />
+      )}
+      {SETTINGS_SECTIONS.map((section, index) => (
+        <s.Block key={section.title}>
+          {index > 0 && <SettingsDivider />}
+          <SettingsMenuGroup
+            section={section}
+            onPress={handleMenu}
+            isEnabled={(item) => !NOT_READY.has(item.key)}
           />
-        )}
-        {SETTINGS_SECTIONS.map((section, index) => (
-          <s.Block key={section.title}>
-            {index > 0 && <SettingsDivider />}
-            <SettingsMenuGroup
-              section={section}
-              onPress={handleMenu}
-              isEnabled={item => !NOT_READY.has(item.key)}
-            />
-          </s.Block>
-        ))}
+        </s.Block>
+      ))}
 
       {/* H08 / 로그아웃 */}
       <Dialog

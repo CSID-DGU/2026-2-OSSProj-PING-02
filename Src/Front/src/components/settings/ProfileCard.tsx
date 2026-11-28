@@ -16,24 +16,31 @@ interface ProfileCardProps {
 }
 
 const APP_ICON = Object.fromEntries(
-  LINKED_APP_OPTIONS.map(app => [app.value, app])
+  LINKED_APP_OPTIONS.map((app) => [app.value, app])
 ) as Record<LinkedApp, (typeof LINKED_APP_OPTIONS)[number]>;
 
 // 시안 표기 "1997.02.12"
 export const formatBirthdate = (birthdate: string) =>
   birthdate.replace(/-/g, ".");
 
-const ProfileCard = ({ name, loginId, birthdate, linkedApps }: ProfileCardProps) => {
+const ProfileCard = ({
+  name,
+  loginId,
+  birthdate,
+  linkedApps,
+}: ProfileCardProps) => {
   const theme = useTheme();
   // 그라데이션은 카드 실제 크기로 그림 (HomeHero와 같은 방식: Svg가 둥근 모서리까지 그림)
   const [size, setSize] = useState({ width: 0, height: 0 });
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    setSize(prev =>
+    setSize((prev) =>
       prev.width === width && prev.height === height ? prev : { width, height }
     );
   };
-  const apps = LINKED_APP_OPTIONS.filter(app => linkedApps.includes(app.value));
+  const apps = LINKED_APP_OPTIONS.filter((app) =>
+    linkedApps.includes(app.value)
+  );
 
   return (
     <Wrapper
@@ -43,7 +50,7 @@ const ProfileCard = ({ name, loginId, birthdate, linkedApps }: ProfileCardProps)
         name,
         `아이디 ${loginId}`,
         birthdate && `생년월일 ${formatBirthdate(birthdate)}`,
-        apps.length > 0 && `연결한 앱 ${apps.map(a => a.label).join(", ")}`,
+        apps.length > 0 && `연결한 앱 ${apps.map((a) => a.label).join(", ")}`,
       ]
         .filter(Boolean)
         .join(", ")}
@@ -82,7 +89,7 @@ const ProfileCard = ({ name, loginId, birthdate, linkedApps }: ProfileCardProps)
       </Info>
       {apps.length > 0 && (
         <Apps>
-          {apps.map(app => (
+          {apps.map((app) => (
             <AppIcon key={app.value} source={APP_ICON[app.value].icon} />
           ))}
         </Apps>

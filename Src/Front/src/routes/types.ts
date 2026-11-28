@@ -22,6 +22,9 @@ export type TabStackParamList = {
   Notifications: undefined;
   // 08 설정 (#60): H07 저장된 데이터
   SettingsStoredData: undefined;
+  // H05 내 상황과 답장 기준 / H06 알림 설정
+  SettingsReplyGuide: undefined;
+  SettingsNotifications: undefined;
   // 04 홈: C02 오늘 상태 선택(current: 지금 고른 모드) / C03~C05 모드별 화면
   HomeHelpLevel: { current?: HelpMode } | undefined;
   HomeHelpMode: { mode: Exclude<HelpMode, "rest"> };

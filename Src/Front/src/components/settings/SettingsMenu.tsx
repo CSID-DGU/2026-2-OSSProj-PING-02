@@ -1,5 +1,8 @@
 import styled from "styled-components/native";
-import type { SettingsMenuItem, SettingsMenuSection } from "@constants/settings";
+import type {
+  SettingsMenuItem,
+  SettingsMenuSection,
+} from "@constants/settings";
 
 // 08 설정 메뉴 묶음 (Figma H01 Section Header + Card / 직접 써볼 수 있어요)
 // 묶음 이름(높이 26, 좌우 10) 아래에 흰 카드 줄(좌우 16·위아래 10, 제목 13 Medium + 설명 12 Regular)
@@ -19,7 +22,7 @@ export const SettingsMenuGroup = ({
     <SectionHeader>
       <SectionTitle accessibilityRole="header">{section.title}</SectionTitle>
     </SectionHeader>
-    {section.items.map(item => {
+    {section.items.map((item) => {
       const enabled = isEnabled(item);
       return (
         <Row
