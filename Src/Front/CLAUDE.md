@@ -160,10 +160,11 @@
 - 완료: **인증 API 연결 + 자동 로그인** `feat/#27-auth-api` (PR #38 리뷰 반영, #37까지 들어간 origin/main 위로 rebase). 실기기 확인: `DEV_API_MODE = "http"` → 앱 재빌드(keychain 네이티브 모듈) → 회원가입 → 앱 껐다 켜서 자동 로그인 → 로그아웃 → 로그인
 - 머지됨: **05 친구** 13 목록·14 상세·15 첫마디 + 16 시안을 잘린 메시지 화면에 적용 → `feat/#30-friends` (PR #37)
 - 머지됨: 하단 탭바·홈(임시)·04 연락 전체(07·08·09-A·B·C·10·11·12·잘린 메시지) → `feat/#29-contacts` (PR #31)
-- 진행: **08 설정** `feat/#60-settings` (Figma "08 설정 · 개인정보 · 계정", 연두 배경 = 완료 시안). H01 설정 메인·H05 내 상황과 답장 기준·H06 알림 설정·H07 저장된 데이터·H08 로그아웃·회원 탈퇴 완료(`pages/settings`, `components/settings`(`SettingsLayout` 공통 틀), 메뉴·문구 `constants/settings.ts`). 화면이 없는 메뉴는 누를 수 없음(`NOT_READY`)
+- 진행: **08 설정** `feat/#60-settings` (Figma "08 설정 · 개인정보 · 계정", 연두 배경 = 완료 시안). H01 설정 메인·H02 내 정보(+비밀번호 재설정)·H04 확인할 메신저 앱·H05 내 상황과 답장 기준·H06 알림 설정·H07 저장된 데이터·H08 로그아웃·회원 탈퇴 완료(`pages/settings`, `components/settings`(`SettingsLayout` 공통 틀), 메뉴·문구 `constants/settings.ts`). 화면이 없는 메뉴는 누를 수 없음(`NOT_READY`)
   - H07: 원문 개수·마지막/다음 전체 삭제일(`services.rawMessages`), 요약·답장 기록 = AI 결과가 있는 대화 수(`aiReplies.stats/clearAll`, 연락 상태는 안 지움). 친구별 원문 캐시는 친구 탭으로(별도 화면은 #77·#79 머지 후)
   - H05·H06: 온보딩 11·06과 같은 입력(`components/onboarding/AiMemoryForm`, `NotificationPrefList`)으로 온보딩 값(memory·notificationPrefs)을 그대로 고침. H06은 설정 전용 "재연결 제안"(RECONNECT) 포함 7개
-  - 다음: H03 연락처 불러오기(온보딩 07~09 새 시안 #87 머지 후 그 화면을 가져와 붙임) → H04 확인할 메신저 앱 → H02 내 정보(백엔드 #62 API 머지됨)
+  - H02: `services.auth.verifyPassword·updateProfile·changePassword`(#62), 생년월일·성별·이메일 입력은 회원가입과 같은 `components/auth/ProfileInputs`. 고치면 `SessionProvider.updateUser`
+  - 남은 것: H03 연락처 불러오기(온보딩 07~09 새 시안 #87 머지 후 그 화면을 가져와 붙임)
   - 회원 탈퇴: `services.auth.deleteAccount(password)` → `clearLocalAccountData`(온보딩·도움 수준·알림 DB) → 스플래시
 - 다음 후보: 캘린더 탭, 알림 센터 C09(#61)
 - 머지 순서 주의: CLAUDE.md는 브랜치마다 고치므로 뒤에 머지하는 쪽에서 충돌이 날 수 있음 (두 쪽 내용을 합치면 됨)
