@@ -4,25 +4,7 @@ export const Fields = styled.View`
   gap: 14px;
 `;
 
-// 생년월일·이메일 한 줄 (Figma 너비 비율 그대로 flex로 나눔)
-export const Row = styled.View`
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-`;
-
-export const EmailLocal = styled.View`
-  flex: 132;
-`;
-
-export const EmailDomain = styled.View`
-  flex: 148;
-`;
-
-export const At = styled.Text`
-  ${({ theme }) => theme.fonts.bodyMedium};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`;
+// 생년월일·성별·이메일 입력은 components/auth/ProfileInputs (#60, 설정 H02와 같이 씀)
 
 export const Terms = styled.View`
   gap: 10px;

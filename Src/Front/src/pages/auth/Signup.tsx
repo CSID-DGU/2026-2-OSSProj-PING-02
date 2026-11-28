@@ -3,18 +3,24 @@ import { ActivityIndicator, Linking } from "react-native";
 import { useTheme } from "styled-components/native";
 import { Button } from "@core/ui/button";
 import { Field, Input, TextField } from "@core/ui/field";
-import { Select } from "@core/ui/select";
-import { ChoiceGroup } from "@core/ui/choice";
 import { Checkbox } from "@core/ui/checkbox";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import AuthPrompt from "@components/auth/AuthPrompt";
 import Notice from "@components/onboarding/Notice";
 import {
+  BirthdateField,
+  checkEmail,
+  composeEmail,
+  EMPTY_EMAIL,
+  EmailField,
+  emailDomainOf,
+  GenderField,
+  type BirthValue,
+  type EmailValue,
+} from "@components/auth/ProfileInputs";
+import {
   AUTH_ERROR,
-  DOMAIN_REGEX,
-  EMAIL_DOMAINS,
-  GENDER_OPTIONS,
   LOGIN_ID_RULE,
   PASSWORD_RULE,
   getAuthErrorMessage,
@@ -57,21 +63,6 @@ type SignupField =
 type SignupErrors = Partial<Record<SignupField, string>>;
 type IdCheck = "idle" | "checking" | "available" | "taken";
 
-// 생년월일 선택지: 올해부터 100년 전까지
-const THIS_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 101 }, (_, i) => {
-  const year = THIS_YEAR - i;
-  return { label: String(year), value: year };
-});
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
-  label: String(i + 1).padStart(2, "0"),
-  value: i + 1,
-}));
-const DOMAIN_OPTIONS = EMAIL_DOMAINS.map(domain => ({
-  label: domain,
-  value: domain,
-}));
-
 // 400 VALIDATION_FAILED의 서버 필드 → 화면 입력란과 문구
 const SERVER_FIELD_ERRORS: Record<string, [SignupField, string]> = {
   username: ["loginId", AUTH_ERROR.idInvalid],
@@ -83,29 +74,16 @@ const SERVER_FIELD_ERRORS: Record<string, [SignupField, string]> = {
   termsAgreements: ["terms", AUTH_ERROR.checkInput],
 };
 
-// 월마다 마지막 날이 달라서 연·월에 맞춰 일 선택지를 만듦
-const getDayOptions = (year?: number, month?: number) => {
-  const lastDay = month ? new Date(year ?? 2000, month, 0).getDate() : 31;
-  return Array.from({ length: lastDay }, (_, i) => ({
-    label: String(i + 1).padStart(2, "0"),
-    value: i + 1,
-  }));
-};
-
 const Signup = () => {
   const navigation = useAuthNavigation();
   const theme = useTheme();
   const { signIn } = useSession();
 
   const [name, setName] = useState("");
-  const [year, setYear] = useState<number>();
-  const [month, setMonth] = useState<number>();
-  const [day, setDay] = useState<number>();
+  const [birth, setBirth] = useState<BirthValue>({});
+  const { year, month, day } = birth;
   const [gender, setGender] = useState<Gender>();
-  const [emailLocal, setEmailLocal] = useState("");
-  const [emailDomain, setEmailDomain] = useState<string>(EMAIL_DOMAINS[0]);
-  const [customDomain, setCustomDomain] = useState(false);
-  const [domainInput, setDomainInput] = useState("");
+  const [email, setEmail] = useState<EmailValue>(EMPTY_EMAIL);
   const [loginId, setLoginId] = useState("");
   // 중복 확인 결과. 아이디를 고치면 다시 확인해야 함
   const [idCheck, setIdCheck] = useState<IdCheck>("idle");
@@ -119,11 +97,12 @@ const Signup = () => {
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
 
-  const dayOptions = getDayOptions(year, month);
   const terms = termsState.status === "ready" ? termsState.terms : [];
-  const agreeAll = terms.length > 0 && terms.every(t => agreed[t.id]);
-  const agreeRequired = terms.filter(t => t.required).every(t => agreed[t.id]);
-  const emailDomainValue = customDomain ? domainInput.trim() : emailDomain;
+  const agreeAll = terms.length > 0 && terms.every((t) => agreed[t.id]);
+  const agreeRequired = terms
+    .filter((t) => t.required)
+    .every((t) => agreed[t.id]);
+  const emailDomainValue = emailDomainOf(email);
   // 필수 항목이 모두 채워졌는지 (버튼 활성화용, 자세한 검사는 validate)
   const canSubmit =
     !!name.trim() &&
@@ -131,7 +110,7 @@ const Signup = () => {
     !!month &&
     !!day &&
     !!gender &&
-    !!emailLocal.trim() &&
+    !!email.local.trim() &&
     !!emailDomainValue &&
     idCheck === "available" &&
     isValidPassword(password) &&
@@ -140,7 +119,7 @@ const Signup = () => {
     agreeRequired;
 
   const clearError = (field: SignupField) =>
-    setErrors(prev => ({ ...prev, [field]: undefined }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
 
   // 약관은 서버(GET /terms)에서 받아 필수·선택을 구분
   const loadTerms = useCallback(async () => {
@@ -156,22 +135,15 @@ const Signup = () => {
     loadTerms();
   }, [loadTerms]);
 
-  // 연·월이 바뀌어 고른 날짜가 없어지면(2/30 등) 일 선택을 비움
-  const handleBirthChange = (nextYear?: number, nextMonth?: number) => {
-    const lastDay = getDayOptions(nextYear, nextMonth).length;
-    if (day && day > lastDay) setDay(undefined);
-    clearError("birth");
-  };
-
   // 아이디 중복 확인 (Figma에 없어 입력란 아래 텍스트 버튼으로)
   const handleCheckId = async () => {
     const id = normalizeLoginId(loginId);
     if (!id) {
-      setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idRequired }));
+      setErrors((prev) => ({ ...prev, loginId: AUTH_ERROR.idRequired }));
       return;
     }
     if (!isValidLoginId(id)) {
-      setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idInvalid }));
+      setErrors((prev) => ({ ...prev, loginId: AUTH_ERROR.idInvalid }));
       return;
     }
     setIdCheck("checking");
@@ -180,11 +152,11 @@ const Signup = () => {
       const { available } = await services.auth.checkLoginId(id);
       setIdCheck(available ? "available" : "taken");
       if (!available) {
-        setErrors(prev => ({ ...prev, loginId: AUTH_ERROR.idTaken }));
+        setErrors((prev) => ({ ...prev, loginId: AUTH_ERROR.idTaken }));
       }
     } catch (error) {
       setIdCheck("idle");
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         loginId: getInvalidFields(error).includes("username")
           ? AUTH_ERROR.idInvalid
@@ -194,25 +166,23 @@ const Signup = () => {
   };
 
   const handleAgreeAll = (checked: boolean) => {
-    setAgreed(Object.fromEntries(terms.map(t => [t.id, checked])));
+    setAgreed(Object.fromEntries(terms.map((t) => [t.id, checked])));
     clearError("terms");
   };
 
   const handleAgree = (id: string, checked: boolean) => {
-    setAgreed(prev => ({ ...prev, [id]: checked }));
+    setAgreed((prev) => ({ ...prev, [id]: checked }));
     clearError("terms");
   };
 
   const validate = () => {
     const next: SignupErrors = {};
-    const domain = customDomain ? domainInput.trim() : emailDomain;
-
     if (!name.trim()) next.name = AUTH_ERROR.nameRequired;
     if (!year || !month || !day) next.birth = AUTH_ERROR.birthRequired;
     if (!gender) next.gender = AUTH_ERROR.genderRequired;
-    if (!emailLocal.trim() || !domain) next.email = AUTH_ERROR.emailRequired;
-    else if (/[\s@]/.test(emailLocal.trim()) || !DOMAIN_REGEX.test(domain))
-      next.email = AUTH_ERROR.emailInvalid;
+    const emailCheck = checkEmail(email);
+    if (emailCheck === "required") next.email = AUTH_ERROR.emailRequired;
+    else if (emailCheck === "invalid") next.email = AUTH_ERROR.emailInvalid;
     if (!loginId.trim()) next.loginId = AUTH_ERROR.idRequired;
     else if (!isValidLoginId(loginId)) next.loginId = AUTH_ERROR.idInvalid;
     else if (idCheck === "taken") next.loginId = AUTH_ERROR.idTaken;
@@ -232,8 +202,7 @@ const Signup = () => {
     if (submitting || !validate() || !year || !month || !day || !gender) {
       return;
     }
-    const domain = customDomain ? domainInput.trim() : emailDomain;
-    const email = `${emailLocal.trim()}@${domain}`.toLowerCase();
+    const emailAddress = composeEmail(email);
 
     setSubmitting(true);
     try {
@@ -242,9 +211,9 @@ const Signup = () => {
         name: name.trim(),
         birthdate: `${year}-${pad2(month)}-${pad2(day)}`,
         gender,
-        email,
+        email: emailAddress,
         password,
-        termsAgreements: terms.map(t => ({
+        termsAgreements: terms.map((t) => ({
           termsId: t.id,
           agreed: !!agreed[t.id],
         })),
@@ -260,7 +229,7 @@ const Signup = () => {
     } catch (error) {
       const code = getErrorCode(error);
       const fields = getInvalidFields(error)
-        .map(field => SERVER_FIELD_ERRORS[field])
+        .map((field) => SERVER_FIELD_ERRORS[field])
         .filter(Boolean);
       if (code === AUTH_ERROR_CODE.usernameAlreadyExists) {
         // 확인 뒤 그사이 다른 사람이 가입한 경우
@@ -297,7 +266,7 @@ const Signup = () => {
           label="이름"
           placeholder="이름을 입력해주세요"
           value={name}
-          onChangeText={text => {
+          onChangeText={(text) => {
             setName(text);
             clearError("name");
           }}
@@ -305,131 +274,34 @@ const Signup = () => {
           autoComplete="name"
         />
 
-        <Field
-          label="생년월일"
-          helper={errors.birth}
-          state={errors.birth ? "error" : "default"}
-        >
-          <s.Row>
-            <Select
-              placeholder="YYYY"
-              sheetTitle="태어난 해"
-              options={YEAR_OPTIONS}
-              value={year}
-              onChange={next => {
-                setYear(next);
-                handleBirthChange(next, month);
-              }}
-              error={!!errors.birth && !year}
-              flex={128}
-            />
-            <Select
-              placeholder="MM"
-              sheetTitle="태어난 달"
-              options={MONTH_OPTIONS}
-              value={month}
-              onChange={next => {
-                setMonth(next);
-                handleBirthChange(year, next);
-              }}
-              error={!!errors.birth && !month}
-              flex={88}
-            />
-            <Select
-              placeholder="DD"
-              sheetTitle="태어난 날"
-              options={dayOptions}
-              value={day}
-              onChange={next => {
-                setDay(next);
-                clearError("birth");
-              }}
-              error={!!errors.birth && !day}
-              flex={88}
-            />
-          </s.Row>
-        </Field>
+        <BirthdateField
+          value={birth}
+          onChange={(next) => {
+            setBirth(next);
+            clearError("birth");
+          }}
+          error={errors.birth}
+        />
 
-        <Field
-          label="성별"
-          helper={errors.gender}
-          state={errors.gender ? "error" : "default"}
-        >
-          <ChoiceGroup
-            options={[...GENDER_OPTIONS]}
-            value={gender}
-            onChange={next => {
-              setGender(next);
-              clearError("gender");
-            }}
-            error={!!errors.gender}
-          />
-        </Field>
+        <GenderField
+          value={gender}
+          onChange={(next) => {
+            setGender(next);
+            clearError("gender");
+          }}
+          error={errors.gender}
+        />
 
         {/* 이메일은 인증하지 않음 → 오타가 나면 찾기가 안 된다는 안내를 도움말 자리에 */}
-        <Field
-          label="이메일"
-          helper={errors.email ?? AUTH_ERROR.emailHelper}
-          state={errors.email ? "error" : "default"}
-        >
-          <s.Row>
-            <s.EmailLocal>
-              <Input
-                size="small"
-                placeholder="example"
-                value={emailLocal}
-                onChangeText={text => {
-                  setEmailLocal(text);
-                  clearError("email");
-                }}
-                state={errors.email ? "error" : "default"}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                accessibilityLabel="이메일 아이디"
-              />
-            </s.EmailLocal>
-            <s.At>@</s.At>
-            {customDomain ? (
-              <s.EmailDomain>
-                <Input
-                  size="small"
-                  placeholder="직접 입력"
-                  value={domainInput}
-                  onChangeText={text => {
-                    setDomainInput(text);
-                    clearError("email");
-                  }}
-                  state={errors.email ? "error" : "default"}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  accessibilityLabel="이메일 도메인"
-                />
-              </s.EmailDomain>
-            ) : (
-              <Select
-                placeholder="도메인 선택"
-                sheetTitle="이메일 도메인"
-                options={DOMAIN_OPTIONS}
-                value={emailDomain}
-                onChange={next => {
-                  setEmailDomain(next);
-                  clearError("email");
-                }}
-                flex={148}
-              />
-            )}
-          </s.Row>
-          <Checkbox
-            label="직접 입력할게요"
-            checked={customDomain}
-            onChange={checked => {
-              setCustomDomain(checked);
-              clearError("email");
-            }}
-          />
-        </Field>
+        <EmailField
+          value={email}
+          onChange={(next) => {
+            setEmail(next);
+            clearError("email");
+          }}
+          error={errors.email}
+          helper={AUTH_ERROR.emailHelper}
+        />
 
         {/* 팀 결정으로 추가 (Figma 01-3에 없음): 계정 정보끼리 묶이도록 비밀번호 바로 위 */}
         {/* 입력란 바로 옆 "중복 확인"(48dp), 결과는 도움말 자리에 */}
@@ -448,7 +320,7 @@ const Signup = () => {
               <Input
                 placeholder="아이디를 입력해주세요"
                 value={loginId}
-                onChangeText={text => {
+                onChangeText={(text) => {
                   setLoginId(text);
                   setIdCheck("idle");
                   clearError("loginId");
@@ -483,7 +355,7 @@ const Signup = () => {
           label="비밀번호"
           placeholder={PASSWORD_RULE.guide}
           value={password}
-          onChangeText={text => {
+          onChangeText={(text) => {
             setPassword(text);
             clearError("password");
           }}
@@ -495,7 +367,7 @@ const Signup = () => {
           label="비밀번호 확인"
           placeholder="비밀번호를 다시 입력해주세요"
           value={passwordConfirm}
-          onChangeText={text => {
+          onChangeText={(text) => {
             setPasswordConfirm(text);
             clearError("passwordConfirm");
           }}
@@ -540,13 +412,13 @@ const Signup = () => {
                   emphasis
                 />
               </s.AgreeAllBox>
-              {terms.map(t => (
+              {terms.map((t) => (
                 <s.TermRow key={t.id}>
                   <s.TermCheck>
                     <Checkbox
                       label={`[${t.required ? "필수" : "선택"}] ${t.title}`}
                       checked={!!agreed[t.id]}
-                      onChange={checked => handleAgree(t.id, checked)}
+                      onChange={(checked) => handleAgree(t.id, checked)}
                     />
                   </s.TermCheck>
                   <Button
