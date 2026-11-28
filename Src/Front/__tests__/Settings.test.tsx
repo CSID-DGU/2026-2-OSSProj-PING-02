@@ -1,3 +1,4 @@
+import ReactTestRenderer from "react-test-renderer";
 import { MOCK_DEMO_ACCOUNT } from "../src/services/auth/mockAuthService";
 import { AUTH_ERROR_CODE, services, STORAGE_KEYS } from "../src/services";
 import {
@@ -45,7 +46,7 @@ describe("설정 메인", () => {
     expect(findText(root, MOCK_DEMO_ACCOUNT.loginId).length).toBe(1);
     expect(findText(root, "1997.02.12").length).toBe(1);
     const profile = root.find(
-      n =>
+      (n) =>
         typeof n.props.accessibilityLabel === "string" &&
         n.props.accessibilityLabel.includes("연결한 앱")
     );
@@ -138,7 +139,9 @@ describe("저장된 데이터 (H07)", () => {
     expect(
       findText(
         root,
-        `지금 삭제하지 않아도 ${nextDate.getMonth() + 1}월 ${nextDate.getDate()}일에 자동 삭제돼요.`
+        `지금 삭제하지 않아도 ${
+          nextDate.getMonth() + 1
+        }월 ${nextDate.getDate()}일에 자동 삭제돼요.`
       ).length
     ).toBe(1);
     await press(root, "128개 모두 삭제하기");
@@ -164,7 +167,10 @@ describe("저장된 데이터 (H07)", () => {
     await waitForText(root, "저장된 요약·답장 기록 3개를\n모두 삭제할까요?");
     await press(root, "3개 모두 삭제하기");
     await waitForText(root, "저장된 요약·답장 기록 3개가 모두 삭제됐어요");
-    expect(await services.aiReplies.stats()).toEqual({ summaries: 0, replies: 0 });
+    expect(await services.aiReplies.stats()).toEqual({
+      summaries: 0,
+      replies: 0,
+    });
   });
 
   test("친구별 원문 캐시는 친구 탭으로 간다", async () => {
@@ -173,13 +179,96 @@ describe("저장된 데이터 (H07)", () => {
     const selected = () =>
       root
         .findAll(
-          n =>
+          (n) =>
             typeof n.type === "string" &&
             n.props.accessibilityRole === "tab" &&
             n.props.accessibilityState?.selected
         )
-        .map(n => n.props.accessibilityLabel);
+        .map((n) => n.props.accessibilityLabel);
     expect(selected()).toEqual(["친구"]);
+  });
+});
+
+describe("알림 설정 (H06)", () => {
+  const switchOn = (
+    root: Awaited<ReturnType<typeof openSettings>>,
+    title: string
+  ) =>
+    root
+      .findAll(
+        (n) =>
+          typeof n.type === "string" &&
+          n.props.accessibilityRole === "switch" &&
+          String(n.props.accessibilityLabel).startsWith(title)
+      )
+      .at(-1)?.props.accessibilityState?.checked;
+
+  test("온보딩에서 고른 알림을 보여 주고, 재연결 제안을 켜서 저장한다", async () => {
+    const root = await openSettings();
+    await press(root, "알림 설정");
+    await waitForText(root, "재연결 제안");
+
+    // 온보딩 06은 6개 모두 켜짐, 재연결 제안은 온보딩에 없어 꺼짐 → 전체 알림도 꺼짐 (시안 첫 화면)
+    expect(switchOn(root, "오늘의 상태 확인")).toBe(true);
+    expect(switchOn(root, "재연결 제안")).toBe(false);
+    expect(switchOn(root, "전체 알림")).toBe(false);
+
+    await pressByRole(
+      root,
+      "switch",
+      "재연결 제안, 오래 연락하지 않은 친구의 안부를 제안해요"
+    );
+    expect(switchOn(root, "전체 알림")).toBe(true);
+    await press(root, "저장하기");
+    await waitForText(root, "알림 설정을 저장했어요");
+    const saved = JSON.parse((await services.storage.getItem(ONBOARDING_KEY))!);
+    expect(saved.notificationPrefs).toContain("RECONNECT");
+  });
+
+  test("전체 알림을 끄면 모두 꺼진다", async () => {
+    const root = await openSettings();
+    await press(root, "알림 설정");
+    await waitForText(root, "재연결 제안");
+    await pressByRole(root, "switch", "전체 알림");
+    await pressByRole(root, "switch", "전체 알림");
+    expect(switchOn(root, "오늘의 상태 확인")).toBe(false);
+    expect(switchOn(root, "재연결 제안")).toBe(false);
+    await press(root, "저장하기");
+    await waitForText(root, "알림 설정을 저장했어요");
+    const saved = JSON.parse((await services.storage.getItem(ONBOARDING_KEY))!);
+    expect(saved.notificationPrefs).toEqual([]);
+  });
+});
+
+describe("내 상황과 답장 기준 (H05)", () => {
+  test("온보딩에서 쓴 AI 메모리를 고쳐 저장한다", async () => {
+    const root = await openSettings();
+    await press(root, "내 상황과 답장 기준");
+    await waitForText(root, "AI 답장 맞춤 설정");
+
+    const input = (label: string) =>
+      root
+        .findAll(
+          (n) =>
+            typeof n.type === "string" &&
+            !!n.props.onChangeText &&
+            n.props.accessibilityLabel === label
+        )
+        .at(-1)!;
+    await ReactTestRenderer.act(async () =>
+      input("답장에 사용해도 되는 내 상황").props.onChangeText(
+        "취업 준비 중이에요"
+      )
+    );
+    await pressByRole(root, "radio", "가족");
+    await press(root, "답장 기준 저장하기");
+    await waitForText(root, "답장 기준을 저장했어요!");
+    const saved = JSON.parse((await services.storage.getItem(ONBOARDING_KEY))!);
+    expect(saved.memory).toEqual({
+      status: "취업 준비 중이에요",
+      avoid: "",
+      avoidTopics: ["가족"],
+    });
   });
 });
 
