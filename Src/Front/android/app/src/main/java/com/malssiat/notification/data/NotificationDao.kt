@@ -42,6 +42,7 @@ interface NotificationDao {
     suspend fun deleteAll(): Int
 
     /** 메시지 시각이 cutoff보다 오래된 행을 지운다 (보관 기간 정리, NotificationRetention) */
-    @Query("DELETE FROM notification_messages WHERE message_time < :cutoff")
-    suspend fun deleteOlderThan(cutoff: Long): Int
+    // 보관 주기가 끝나면 그 전에 저장된 원문을 모두 지움 (NotificationRetention)
+    @Query("DELETE FROM notification_messages WHERE saved_at < :boundary")
+    suspend fun deleteSavedBefore(boundary: Long): Int
 }

@@ -200,10 +200,12 @@ Front/
     - DB: `SQLITE_NOTADB`(암호가 다름)·`SQLITE_CORRUPT`(손상)
   - 그 밖의 실패(부팅 직후 Keystore 미준비, 일시적인 Keystore 오류, 메모리 부족, 파일 잠김 등)는 DB를 지우지 않습니다. 그때는 DB를 열지 않고(알림 저장 실패로 기록) 다음 알림이나 다음 조회 때 다시 시도합니다.
   - 에뮬레이터에서 DB 내용을 보려면 `NotificationDebug` 화면을 쓰세요. `adb`로 꺼낸 파일은 `sqlite3`로 열리지 않습니다.
-- **보관 기간:** 메시지 시각이 보관 기간(기본 30일)보다 오래되면 지웁니다 (`data/NotificationRetention.kt`).
-  - 새 알림을 저장할 때와 JS에서 메시지를 읽을 때 정리하고, 실제 삭제는 1시간에 한 번만 합니다.
-  - 보관 기간보다 이미 오래된 알림은 처음부터 저장하지 않습니다.
-  - `setRetentionDays(일)`로 바꿀 수 있고(1~365일), 기간을 줄이면 바로 지웁니다. 기본 기간은 팀 결정이 필요합니다.
+- **보관 주기 (#60):** 주기(기본 30일)가 끝날 때마다 **원문 전체**를 지웁니다 (`data/NotificationRetention.kt`, 설정 H07 "수집 원문 전체 캐시").
+  - 첫 주기는 가입일부터 셉니다 (로그인하면 `startRetentionCycle(가입 시각)`, GET /users/me의 `createdAt`). 아직 알려 주지 않았으면 이 기기에서 처음 쓴 때부터.
+  - 주기가 끝나면 그때까지 저장된 원문을 모두 지우고, 그 시각부터 다음 주기를 셉니다. 앱을 오래 안 켰으면 가장 최근 경계로 맞춥니다.
+  - 설정에서 "지금 바로 삭제"하면(`deleteAllNow()`) 그 시각부터 주기를 다시 셉니다. 회원 탈퇴는 `deleteAllNow(true)`로 주기 기록까지 처음으로.
+  - 새 알림을 저장할 때와 JS에서 메시지를 읽을 때 확인하고, 1시간에 한 번만 합니다. 마지막 전체 삭제보다 오래된 메시지는 다시 저장하지 않습니다.
+  - `setRetentionDays(일)`로 주기를 바꿀 수 있습니다(1~365일). 기본 주기는 팀 결정이 필요합니다.
 
 ```ts
 import NotificationStore from "@native/NotificationStore";
@@ -212,8 +214,9 @@ await NotificationStore.isPermissionGranted();       // 알림 접근 허용 여
 await NotificationStore.openPermissionSettings();    // 허용 설정 화면 열기
 await NotificationStore.setMonitoredApps(["com.kakao.talk"]);
 const list = await NotificationStore.getNotifications({ packageName: "com.kakao.talk", limit: 50 });
-await NotificationStore.getRetentionDays();          // 메시지 보관 기간 (기본 30일)
-await NotificationStore.setRetentionDays(14);        // 바꾸면 기간이 지난 메시지를 바로 지움 (지운 개수 반환)
+await NotificationStore.getRetentionInfo();          // { count, days, lastFullDeleteAt, nextFullDeleteAt } (H07)
+await NotificationStore.deleteAllNow();              // 원문 전체를 지금 삭제, 이 시각부터 주기를 다시 셈
+await NotificationStore.setRetentionDays(14);        // 주기 변경 (이미 지났으면 바로 지움, 지운 개수 반환)
 ```
 
 개발용 확인 화면은 `src/pages/dev/NotificationDebug.tsx`입니다. `initialRouteName`을 잠시 `"NotificationDebug"`로 바꾸면 권한 허용 → 앱 선택 → 저장된 알림 확인을 한 화면에서 할 수 있습니다.

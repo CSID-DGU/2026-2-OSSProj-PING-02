@@ -10,6 +10,12 @@ import TruncatedMessage from "@pages/contact/TruncatedMessage";
 import FriendDetail from "@pages/friend/FriendDetail";
 import FirstWords from "@pages/friend/FirstWords";
 import Notifications from "@pages/main/Notifications";
+import StoredData from "@pages/settings/StoredData";
+import ProfileInfo from "@pages/settings/ProfileInfo";
+import PasswordChange from "@pages/settings/PasswordChange";
+import LinkedAppsSettings from "@pages/settings/LinkedAppsSettings";
+import ReplyGuide from "@pages/settings/ReplyGuide";
+import NotificationSettings from "@pages/settings/NotificationSettings";
 import HelpLevel from "@pages/home/HelpLevel";
 import HelpMode from "@pages/home/HelpMode";
 import type { TabStackParamList } from "./types";
@@ -36,6 +42,17 @@ export const createTabStack = (
 
       {/* 공통: 앱바 🔔 */}
       <Stack.Screen name="Notifications" component={Notifications} />
+
+      {/* Settings (08 설정, #60) */}
+      <Stack.Screen name="SettingsProfile" component={ProfileInfo} />
+      <Stack.Screen name="SettingsPassword" component={PasswordChange} />
+      <Stack.Screen name="SettingsLinkedApps" component={LinkedAppsSettings} />
+      <Stack.Screen name="SettingsStoredData" component={StoredData} />
+      <Stack.Screen name="SettingsReplyGuide" component={ReplyGuide} />
+      <Stack.Screen
+        name="SettingsNotifications"
+        component={NotificationSettings}
+      />
 
       {/* Home (04 홈 오늘의 도움 수준) */}
       <Stack.Screen name="HomeHelpLevel" component={HelpLevel} />

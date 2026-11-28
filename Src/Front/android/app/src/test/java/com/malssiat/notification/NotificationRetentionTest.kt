@@ -12,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -22,7 +23,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 
 /**
- * 메시지 보관 기간 정리와 DB 암호화 보조 함수.
+ * 원문 보관 주기(30일마다 전체 삭제)와 DB 암호화 보조 함수.
  * SQLCipher 네이티브 라이브러리·Android Keystore는 JVM에서 돌지 않으므로, 암호화 자체는 에뮬레이터에서 확인한다.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -50,7 +51,8 @@ class NotificationRetentionTest {
     @After
     fun tearDown() = db.close()
 
-    private fun message(id: String, ageDays: Double) = NotificationEntity(
+    // savedDaysAgo일 전에 저장된 원문 (메시지 시각도 같게)
+    private fun message(id: String, savedDaysAgo: Double, at: Long = now) = NotificationEntity(
         packageName = "com.kakao.talk",
         appName = "카카오톡",
         conversationId = "room1",
@@ -58,57 +60,109 @@ class NotificationRetentionTest {
         sender = "민수",
         text = "메시지 $id",
         isGroupConversation = false,
-        messageTime = now - (ageDays * DAY_MS).toLong(),
+        messageTime = at - (savedDaysAgo * DAY_MS).toLong(),
         messageId = id,
         notificationKey = "key",
-        savedAt = now,
+        savedAt = at - (savedDaysAgo * DAY_MS).toLong(),
     )
 
+    private val day = DAY_MS
+
     @Test
-    fun `기본 보관 기간은 30일이고 1~365일로 맞춘다`() {
+    fun `기본 주기는 30일이고 1~365일로 맞춘다`() {
         assertEquals(30, retention.getDays())
         assertEquals(1, NotificationRetention.clampDays(0))
         assertEquals(365, NotificationRetention.clampDays(1000))
-        assertEquals(now - 30 * DAY_MS, NotificationRetention.cutoffOf(now, 30))
     }
 
     @Test
-    fun `보관 기간이 지난 메시지는 저장 전에 걸러진다`() {
-        assertTrue(retention.isExpired(now - 31 * DAY_MS, now))
-        assertFalse(retention.isExpired(now - 29 * DAY_MS, now))
+    fun `가장 최근 주기 경계 - 첫 주기 안이면 없고, 여러 주기를 건너뛰면 마지막 경계로`() {
+        val start = now - 10 * day
+        assertNull(NotificationRetention.lastBoundary(start, 30, now))
+        assertEquals(start + 30 * day, NotificationRetention.lastBoundary(start, 30, start + 30 * day))
+        assertEquals(start + 60 * day, NotificationRetention.lastBoundary(start, 30, start + 65 * day))
     }
 
     @Test
-    fun `정리는 30일보다 오래된 메시지만 지운다`() = runBlocking {
+    fun `가입일부터 30일이 지나면 그 전에 저장된 원문을 모두 지우고 그때부터 다음 주기를 센다`() = runBlocking {
         val dao = db.notificationDao()
-        dao.insertAll(listOf(message("old", 31.0), message("edge", 29.9), message("new", 1.0)))
+        val signup = now - 20 * day
+        retention.startCycleIfFirst(signup, dao, now)
+        dao.insertAll(listOf(message("a", 15.0), message("b", 1.0)))
 
+        // 첫 주기 안: 지우지 않음, 아직 지운 적 없음
+        assertEquals(0, retention.purgeIfDue(dao, now + PURGE_INTERVAL_MS))
+        assertNull(retention.info(now).lastFullDeleteAt)
+        assertEquals(signup + 30 * day, retention.info(now).nextFullDeleteAt)
+
+        // 가입일 + 30일이 지나면 전부
+        val later = signup + 31 * day
+        assertEquals(2, retention.purgeIfDue(dao, later))
+        assertEquals(0, dao.count())
+        val info = retention.info(later)
+        assertEquals(signup + 30 * day, info.lastFullDeleteAt)
+        assertEquals(signup + 60 * day, info.nextFullDeleteAt)
+        // 지운 시각보다 오래된 메시지는 다시 저장하지 않음
+        assertTrue(retention.isExpired(signup + 29 * day))
+        assertFalse(retention.isExpired(signup + 30 * day + 1))
+    }
+
+    @Test
+    fun `가입일은 한 번도 지우기 전에만 첫 주기 시작으로 쓴다`() = runBlocking {
+        val dao = db.notificationDao()
+        retention.deleteAllNow(dao, now)
+        retention.startCycleIfFirst(now - 100 * day, dao, now)
+        assertEquals(now, retention.info(now).cycleStartAt)
+    }
+
+    @Test
+    fun `지금 바로 삭제하면 원문을 모두 지우고 그 시각부터 주기를 다시 센다`() = runBlocking {
+        val dao = db.notificationDao()
+        retention.startCycleIfFirst(now - 20 * day, dao, now)
+        dao.insertAll(listOf(message("a", 3.0), message("b", 1.0)))
+
+        assertEquals(2, retention.deleteAllNow(dao, now))
+        val info = retention.info(now)
+        assertEquals(now, info.lastFullDeleteAt)
+        assertEquals(now + 30 * day, info.nextFullDeleteAt)
+    }
+
+    @Test
+    fun `확인은 1시간에 한 번만 하고 시계가 뒤로 가면 다시 한다`() = runBlocking {
+        val dao = db.notificationDao()
+        retention.startCycleIfFirst(now - 30 * day - 1, dao, now - PURGE_INTERVAL_MS)
+        dao.insertAll(listOf(message("a", 1.0)))
+
+        assertEquals(0, retention.purgeIfDue(dao, now - PURGE_INTERVAL_MS + 1))
         assertEquals(1, retention.purgeIfDue(dao, now))
-        assertEquals(listOf("new", "edge"), dao.getRecent(10).map { it.messageId })
+
+        dao.insertAll(listOf(message("b", 0.5, at = now)))
+        // 다음 주기 전이라 시계가 뒤로 가도 지울 것은 없음
+        assertEquals(0, retention.purgeIfDue(dao, now - 1000))
     }
 
     @Test
-    fun `정리는 1시간에 한 번만 하고 시계가 뒤로 가면 다시 한다`() = runBlocking {
+    fun `주기를 줄여 이미 지났으면 바로 지운다`() = runBlocking {
         val dao = db.notificationDao()
-        retention.purgeIfDue(dao, now)
-        dao.insertAll(listOf(message("old", 40.0)))
-
-        assertEquals(0, retention.purgeIfDue(dao, now + PURGE_INTERVAL_MS - 1))
-        assertEquals(1, retention.purgeIfDue(dao, now + PURGE_INTERVAL_MS))
-
-        dao.insertAll(listOf(message("old2", 40.0)))
-        assertEquals(1, retention.purgeIfDue(dao, now - 1000))
-    }
-
-    @Test
-    fun `보관 기간을 줄이면 바로 지운다`() = runBlocking {
-        val dao = db.notificationDao()
-        retention.purgeIfDue(dao, now)
-        dao.insertAll(listOf(message("a", 10.0), message("b", 3.0)))
+        retention.startCycleIfFirst(now - 10 * day, dao, now)
+        dao.insertAll(listOf(message("a", 5.0)))
 
         assertEquals(1, retention.setDays(7, dao, now))
         assertEquals(7, retention.getDays())
-        assertEquals(listOf("b"), dao.getRecent(10).map { it.messageId })
+        assertEquals(now - 10 * day + 7 * day, retention.info(now).lastFullDeleteAt)
+    }
+
+    @Test
+    fun `탈퇴 등으로 처음부터 - 원문과 주기 기록을 모두 지운다`() = runBlocking {
+        val dao = db.notificationDao()
+        retention.deleteAllNow(dao, now - day)
+        dao.insertAll(listOf(message("a", 0.1)))
+
+        assertEquals(1, retention.reset(dao))
+        assertNull(retention.info(now).lastFullDeleteAt)
+        // 다음 사용자의 가입일이 다시 첫 주기 시작이 됨
+        retention.startCycleIfFirst(now - 3 * day, dao, now)
+        assertEquals(now - 3 * day, retention.info(now).cycleStartAt)
     }
 
     @Test

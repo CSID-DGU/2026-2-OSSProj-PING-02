@@ -28,7 +28,7 @@ export interface RequestOptions {
   auth?: boolean;
 }
 
-export type HttpMethod = "GET" | "POST" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 export interface HttpClient {
   request<T>(method: HttpMethod, path: string, options?: RequestOptions): Promise<T>;

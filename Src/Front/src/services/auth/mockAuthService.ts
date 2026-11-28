@@ -1,4 +1,8 @@
-import { isValidLoginId, isValidPassword, normalizeLoginId } from "@constants/authRules";
+import {
+  isValidLoginId,
+  isValidPassword,
+  normalizeLoginId,
+} from "@constants/authRules";
 import { COMMON_ERROR_CODE, delay, ServiceError } from "../common";
 import { AUTH_FEATURES } from "../config";
 import {
@@ -26,6 +30,8 @@ export const MOCK_DEMO_ACCOUNT = {
   password: "abcd1234",
   name: "말씨",
   email: "demo@malssiat.app",
+  birthdate: "1997-02-12",
+  gender: "MALE" as const,
 };
 
 // 백엔드 시드와 같은 3건 (AI_TRANSFER는 초안·선택 동의)
@@ -86,16 +92,24 @@ interface MockOptions {
 }
 
 const validationError = (field: string, reason = "matches") =>
-  new ServiceError(COMMON_ERROR_CODE.validationFailed, "입력값이 올바르지 않습니다.", {
-    status: 400,
-    details: [{ field, reason }],
-  });
+  new ServiceError(
+    COMMON_ERROR_CODE.validationFailed,
+    "입력값이 올바르지 않습니다.",
+    {
+      status: 400,
+      details: [{ field, reason }],
+    }
+  );
 
 const emailFormatError = () =>
-  new ServiceError(AUTH_ERROR_CODE.invalidEmailFormat, "이메일 형식이 올바르지 않습니다.", {
-    status: 400,
-    details: [{ field: "email", reason: "isEmail" }],
-  });
+  new ServiceError(
+    AUTH_ERROR_CODE.invalidEmailFormat,
+    "이메일 형식이 올바르지 않습니다.",
+    {
+      status: 400,
+      details: [{ field: "email", reason: "isEmail" }],
+    }
+  );
 
 const invalidCredentials = () =>
   new ServiceError(
@@ -127,6 +141,11 @@ export const createMockAuthService = ({
         loginId: MOCK_DEMO_ACCOUNT.loginId,
         name: MOCK_DEMO_ACCOUNT.name,
         email: MOCK_DEMO_ACCOUNT.email,
+        birthdate: MOCK_DEMO_ACCOUNT.birthdate,
+        gender: MOCK_DEMO_ACCOUNT.gender,
+        provider: "EMAIL",
+        // 시안 H07처럼 가입한 지 며칠 지난 계정
+        createdAt: new Date(now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
         password: MOCK_DEMO_ACCOUNT.password,
         verified: true,
         failedLogins: 0,
@@ -141,11 +160,24 @@ export const createMockAuthService = ({
   let nextId = 1;
   let issued = 0;
 
-  const toUser = ({ id, loginId, name, email }: MockUser): AuthUser => ({
+  const toUser = ({
     id,
     loginId,
     name,
     email,
+    birthdate,
+    createdAt,
+    gender,
+    provider,
+  }: MockUser): AuthUser => ({
+    id,
+    loginId,
+    name,
+    email,
+    birthdate,
+    createdAt,
+    gender,
+    provider,
   });
 
   // 갱신 토큰: mock-refresh.<아이디>.<시각>.<번호> (아이디에는 '.'이 없음)
@@ -171,7 +203,51 @@ export const createMockAuthService = ({
     );
 
   const assertEmail = (email: string) => {
-    if (!EMAIL_FORMAT.test(email) || email.length > 255) throw emailFormatError();
+    if (!EMAIL_FORMAT.test(email) || email.length > 255)
+      throw emailFormatError();
+  };
+
+  // 지금 세션의 계정 (갱신 토큰에 아이디가 들어 있음)
+  const currentUser = () => {
+    const refreshToken = tokens.get()?.refreshToken;
+    const [, loginId] = refreshToken?.split(".") ?? [];
+    const user = loginId ? users.get(loginId) : undefined;
+    if (!refreshToken || !user || revoked.has(refreshToken)) {
+      throw new ServiceError(
+        COMMON_ERROR_CODE.unauthorized,
+        "로그인이 필요합니다.",
+        {
+          status: 401,
+        }
+      );
+    }
+    return user;
+  };
+
+  // 로그인과 같은 실패 횟수·잠금을 씀
+  const checkCurrentPassword = (password: string) => {
+    const user = currentUser();
+    if (user.lockedUntil && user.lockedUntil > now()) {
+      throw new ServiceError(
+        COMMON_ERROR_CODE.rateLimited,
+        "요청이 너무 많습니다.",
+        {
+          status: 429,
+          retryAfterSec: 60,
+        }
+      );
+    }
+    if (!password) throw validationError("password");
+    if (user.password !== password) {
+      user.failedLogins += 1;
+      if (user.failedLogins >= LOCK_AFTER_FAILURES) {
+        user.lockedUntil = now() + LOCK_MS;
+        user.failedLogins = 0;
+      }
+      throw invalidCredentials();
+    }
+    user.failedLogins = 0;
+    return user;
   };
 
   return {
@@ -193,16 +269,18 @@ export const createMockAuthService = ({
       const loginId = normalizeLoginId(input.loginId);
       if (!isValidLoginId(loginId)) throw validationError("username");
       const name = input.name ?? "";
-      if (name.length < 1 || name.length > 50) throw validationError("name", "length");
-      if (!BIRTHDATE_FORMAT.test(input.birthdate)) throw validationError("birthdate");
+      if (name.length < 1 || name.length > 50)
+        throw validationError("name", "length");
+      if (!BIRTHDATE_FORMAT.test(input.birthdate))
+        throw validationError("birthdate");
       const email = normalizeEmail(input.email ?? "");
       assertEmail(email);
       if (!isValidPassword(input.password)) throw validationError("password");
       // 2) 필수 약관 (422)
       const agreed = new Set(
-        input.termsAgreements.filter(t => t.agreed).map(t => t.termsId)
+        input.termsAgreements.filter((t) => t.agreed).map((t) => t.termsId)
       );
-      if (MOCK_TERMS.some(t => t.required && !agreed.has(t.id))) {
+      if (MOCK_TERMS.some((t) => t.required && !agreed.has(t.id))) {
         throw new ServiceError(
           AUTH_ERROR_CODE.requiredTermsNotAgreed,
           "필수 약관에 동의해야 합니다.",
@@ -224,6 +302,10 @@ export const createMockAuthService = ({
         loginId,
         name,
         email,
+        birthdate: input.birthdate,
+        gender: input.gender,
+        provider: "EMAIL",
+        createdAt: new Date(now()).toISOString(),
         password: input.password,
         verified: !verify,
         failedLogins: 0,
@@ -272,7 +354,12 @@ export const createMockAuthService = ({
       const refreshToken = tokens.get()?.refreshToken;
       const [prefix, loginId] = refreshToken?.split(".") ?? [];
       const user = loginId ? users.get(loginId) : undefined;
-      if (!refreshToken || prefix !== "mock-refresh" || !user || revoked.has(refreshToken)) {
+      if (
+        !refreshToken ||
+        prefix !== "mock-refresh" ||
+        !user ||
+        revoked.has(refreshToken)
+      ) {
         // httpClient와 같이: 세션이 끝났으면 보관소 토큰을 지움
         tokens.set(null);
         throw refreshTokenInvalid();
@@ -280,6 +367,66 @@ export const createMockAuthService = ({
       revoked.add(refreshToken);
       tokens.set(issueTokens(user));
       return toUser(user);
+    },
+
+    // 내 정보 (#62): 로그인과 같은 실패 횟수·잠금 (5번 틀리면 5분, 잠긴 동안은 429)
+    async verifyPassword(password) {
+      await delay(latency / 2);
+      checkCurrentPassword(password);
+    },
+
+    async updateProfile({ password, email, birthdate, gender }) {
+      await delay(latency);
+      const user = checkCurrentPassword(password);
+      if (email !== undefined) {
+        const normalized = normalizeEmail(email);
+        assertEmail(normalized);
+        user.email = normalized;
+      }
+      if (birthdate !== undefined) {
+        if (!BIRTHDATE_FORMAT.test(birthdate))
+          throw validationError("birthdate");
+        user.birthdate = birthdate;
+      }
+      if (gender !== undefined) user.gender = gender;
+      return toUser(user);
+    },
+
+    async changePassword(currentPassword, newPassword) {
+      await delay(latency);
+      const user = checkCurrentPassword(currentPassword);
+      if (!isValidPassword(newPassword)) throw validationError("newPassword");
+      if (newPassword === currentPassword) {
+        throw new ServiceError(
+          COMMON_ERROR_CODE.validationFailed,
+          "지금 비밀번호와 같습니다.",
+          {
+            status: 400,
+            details: [{ field: "newPassword", reason: "same_as_current" }],
+          }
+        );
+      }
+      user.password = newPassword;
+    },
+
+    async deleteAccount(password) {
+      await delay(latency);
+      // 지금 세션의 계정 (갱신 토큰에 아이디가 들어 있음)
+      const refreshToken = tokens.get()?.refreshToken;
+      const [, loginId] = refreshToken?.split(".") ?? [];
+      const user = loginId ? users.get(loginId) : undefined;
+      if (!refreshToken || !user || revoked.has(refreshToken)) {
+        throw new ServiceError(
+          COMMON_ERROR_CODE.unauthorized,
+          "로그인이 필요합니다.",
+          {
+            status: 401,
+          }
+        );
+      }
+      if (user.password !== password) throw invalidCredentials();
+      users.delete(user.loginId);
+      revoked.add(refreshToken);
     },
 
     async findLoginId(email) {
@@ -327,7 +474,7 @@ export const createMockAuthService = ({
     async verifyEmail(email, code) {
       await delay(latency);
       const user = [...users.values()].find(
-        u => u.email === normalizeEmail(email) && !u.verified
+        (u) => u.email === normalizeEmail(email) && !u.verified
       );
       if (!user || code !== MOCK_VERIFICATION_CODE) throw codeInvalid();
       user.verified = true;

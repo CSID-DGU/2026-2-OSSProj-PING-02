@@ -34,6 +34,8 @@ interface SessionContextValue {
   session: SessionState;
   signIn: (result: AuthResult) => Promise<void>;
   signOut: () => Promise<void>;
+  // 내 정보를 고친 뒤 화면의 사용자 정보만 바꿈 (설정 H02, #60). 로그인 중일 때만
+  updateUser: (user: AuthUser) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -57,7 +59,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   // 토큰이 지워지면 로그인 화면으로 (로그아웃·갱신 실패 모두)
   useEffect(
     () =>
-      tokens.subscribe(next => {
+      tokens.subscribe((next) => {
         if (!next) setSession({ status: "signedOut" });
       }),
     [setSession]
@@ -112,9 +114,17 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [setSession]);
 
+  const updateUser = useCallback(
+    (user: AuthUser) => {
+      if (sessionRef.current.status !== "signedIn") return;
+      setSession({ status: "signedIn", user });
+    },
+    [setSession]
+  );
+
   const value = useMemo(
-    () => ({ session, signIn, signOut }),
-    [session, signIn, signOut]
+    () => ({ session, signIn, signOut, updateUser }),
+    [session, signIn, signOut, updateUser]
   );
 
   // AI로 보내기 전 마스킹에 내 이름을 넣음 (#69). 로그아웃하면 비움

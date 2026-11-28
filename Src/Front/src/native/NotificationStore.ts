@@ -54,6 +54,18 @@ interface NotificationStoreNative {
   clearNotifications(packageName: string | null): Promise<number>;
   getRetentionDays(): Promise<number>;
   setRetentionDays(days: number): Promise<number>;
+  getRetentionInfo(): Promise<RetentionInfo>;
+  startRetentionCycle(startAt: number): Promise<RetentionInfo>;
+  deleteAllNotificationsNow(resetCycle: boolean): Promise<number>;
+}
+
+/** 수집 원문 보관 상태 (설정 H07 "수집 원문 전체 캐시"). 시각은 ms */
+export interface RetentionInfo {
+  count: number; // 저장된 원문 개수
+  days: number; // 보관 주기(일, 기본 30)
+  cycleStartAt: number;
+  lastFullDeleteAt: number | null; // 아직 한 번도 전체 삭제를 안 했으면 null
+  nextFullDeleteAt: number;
 }
 
 const native = NativeModules.NotificationStore as
@@ -118,12 +130,23 @@ const NotificationStore = {
   clearNotifications: (packageName?: string) =>
     getNative().clearNotifications(packageName ?? null),
   /**
-   * 메시지 보관 기간(일, 기본 30). 메시지 시각이 이보다 오래되면 기기에서 지움
-   * (새 알림 저장·메시지 조회 때 1시간에 한 번 정리)
+   * 원문 보관 주기(일, 기본 30). 주기가 끝날 때마다 원문 전체를 지움 (#60, 가입일부터 셈)
+   * (새 알림 저장·메시지 조회 때 1시간에 한 번 확인)
    */
   getRetentionDays: () => getNative().getRetentionDays(),
-  /** 보관 기간 변경 (1~365일로 맞춤). 기간이 지난 메시지를 바로 지우고 지운 개수를 돌려줌 */
+  /** 보관 주기 변경 (1~365일로 맞춤). 주기가 지났으면 바로 지우고 지운 개수를 돌려줌 */
   setRetentionDays: (days: number) => getNative().setRetentionDays(days),
+  /** 원문 개수·마지막/다음 전체 삭제 시각 (주기가 지났으면 먼저 지움) */
+  getRetentionInfo: () => getNative().getRetentionInfo(),
+  /** 첫 주기의 시작을 가입일로 (아직 한 번도 전체 삭제를 안 했을 때만 바뀜) */
+  startRetentionCycle: (startAt: number) =>
+    getNative().startRetentionCycle(startAt),
+  /**
+   * 원문 전체를 지금 지움. 기본은 이 시각부터 주기를 다시 셈(H07 "지금 바로 삭제"),
+   * resetCycle이면 주기 기록도 처음으로(회원 탈퇴). 지운 개수를 돌려줌
+   */
+  deleteAllNow: (resetCycle = false) =>
+    getNative().deleteAllNotificationsNow(resetCycle),
 };
 
 export default NotificationStore;

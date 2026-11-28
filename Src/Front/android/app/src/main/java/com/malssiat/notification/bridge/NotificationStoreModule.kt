@@ -164,13 +164,66 @@ class NotificationStoreModule(
         }
     }
 
-    /** 메시지 보관 기간(일) */
+    /**
+     * 수집 원문 보관 상태 (설정 H07): 원문 개수, 주기(일), 마지막·다음 전체 삭제 시각.
+     * 주기가 지났으면 먼저 지우고 돌려준다
+     */
+    @ReactMethod
+    fun getRetentionInfo(promise: Promise) {
+        scope.launch {
+            runCatching {
+                retention.purgeIfDue(dao)
+                retentionInfoMap()
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_DB", it) }
+        }
+    }
+
+    /** 첫 주기의 시작을 가입일로 (아직 한 번도 전체 삭제를 안 했을 때만). 보관 상태를 돌려준다 */
+    @ReactMethod
+    fun startRetentionCycle(startAt: Double, promise: Promise) {
+        scope.launch {
+            runCatching {
+                retention.startCycleIfFirst(startAt.toLong(), dao)
+                retentionInfoMap()
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_DB", it) }
+        }
+    }
+
+    /**
+     * 원문 전체를 지금 지운다. resetCycle이 false면 이 시각부터 주기를 다시 세고(H07 "지금 바로 삭제"),
+     * true면 주기 기록도 처음으로(회원 탈퇴). 지운 개수를 돌려준다
+     */
+    @ReactMethod
+    fun deleteAllNotificationsNow(resetCycle: Boolean, promise: Promise) {
+        scope.launch {
+            runCatching {
+                if (resetCycle) retention.reset(dao) else retention.deleteAllNow(dao)
+            }.onSuccess(promise::resolve)
+                .onFailure { promise.reject("E_DB", it) }
+        }
+    }
+
+    private suspend fun retentionInfoMap(): WritableMap {
+        val info = retention.info()
+        return Arguments.createMap().apply {
+            putInt("count", dao.count())
+            putInt("days", info.days)
+            putDouble("cycleStartAt", info.cycleStartAt.toDouble())
+            info.lastFullDeleteAt?.let { putDouble("lastFullDeleteAt", it.toDouble()) }
+                ?: putNull("lastFullDeleteAt")
+            putDouble("nextFullDeleteAt", info.nextFullDeleteAt.toDouble())
+        }
+    }
+
+    /** 메시지 보관 주기(일) */
     @ReactMethod
     fun getRetentionDays(promise: Promise) {
         promise.resolve(retention.getDays())
     }
 
-    /** 보관 기간을 바꾸고 기간이 지난 메시지를 바로 지운다. 지운 개수를 돌려준다 */
+    /** 보관 주기를 바꾸고 주기가 지났으면 바로 지운다. 지운 개수를 돌려준다 */
     @ReactMethod
     fun setRetentionDays(days: Double, promise: Promise) {
         scope.launch {

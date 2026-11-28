@@ -238,7 +238,9 @@ describe("앱 재시작·로그아웃", () => {
     ).toBeNull();
 
     await pressByRole(root, "tab", "설정");
-    await press(root, "로그아웃 (개발용)");
+    // 설정 > 로그아웃 → 확인 팝업의 로그아웃 (#60)
+    await press(root, "로그아웃");
+    await press(root, "로그아웃");
     await waitForText(root, "시작하기");
     expect(
       await services.aiReplies.listByConversation(CONVERSATION_ID)
@@ -303,7 +305,9 @@ describe("알림을 모을 앱 목록 (#83)", () => {
     expect(await services.collection.getApps()).toEqual([KAKAO]);
 
     await pressByRole(root, "tab", "설정");
-    await press(root, "로그아웃 (개발용)");
+    // 설정 > 로그아웃 → 확인 팝업의 로그아웃 (#60)
+    await press(root, "로그아웃");
+    await press(root, "로그아웃");
     await waitForText(root, "시작하기");
     expect(await services.collection.getApps()).toEqual([]);
 
@@ -323,7 +327,9 @@ describe("알림을 모을 앱 목록 (#83)", () => {
     const root = await renderApp();
     await waitForText(root, "오늘의 도움 수준");
     await pressByRole(root, "tab", "설정");
-    await press(root, "로그아웃 (개발용)");
+    // 설정 > 로그아웃 → 확인 팝업의 로그아웃 (#60)
+    await press(root, "로그아웃");
+    await press(root, "로그아웃");
     await waitForText(root, "시작하기");
 
     // 다른 계정(인스타그램)으로 앱을 다시 켬 (저장된 토큰으로 자동 로그인)

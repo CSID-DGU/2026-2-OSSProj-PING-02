@@ -8,6 +8,8 @@ export interface TextFieldProps extends Omit<InputProps, "state"> {
   label?: string;
   helper?: string;
   error?: string;
+  // 초록 확인 문구 (error가 있으면 error가 우선)
+  success?: string;
   disabled?: boolean;
 }
 
@@ -15,6 +17,7 @@ export const TextField = ({
   label,
   helper,
   error,
+  success,
   disabled = false,
   onFocus,
   onBlur,
@@ -26,6 +29,8 @@ export const TextField = ({
     ? "disabled"
     : error
     ? "error"
+    : success
+    ? "success"
     : focused
     ? "focused"
     : "default";
@@ -40,7 +45,7 @@ export const TextField = ({
   };
 
   return (
-    <Field label={label} helper={error ?? helper} state={state}>
+    <Field label={label} helper={error ?? success ?? helper} state={state}>
       <Input
         {...rest}
         state={state}

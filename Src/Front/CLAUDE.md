@@ -34,6 +34,7 @@
 - 컴포넌트: `@core/ui` 공통 컴포넌트만. 비슷한 컴포넌트를 화면 폴더에 새로 만들지 말고 **조합**으로 해결
 - `@core/ui`에 **새 공통 컴포넌트 추가는 가능** (공통 컴포넌트 담당 팀원 허락, #44). 여러 화면에서 쓰는 것만, 폴더 하나 + `index.ts` + `core/index.ts` export + Playground 예시 + `__tests__/CommonUi.test.tsx`
 - **기존** `src/core` 컴포넌트는 최소한으로만 수정. 예외: 터치 영역 48dp용 `hitSlop`(Header·ChoiceGroup·Checkbox·Dialog·Button(text)·Select), 아이콘 등록
+- #60에서 추가: `Button` `variant="danger"`(되돌릴 수 없는 행동, 연한 빨강), `Toast` `icon: "error"`(저장 실패 등), `Dialog` `showCloseIcon`·`onDismiss`(오른쪽 위 X, 아래 글자 버튼이 닫기가 아닐 때), `TextField` `success`(초록 확인 문구), `BottomSheet` 키보드 높이만큼 올림, 아이콘 `PersonCircleIcon`·`IdCardIcon`·`BirthdayHatIcon`·`CloseIcon`·`ErrorCircleIcon`
 - #44에서 추가: `BottomSheet`·`BottomSheetActions`(sheet), `Toast`·`ToastProvider`·`useToast`(toast, App에 Provider 있음), `Switch`·`SwitchRow`(switch), `UnderlineTabs`(tabs, `scrollable`), `Calendar`·`TimeSelect`·`DateTimeSheet`·날짜 도우미(calendar, 패키지 없이 구현), `FooterLayout`(layout, 목록 + 아래 고정 버튼), 아이콘 `ChevronRightIcon`·`BellIcon`
 - 아이콘: `UI/assets/icons/ui` SVG를 `@core/ui/icon`에 등록해서 사용
 - 토큰에 없는 Figma 색은 쓰기 전에 "시안 색 / 가장 가까운 토큰" 후보를 보여주고 물어봄 (새 토큰 추가 금지)
@@ -83,7 +84,7 @@
   - 목록 분석(질문·멘션·답장 필요)은 기기 안 규칙만. **AI는 대화방을 열 때 그 방 하나만 한 번** 부르고 결과를 저장해 답장 화면에서 다시 씀. 기관·번호 발신자, 안내 문구(`isPlaceholder`)만 있는 대화는 보내지 않음
   - **자동 갱신 (#71)**: 알림 리스너가 새 메시지를 저장하면 `NotificationEvents` → `NotificationStoreModule`이 JS 이벤트(`malssiat.notificationsSaved`, 내용 없음)를 보냄 → `ConversationService.onChange` → `useConversations`가 화면이 보이는 동안 0.5초 안의 이벤트를 묶어 다시 읽음. 앱이 앞으로 올 때도 다시 읽음. 로딩 표시 없이 내용만 바뀌고 AI는 부르지 않음. 연락 탭 목록은 `maintainVisibleContentPosition`으로 보던 자리 유지. 당겨서 새로고침은 없음
   - **알림 수집 켜기 (#83)**: 알림 리스너는 알림 접근 허용 + 수집 앱 목록(`services.collection`, 네이티브 `MonitoredAppsStore`)에 있는 앱만 저장. 온보딩 04가 알림 접근 설정을 실제로 열고(`devicePermissionService`의 `notificationListener`), 05 연동 앱이 수집 목록이 됨(`collectPackagesFor`, 문자는 삼성·Google 메시지 둘 다). `OnboardingProvider`가 진행 상황을 읽을 때·연동 앱을 바꿀 때 맞추고(연동 앱이 비면 그대로), 로그인하지 않은 상태면 비움(쌓인 알림은 그대로). 개발용 `NotificationDebug` 화면에서 직접 바꿀 수도 있음(다음 로그인 때 연동 앱 기준으로 다시 맞춰짐)
-  - 알림 DB는 SQLCipher로 암호화돼 있음 (암호는 Android Keystore로 감싸 보관, 예전 평문 DB는 처음 열 때 옮김). DB는 다시 열 수 없는 게 확실할 때(키 없음·영구 무효·AEADBadTag, SQLITE_NOTADB·CORRUPT)만 지우고, 일시적인 실패는 지우지 않고 다시 시도. 메시지는 보관 기간(기본 30일)이 지나면 지움 → `NotificationStore.get/setRetentionDays`. 자세한 내용은 README "알림 수집"
+  - 알림 DB는 SQLCipher로 암호화돼 있음 (암호는 Android Keystore로 감싸 보관, 예전 평문 DB는 처음 열 때 옮김). DB는 다시 열 수 없는 게 확실할 때(키 없음·영구 무효·AEADBadTag, SQLITE_NOTADB·CORRUPT)만 지우고, 일시적인 실패는 지우지 않고 다시 시도. 원문은 **가입일부터 30일마다 전체 삭제**, 설정에서 지금 삭제하면 그날부터 다시 셈(#60) → `services.rawMessages`(`RawMessageService`, 네이티브 `getRetentionInfo`·`startRetentionCycle`·`deleteAllNow`). 자세한 내용은 README "알림 수집"
 - **복사하고 메신저 열기 (#69)**: `services.messenger`는 Kotlin `Messenger` 모듈(`android/.../messenger/MessengerModule.kt`, JS `src/native/Messenger.ts`) 위의 `deviceMessengerService`. 네이티브 모듈이 없으면(Jest) mock
   - 복사는 `ClipboardManager`(라이브러리 없음). 앱 열기 순서: 알림에 담긴 동작으로 그 대화방(`ConversationIntents`, 메모리에만, 앱 재시작하면 남은 알림으로 다시 채움) → 알림 보낸 앱 첫 화면 → (첫마디) 문자는 기본 문자 앱, 나머지는 `LINKED_APP_OPTIONS` 패키지. 못 열면 `APP_NOT_INSTALLED`
   - 복사가 되면 앱이 안 열려도 "복사했어요" 안내를 보여 줌. 바로 답장(RemoteInput)은 아직 없음 → `canReplyDirectly`는 `false`
@@ -138,7 +139,7 @@
 - 오프라인으로 앱을 켰을 때: 지금은 로그인 화면(저장 토큰은 남김). "다시 시도" 안내를 둘지 (`TODO(디자이너 공유)` in SessionProvider)
 - 로그인 `deviceId`(선택)를 보낼지 (기기별 세션 구분)
 - 얼려둔 관계를 알림·제안(홈 작은 행동 등)에서도 뺄지
-- 알림 메시지 기본 보관 기간 (지금 30일, `NotificationRetention.DEFAULT_DAYS`)과 설정 화면에서 바꿀 수 있게 할지
+- 원문 전체 삭제 주기 (지금 30일, `NotificationRetention.DEFAULT_DAYS`)를 설정 화면에서 바꿀 수 있게 할지
 - 단톡 AI 요약: 지금은 1:1처럼 방을 열면 자동으로 보냄. "요약하기 버튼을 누를 때만" 제안(PR #43 리뷰)은 보류 (버튼 시안도 없음)
 
 기능 추가
@@ -159,7 +160,13 @@
 - 완료: **인증 API 연결 + 자동 로그인** `feat/#27-auth-api` (PR #38 리뷰 반영, #37까지 들어간 origin/main 위로 rebase). 실기기 확인: `DEV_API_MODE = "http"` → 앱 재빌드(keychain 네이티브 모듈) → 회원가입 → 앱 껐다 켜서 자동 로그인 → 로그아웃 → 로그인
 - 머지됨: **05 친구** 13 목록·14 상세·15 첫마디 + 16 시안을 잘린 메시지 화면에 적용 → `feat/#30-friends` (PR #37)
 - 머지됨: 하단 탭바·홈(임시)·04 연락 전체(07·08·09-A·B·C·10·11·12·잘린 메시지) → `feat/#29-contacts` (PR #31)
-- 다음 후보: 캘린더·설정 탭 (시안·이슈 확인부터. 이슈 초안을 쓰고 번호를 받은 뒤 브랜치 생성)
+- 진행: **08 설정** `feat/#60-settings` (Figma "08 설정 · 개인정보 · 계정", 연두 배경 = 완료 시안). H01 설정 메인·H02 내 정보(+비밀번호 재설정)·H04 확인할 메신저 앱·H05 내 상황과 답장 기준·H06 알림 설정·H07 저장된 데이터·H08 로그아웃·회원 탈퇴 완료(`pages/settings`, `components/settings`(`SettingsLayout` 공통 틀), 메뉴·문구 `constants/settings.ts`). 화면이 없는 메뉴는 누를 수 없음(`NOT_READY`)
+  - H07: 원문 개수·마지막/다음 전체 삭제일(`services.rawMessages`), 요약·답장 기록 = AI 결과가 있는 대화 수(`aiReplies.stats/clearAll`, 연락 상태는 안 지움). 친구별 원문 캐시는 친구 탭으로(별도 화면은 #77·#79 머지 후)
+  - H05·H06: 온보딩 11·06과 같은 입력(`components/onboarding/AiMemoryForm`, `NotificationPrefList`)으로 온보딩 값(memory·notificationPrefs)을 그대로 고침. H06은 설정 전용 "재연결 제안"(RECONNECT) 포함 7개
+  - H02: `services.auth.verifyPassword·updateProfile·changePassword`(#62), 생년월일·성별·이메일 입력은 회원가입과 같은 `components/auth/ProfileInputs`. 고치면 `SessionProvider.updateUser`
+  - 남은 것: H03 연락처 불러오기(온보딩 07~09 새 시안 #87 머지 후 그 화면을 가져와 붙임)
+  - 회원 탈퇴: `services.auth.deleteAccount(password)` → `clearLocalAccountData`(온보딩·도움 수준·알림 DB) → 스플래시
+- 다음 후보: 캘린더 탭, 알림 센터 C09(#61)
 - 머지 순서 주의: CLAUDE.md는 브랜치마다 고치므로 뒤에 머지하는 쪽에서 충돌이 날 수 있음 (두 쪽 내용을 합치면 됨)
 - 시안: `docs/figma/home` (04 연락은 와이어프레임 → 구조·문구만 따르고 색·컴포넌트는 design-system), `docs/figma/friends` (05 친구 Screens 13~16, 디자인 화면이 기준), `docs/figma/auth` (01 인증)
 - 친구 mock: `createMockFriendService({ empty: true })` / `({ failList: true })`. 민지는 카카오톡+인스타그램이 합쳐진 상태, 문자 "김민지"는 합치기 후보, 지연은 얼려둔 관계

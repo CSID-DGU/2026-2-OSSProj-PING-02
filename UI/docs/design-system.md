@@ -214,6 +214,20 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 | `captionQuick` | Pretendard Regular | `10/15` | `TextArea` 글자 수 |
 | `labelForm` | Pretendard Medium | `13/18` | 온보딩 10 줄 제목 (Label/Form) |
 
+#60 설정 시안에서 추가한 스타일
+
+| 코드 토큰 | 서체·굵기 | 크기/행간 | 사용처 |
+|---|---|---:|---|
+| `titleProfile` | Pretendard Bold | `16/26` | 설정 프로필 카드 이름 |
+| `titleSheetCompact` | Pretendard Bold | `16/28` | 회원 탈퇴 시트 제목 |
+| `labelSettingSection` | Pretendard Medium | `11/24` | 설정 메뉴 묶음 이름 ("내 계정", "연락 설정") |
+| `labelToast` | Pretendard Medium | `13/20` | 오류 토스트 문구 |
+| `labelDataRow` | Pretendard Medium | `12/24` | 저장된 데이터 상세 줄 이름 ("수집 원문 개수") |
+| `labelButtonSmall` | Pretendard Medium | `12/17` | 저장된 데이터 상자 안 작은 버튼 (높이 40, 시안 행간 normal) |
+| `labelChip` | Pretendard Regular | `12/22` | 내 정보 "재설정"·비밀번호 "확인" 작은 노란 버튼 |
+
+- 설정 프로필 카드의 아이디·생년월일은 `captionHero`(11/17), 메뉴 제목·설명은 `labelForm`·`captionRegular`, 저장된 데이터 줄 값은 `labelLink`(11/17), 삭제 팝업 설명은 `bodyCompact`(13/15)를 그대로 씀
+
 - **예외: 일정 카드 날짜.** 조선굴림체는 서비스명·브랜드 문구에만 쓰지만, 홈 일정 카드의 날짜 원("11월"·"22")은 시안대로 조선굴림체를 씀 (#53 팀 확정). Figma에서 로고와 같은 폰트로 지정돼 있고, 숫자 폭(약 0.46em)도 굴림 계열 반각 숫자와 일치
 
 - 화면에서는 `__Source/*`가 아니라 위의 역할 기반 스타일을 적용합니다.

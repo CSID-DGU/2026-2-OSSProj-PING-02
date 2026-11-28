@@ -21,6 +21,11 @@ export interface AuthUser {
   loginId: string;
   name: string;
   email?: string;
+  birthdate?: string; // YYYY-MM-DD (GET /users/me. 로그인 응답에는 없을 수 있음)
+  createdAt?: string; // 가입 시각 ISO (GET /users/me). 원문 보관 주기의 시작 (#60)
+  gender?: Gender; // GET /users/me
+  // EMAIL(아이디·비밀번호) / KAKAO(비밀번호 없음: 비밀번호 확인·변경 불가). GET /users/me
+  provider?: "EMAIL" | "KAKAO";
 }
 
 export interface AuthTokens {
@@ -32,6 +37,13 @@ export interface AuthTokens {
 export interface AuthResult {
   user: AuthUser;
   tokens: AuthTokens;
+}
+
+export interface UpdateProfileInput {
+  password: string;
+  email?: string;
+  birthdate?: string; // YYYY-MM-DD
+  gender?: Gender;
 }
 
 export interface SignupInput {
@@ -76,6 +88,17 @@ export interface AuthService {
   // 내 정보(GET /users/me)를 받음. 갱신된 토큰은 보관소에 바로 저장됨
   // 갱신 토큰이 만료·재사용이면 401 REFRESH_TOKEN_INVALID (보관소 토큰도 지워짐)
   restoreSession(): Promise<AuthUser>;
+  // 회원 탈퇴 (DELETE /users/me). 서버 데이터는 바로 지워지고 이 토큰도 무효
+  // 비밀번호가 틀리면 401 INVALID_CREDENTIALS. 기기 데이터는 부르는 쪽에서 지움
+  deleteAccount(password: string): Promise<void>;
+
+  // 내 정보 (Doc/API_목록.md 4.8-1 ~ 4.8-3, #62). 틀리면 401 INVALID_CREDENTIALS, 5번 틀리면 잠겨 429 RATE_LIMITED
+  // 비밀번호 확인: 내 정보 "수정하기" 팝업·비밀번호 재설정 [확인]용 (화면 흐름용, 고칠 때 서버가 다시 확인)
+  verifyPassword(password: string): Promise<void>;
+  // 내 정보 수정: 보낸 항목만 고침. 고친 뒤의 내 정보를 돌려줌
+  updateProfile(input: UpdateProfileInput): Promise<AuthUser>;
+  // 비밀번호 변경: 이 기기는 로그인 유지, 다른 기기는 로그아웃. 같은 비밀번호면 400(newPassword same_as_current)
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
 
   // 아이디·비밀번호 찾기 (AUTH_FEATURES.accountRecovery)
   // 가입한 이메일로 아이디를 보냄. 계정이 있는지는 알려 주지 않음 (항상 성공)
@@ -83,7 +106,11 @@ export interface AuthService {
   // 비밀번호 재설정 1단계: 아이디+이메일이 맞으면 메일로 6자리 코드를 보냄 (항상 성공, 10분 유효)
   requestPasswordReset(loginId: string, email: string): Promise<void>;
   // 2단계: 코드 확인 후 새 비밀번호로 바꿈. 성공하면 이 계정의 모든 기기 세션이 끊김
-  resetPassword(loginId: string, code: string, newPassword: string): Promise<void>;
+  resetPassword(
+    loginId: string,
+    code: string,
+    newPassword: string
+  ): Promise<void>;
 
   // 가입 이메일 인증 (AUTH_FEATURES.emailVerification, 백엔드에 없음)
   verifyEmail(email: string, code: string): Promise<AuthResult>;

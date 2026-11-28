@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { Modal, Pressable, StyleSheet } from "react-native";
 import styled from "styled-components/native";
 import { Button } from "../button";
-import { SuccessIcon } from "../icon";
+import { CloseIcon, SuccessIcon } from "../icon";
+import { useKeyboardHeight } from "../sheet/useKeyboardHeight";
 
 // Figma: Dialog / 아이디 찾기 완료, Dialog / 임시 비밀번호 발송 완료
 // 사용처: 결과 안내, 바로 보내기 전 확인, 데이터 삭제 확인 등
@@ -15,27 +16,36 @@ export interface DialogProps {
   confirmLabel: string;
   onConfirm: () => void;
   closeLabel?: string;
+  // 아래 버튼 모양: 글자 버튼(기본), 연한 빨강 버튼(Figma 08 설정 H07 "128개 모두 삭제하기"),
+  // 연노랑 버튼(H02 "비밀번호 재설정"), 없음(H02 비밀번호 확인 팝업 처음 상태: X로만 닫음)
+  closeVariant?: "text" | "danger" | "secondary" | "none";
   onClose: () => void;
   dismissOnBackdrop?: boolean; // 바깥 딤을 누르면 닫기
+  // 오른쪽 위 닫기(X) 버튼 (Figma 08 설정 로그아웃·탈퇴·삭제 확인 팝업)
+  showCloseIcon?: boolean;
+  // 딤·X·안드로이드 뒤로가기로 닫을 때. 없으면 onClose
+  // 아래 텍스트 버튼이 "닫기"가 아닌 다른 행동일 때 씀 (예: "탈퇴 진행하기")
+  onDismiss?: () => void;
 }
 
-const Dim = styled.View`
+const Dim = styled.View<{ $keyboard: number }>`
   flex: 1;
   justify-content: center;
   align-items: center;
-  padding: 0px 20px;
+  padding: 0px 20px ${({ $keyboard }) => $keyboard}px;
 `;
 
 const Backdrop = styled(Pressable)`
   background-color: ${({ theme }) => theme.colors.overlayDim};
 `;
 
-const Card = styled.View`
+const Card = styled.View<{ $withClose: boolean }>`
   width: 100%;
   max-width: 320px;
   align-items: center;
   gap: 12px;
-  padding: 24px 20px 20px;
+  /* 닫기(X) 줄이 있으면 시안대로 위 21dp */
+  padding: ${({ $withClose }) => ($withClose ? 21 : 24)}px 20px 20px;
   border-radius: 20px;
   border: 1px solid ${({ theme }) => theme.colors.borderDefault};
   background-color: ${({ theme }) => theme.colors.surfaceDefault};
@@ -45,6 +55,16 @@ const Card = styled.View`
   shadow-opacity: 0.18;
   shadow-radius: 12px;
   elevation: 8;
+`;
+
+const CloseRow = styled.View`
+  align-self: stretch;
+  align-items: flex-end;
+`;
+
+const CloseIconButton = styled.TouchableOpacity`
+  width: 20px;
+  height: 20px;
 `;
 
 const Title = styled.Text`
@@ -57,6 +77,11 @@ const Description = styled.Text`
   ${({ theme }) => theme.fonts.bodySmall};
   color: ${({ theme }) => theme.colors.textSecondary};
   text-align: center;
+`;
+
+const Actions = styled.View`
+  align-self: stretch;
+  gap: 4px;
 `;
 
 const CloseButton = styled.TouchableOpacity`
@@ -80,9 +105,15 @@ export const Dialog = ({
   confirmLabel,
   onConfirm,
   closeLabel = "닫기",
+  closeVariant = "text",
   onClose,
   dismissOnBackdrop = true,
+  showCloseIcon = false,
+  onDismiss,
 }: DialogProps) => {
+  const dismiss = onDismiss ?? onClose;
+  // 입력칸이 있는 팝업(H02 비밀번호 확인)에서 키보드가 올라오면 그만큼 위로
+  const keyboard = useKeyboardHeight(visible);
   return (
     <Modal
       visible={visible}
@@ -90,31 +121,66 @@ export const Dialog = ({
       animationType="fade"
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={dismiss}
     >
-      <Dim>
+      <Dim $keyboard={keyboard}>
         <Backdrop
           style={StyleSheet.absoluteFill}
-          onPress={dismissOnBackdrop ? onClose : undefined}
+          onPress={dismissOnBackdrop ? dismiss : undefined}
           accessibilityLabel="팝업 닫기"
         />
-        <Card accessibilityRole="alert" accessibilityViewIsModal>
+        <Card
+          $withClose={showCloseIcon}
+          accessibilityRole="alert"
+          accessibilityViewIsModal
+        >
+          {showCloseIcon && (
+            <CloseRow>
+              <CloseIconButton
+                onPress={dismiss}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+                // 아이콘 20dp, 터치 영역 48dp
+                hitSlop={14}
+              >
+                <CloseIcon />
+              </CloseIconButton>
+            </CloseRow>
+          )}
           {icon === "success" ? <SuccessIcon /> : icon}
           <Title>{title}</Title>
           {description && <Description>{description}</Description>}
           {children}
-          <Button variant="primary" fullWidth onPress={onConfirm}>
-            {confirmLabel}
-          </Button>
-          <CloseButton
-            onPress={onClose}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            // 보이는 높이는 36px 그대로, 터치 영역만 48dp
-            hitSlop={{ top: 6, bottom: 6 }}
-          >
-            <CloseLabel>{closeLabel}</CloseLabel>
-          </CloseButton>
+          {closeVariant === "none" ? (
+            <Button variant="primary" fullWidth onPress={onConfirm}>
+              {confirmLabel}
+            </Button>
+          ) : closeVariant === "danger" || closeVariant === "secondary" ? (
+            // 두 버튼을 4dp 간격으로 붙임 (시안)
+            <Actions>
+              <Button variant="primary" fullWidth onPress={onConfirm}>
+                {confirmLabel}
+              </Button>
+              <Button variant={closeVariant} fullWidth onPress={onClose}>
+                {closeLabel}
+              </Button>
+            </Actions>
+          ) : (
+            <>
+              <Button variant="primary" fullWidth onPress={onConfirm}>
+                {confirmLabel}
+              </Button>
+              <CloseButton
+                onPress={onClose}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                // 보이는 높이는 36px 그대로, 터치 영역만 48dp
+                hitSlop={{ top: 6, bottom: 6 }}
+              >
+                <CloseLabel>{closeLabel}</CloseLabel>
+              </CloseButton>
+            </>
+          )}
         </Card>
       </Dim>
     </Modal>

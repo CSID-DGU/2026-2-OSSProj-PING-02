@@ -1,48 +1,22 @@
 import styled from "styled-components/native";
-import { Button } from "@core/ui/button";
 import TabScreen from "@components/main/TabScreen";
 import Notice from "@components/onboarding/Notice";
-import {
-  getRootNavigation,
-  useAuthNavigation,
-} from "@hooks/useAuthNavigation";
-import { useSession } from "@stores/SessionProvider";
 import type { MainTabConfig } from "@constants/tabs";
 
-// 캘린더·설정: 아직 빈 화면 자리만
+// 캘린더: 아직 빈 화면 자리만 (설정은 #60 SettingsMain)
 const DESCRIPTIONS: Record<string, string> = {
   calendar: "메시지에서 찾은 경조사·약속을 이곳에 모아 보여 드릴게요.",
-  settings: "연동 앱·알림·권한·AI 메모리를 이곳에서 바꿀 수 있게 준비하고 있어요.",
 };
 
-const PlaceholderTab = ({ tab }: { tab: MainTabConfig }) => {
-  const navigation = useAuthNavigation();
-  const { signOut } = useSession();
-
-  const handleSignOut = async () => {
-    await signOut().catch(() => {});
-    // 탭 안 스택이 아니라 맨 바깥 스택을 초기화해야 로그인 흐름으로 돌아감
-    getRootNavigation(navigation).reset({
-      index: 0,
-      routes: [{ name: "Splash" }],
-    });
-  };
-
-  return (
-    <TabScreen title={tab.title}>
-      <Body>
-        <Notice align="center" title={`${tab.label} 화면을 준비하고 있어요`}>
-          {DESCRIPTIONS[tab.key] ?? ""}
-        </Notice>
-        {tab.key === "settings" && __DEV__ && (
-          <Button variant="text" onPress={handleSignOut}>
-            로그아웃 (개발용)
-          </Button>
-        )}
-      </Body>
-    </TabScreen>
-  );
-};
+const PlaceholderTab = ({ tab }: { tab: MainTabConfig }) => (
+  <TabScreen title={tab.title}>
+    <Body>
+      <Notice align="center" title={`${tab.label} 화면을 준비하고 있어요`}>
+        {DESCRIPTIONS[tab.key] ?? ""}
+      </Notice>
+    </Body>
+  </TabScreen>
+);
 
 const Body = styled.View`
   flex: 1;

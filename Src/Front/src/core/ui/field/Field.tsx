@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import styled from "styled-components/native";
 
 // Figma: Input / Text Field의 라벨·도움말 영역. 선택창·버튼 그룹에도 같은 라벨을 씀
-export type FieldState = "default" | "focused" | "error" | "disabled";
+// success: 비밀번호 확인이 일치할 때 등 (Figma Input / Password Confirmation State=Success, 초록)
+export type FieldState = "default" | "focused" | "error" | "success" | "disabled";
 
 export interface FieldProps {
   label?: string;
@@ -22,6 +23,7 @@ const Label = styled.Text<{ $state: FieldState }>`
   color: ${({ theme, $state }) => {
     if ($state === "focused") return theme.colors.textBrand;
     if ($state === "error") return theme.colors.stateError;
+    if ($state === "success") return theme.colors.feedbackSuccessText;
     if ($state === "disabled") return theme.colors.textTertiary;
     return theme.colors.textSecondary;
   }};
@@ -29,8 +31,11 @@ const Label = styled.Text<{ $state: FieldState }>`
 
 const Helper = styled.Text<{ $state: FieldState }>`
   ${({ theme }) => theme.fonts.captionRegular};
-  color: ${({ theme, $state }) =>
-    $state === "error" ? theme.colors.stateError : theme.colors.textTertiary};
+  color: ${({ theme, $state }) => {
+    if ($state === "error") return theme.colors.stateError;
+    if ($state === "success") return theme.colors.feedbackSuccessText;
+    return theme.colors.textTertiary;
+  }};
 `;
 
 export const Field = ({

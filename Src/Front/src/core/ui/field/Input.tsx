@@ -44,6 +44,11 @@ const Box = styled.TextInput<{ $size: InputSize; $state: FieldState }>`
         border: 2px solid ${theme.colors.stateError};
       `;
     }
+    if ($state === "success") {
+      return css`
+        border: 2px solid ${theme.colors.brandSprout};
+      `;
+    }
     return css`
       border: 1px solid ${theme.colors.borderDefault};
     `;

@@ -96,7 +96,9 @@ export type NotificationPref =
   | "NEW_FRIEND"
   | "REPLY"
   | "ORIGINAL"
-  | "SCHEDULE";
+  | "SCHEDULE"
+  // 08 설정 H06에만 있는 항목 (온보딩 06에는 없음, #60). SETTINGS_NOTIFICATION_PREF_OPTIONS
+  | "RECONNECT";
 
 export const NOTIFICATION_PREF_OPTIONS: {
   value: NotificationPref;

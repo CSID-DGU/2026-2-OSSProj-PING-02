@@ -4,7 +4,8 @@ import styled, { css } from "styled-components/native";
 import { fonts } from "../../styles/fonts";
 
 // Figma: Action / splash.next (Default·Pressed·Secondary), 인증 화면 텍스트 버튼
-export type Variant = "primary" | "secondary" | "text";
+// danger: 되돌릴 수 없는 행동 (Figma 08 설정 "탈퇴하기"·"삭제하기", 연한 빨강 바탕 + 진한 글씨)
+export type Variant = "primary" | "secondary" | "danger" | "text";
 type FontKey = keyof typeof fonts;
 
 export interface ButtonProps extends TouchableOpacityProps {
@@ -41,6 +42,7 @@ const Base = styled.TouchableOpacity<{
     const background = () => {
       if (disabled) return theme.palette.neutral200;
       if ($variant === "secondary") return theme.colors.actionSecondaryBg;
+      if ($variant === "danger") return theme.colors.feedbackDangerBg;
       return $pressed ? theme.colors.actionPrimaryBg : theme.colors.brandSeed;
     };
 
