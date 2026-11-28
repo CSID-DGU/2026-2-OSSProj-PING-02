@@ -432,3 +432,49 @@ describe("createMockAiReplyService", () => {
     }
   });
 });
+
+describe("AI 결과 개수·전체 삭제 (#60 설정 H07)", () => {
+  test("요약이 있는 대화·답장 후보가 있는 대화를 세고, 모두 지운다", async () => {
+    const store = createKeyValueAiReplyStore(createMemoryStorage());
+    const base = { relation: "FRIEND", needsDecision: false, summary: "요약", createdAt: Date.now() };
+    await store.save({ ...base, id: "a", conversationId: "c1", replies: [{ tone: "SHORT", text: "응" }] });
+    await store.save({ ...base, id: "b", conversationId: "c1", replies: [] });
+    await store.save({ ...base, id: "c", conversationId: "c2", replies: [] });
+
+    expect(await store.stats()).toEqual({ summaries: 2, replies: 1 });
+    expect(await store.clearAll()).toBe(3);
+    expect(await store.stats()).toEqual({ summaries: 0, replies: 0 });
+    expect(await store.listByConversation("c1")).toEqual([]);
+  });
+});
+
+describe("수집 원문 보관 주기 mock (#60)", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  test("가입일부터 30일마다 전체 삭제, 지금 삭제하면 그때부터 다시 센다", async () => {
+    const { createMockRawMessageService } = require("../src/services/rawMessages/RawMessageService");
+    let now = 100 * DAY;
+    const raw = createMockRawMessageService({ count: 5, now: () => now });
+    await raw.startCycle(now - 10 * DAY);
+    expect(await raw.getInfo()).toMatchObject({
+      count: 5,
+      lastFullDeleteAt: null,
+      nextFullDeleteAt: now + 20 * DAY,
+    });
+
+    now += 21 * DAY; // 가입일 + 31일
+    expect(await raw.getInfo()).toMatchObject({
+      count: 0,
+      lastFullDeleteAt: 120 * DAY,
+      nextFullDeleteAt: 150 * DAY,
+    });
+
+    expect(await raw.deleteAllNow()).toBe(0);
+    expect(await raw.getInfo()).toMatchObject({
+      lastFullDeleteAt: now,
+      nextFullDeleteAt: now + 30 * DAY,
+    });
+    // 지운 뒤에는 가입일을 다시 알려 줘도 바뀌지 않음
+    await raw.startCycle(now - 50 * DAY);
+    expect((await raw.getInfo()).cycleStartAt).toBe(now);
+  });
+});

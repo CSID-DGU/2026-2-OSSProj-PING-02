@@ -98,6 +98,91 @@ describe("로그아웃", () => {
   });
 });
 
+describe("저장된 데이터 (H07)", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const dot = (ms: number) => {
+    const d = new Date(ms);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+  };
+  const reply = (id: string, conversationId: string, withReplies: boolean) => ({
+    id,
+    conversationId,
+    createdAt: Date.now(),
+    relation: "FRIEND" as const,
+    needsDecision: false,
+    summary: "요약",
+    replies: withReplies ? [{ tone: "SHORT" as const, text: "응" }] : [],
+  });
+
+  const openStoredData = async () => {
+    const root = await openSettings();
+    await press(root, "저장된 데이터");
+    await waitForText(root, "수집 원문 전체 캐시");
+    return root;
+  };
+
+  test("원문은 가입일부터 30일 뒤 삭제 예정으로 보이고, 지금 삭제하면 오늘부터 다시 센다", async () => {
+    const root = await openStoredData();
+    // mock 계정은 3일 전 가입, mock 원문 128건
+    const next = Date.now() + 27 * DAY;
+    await waitForText(root, `128건 ${dot(next)} 삭제 예정`);
+
+    await press(root, "수집 원문 전체 캐시");
+    expect(findText(root, "-").length).toBe(1); // 아직 지운 적 없음
+    expect(findText(root, dot(next)).length).toBe(1);
+
+    await press(root, "원문 128개 지금 바로 삭제하기");
+    await waitForText(root, "말씨앗에 저장된 원문 128개를\n모두 삭제할까요?");
+    const nextDate = new Date(next);
+    expect(
+      findText(
+        root,
+        `지금 삭제하지 않아도 ${nextDate.getMonth() + 1}월 ${nextDate.getDate()}일에 자동 삭제돼요.`
+      ).length
+    ).toBe(1);
+    await press(root, "128개 모두 삭제하기");
+    await waitForText(root, "원문 128개가 모두 삭제됐어요");
+    await waitForText(root, "0건");
+    expect(findText(root, dot(Date.now())).length).toBe(1);
+    expect(findText(root, dot(Date.now() + 30 * DAY)).length).toBe(1);
+  });
+
+  test("요약·답장 기록 수를 보여 주고 모두 지운다", async () => {
+    const root = await openStoredData();
+    await services.aiReplies.save(reply("r1", "c1", true));
+    await services.aiReplies.save(reply("r2", "c2", false));
+    // 다시 읽게 다른 화면에 갔다 옴
+    await pressByRole(root, "button", "뒤로 가기");
+    await press(root, "저장된 데이터");
+    await waitForText(root, "3건");
+
+    await press(root, "요약·답장 기록");
+    expect(findText(root, "2건").length).toBe(1); // 요약 연락
+    expect(findText(root, "1건").length).toBe(1); // 답장
+    await press(root, "요약·답장 기록 3건 삭제하기");
+    await waitForText(root, "저장된 요약·답장 기록 3개를\n모두 삭제할까요?");
+    await press(root, "3개 모두 삭제하기");
+    await waitForText(root, "저장된 요약·답장 기록 3개가 모두 삭제됐어요");
+    expect(await services.aiReplies.stats()).toEqual({ summaries: 0, replies: 0 });
+  });
+
+  test("친구별 원문 캐시는 친구 탭으로 간다", async () => {
+    const root = await openStoredData();
+    await press(root, "친구별 원문 캐시");
+    const selected = () =>
+      root
+        .findAll(
+          n =>
+            typeof n.type === "string" &&
+            n.props.accessibilityRole === "tab" &&
+            n.props.accessibilityState?.selected
+        )
+        .map(n => n.props.accessibilityLabel);
+    expect(selected()).toEqual(["친구"]);
+  });
+});
+
 describe("회원 탈퇴", () => {
   test("확인 팝업에서 계속해서 사용하기를 누르면 닫힌다", async () => {
     const root = await openSettings();
