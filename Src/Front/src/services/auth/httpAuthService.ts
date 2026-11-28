@@ -19,6 +19,8 @@ interface ServerUser {
   email?: string;
   birthdate?: string;
   createdAt?: string;
+  gender?: AuthUser["gender"];
+  provider?: AuthUser["provider"];
 }
 
 interface ServerAuthResult {
@@ -33,6 +35,8 @@ const toUser = ({
   email,
   birthdate,
   createdAt,
+  gender,
+  provider,
 }: ServerUser): AuthUser => ({
   id,
   loginId: username,
@@ -40,6 +44,8 @@ const toUser = ({
   email,
   birthdate,
   createdAt,
+  gender,
+  provider,
 });
 
 const toResult = ({ user, tokens }: ServerAuthResult): AuthResult => ({
@@ -54,9 +60,13 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
   },
 
   checkLoginId(loginId) {
-    return http.request<{ available: boolean }>("POST", "/auth/username/check", {
-      body: { username: loginId },
-    });
+    return http.request<{ available: boolean }>(
+      "POST",
+      "/auth/username/check",
+      {
+        body: { username: loginId },
+      }
+    );
   },
 
   async signup({ loginId, ...rest }) {
@@ -71,7 +81,10 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
     }
     // 가입 이메일 인증 방식(지금 백엔드에는 없음): 응답에 토큰이 없고, 메일 코드를 확인해야 함
     if (!AUTH_FEATURES.emailVerification) {
-      throw new ServiceError(COMMON_ERROR_CODE.internal, "가입 응답에 토큰이 없습니다.");
+      throw new ServiceError(
+        COMMON_ERROR_CODE.internal,
+        "가입 응답에 토큰이 없습니다."
+      );
     }
     return { status: "verificationRequired", email: rest.email };
   },
@@ -95,8 +108,37 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
   // 갱신은 httpClient.refreshTokens() 한 곳에서만
   async restoreSession() {
     await http.refreshTokens();
-    const me = await http.request<ServerUser>("GET", "/users/me", { auth: true });
+    const me = await http.request<ServerUser>("GET", "/users/me", {
+      auth: true,
+    });
     return toUser(me);
+  },
+
+  // 내 정보 (Doc/API_목록.md 4.8-1 ~ 4.8-3)
+  async verifyPassword(password) {
+    await http.request<void>("POST", "/users/me/password/verify", {
+      body: { password },
+      auth: true,
+    });
+  },
+
+  async updateProfile(input) {
+    // 바꾸지 않을 항목은 보내지 않음 (null을 보내면 400)
+    const body = Object.fromEntries(
+      Object.entries(input).filter(([, value]) => value !== undefined)
+    );
+    const me = await http.request<ServerUser>("PATCH", "/users/me", {
+      body,
+      auth: true,
+    });
+    return toUser(me);
+  },
+
+  async changePassword(currentPassword, newPassword) {
+    await http.request<void>("PATCH", "/users/me/password", {
+      body: { currentPassword, newPassword },
+      auth: true,
+    });
   },
 
   // 회원 탈퇴 (Doc/API_목록.md 4.9). 204
@@ -109,7 +151,9 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
 
   // 아이디·비밀번호 찾기 (Doc/API_목록.md 4.5-1 ~ 4.5-3). 모두 204
   async findLoginId(email) {
-    await http.request<void>("POST", "/auth/username/find", { body: { email } });
+    await http.request<void>("POST", "/auth/username/find", {
+      body: { email },
+    });
   },
 
   async requestPasswordReset(loginId, email) {
@@ -126,9 +170,13 @@ export const createHttpAuthService = (http: HttpClient): AuthService => ({
 
   // 가입 이메일 인증: 백엔드에 없음 (#25 이전 경로 기준, AUTH_FEATURES.emailVerification이 false면 쓰지 않음)
   async verifyEmail(email, code) {
-    const res = await http.request<ServerAuthResult>("POST", "/auth/email/verify", {
-      body: { email, code },
-    });
+    const res = await http.request<ServerAuthResult>(
+      "POST",
+      "/auth/email/verify",
+      {
+        body: { email, code },
+      }
+    );
     return toResult(res);
   },
 
