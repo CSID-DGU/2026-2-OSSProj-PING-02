@@ -272,6 +272,94 @@ describe("내 상황과 답장 기준 (H05)", () => {
   });
 });
 
+describe("확인할 메신저 앱 (H04)", () => {
+  test("온보딩에서 고른 앱을 보여 주고, 바꿔 저장하면 알림을 모을 앱도 바뀐다", async () => {
+    const root = await openSettings();
+    await press(root, "확인할 메신저 앱");
+    await waitForText(root, "도움을 받을 앱을 선택해요");
+
+    const checked = (label: string) =>
+      root
+        .findAll(
+          (n) =>
+            typeof n.type === "string" &&
+            n.props.accessibilityRole === "checkbox" &&
+            n.props.accessibilityLabel === label
+        )
+        .at(-1)?.props.accessibilityState?.checked;
+    expect(checked("카카오톡")).toBe(true);
+    expect(checked("인스타그램")).toBe(false);
+    expect(checked("전체 선택")).toBe(false);
+
+    await pressByRole(root, "checkbox", "인스타그램");
+    expect(checked("전체 선택")).toBe(true);
+    await press(root, "저장하기");
+    await waitForText(root, "확인할 메신저 앱 설정을 업데이트 했어요");
+    const saved = JSON.parse((await services.storage.getItem(ONBOARDING_KEY))!);
+    expect(saved.linkedApps.sort()).toEqual(["INSTAGRAM", "KAKAOTALK", "SMS"]);
+    expect(await services.collection.getApps()).toContain(
+      "com.instagram.android"
+    );
+  });
+});
+
+describe("내 정보 (H02)", () => {
+  const openProfile = async () => {
+    const root = await openSettings();
+    await press(root, "내 정보");
+    await waitForText(root, "1997년 02월 12일");
+    return root;
+  };
+
+  test("정보를 보여 주고, 비밀번호를 확인한 뒤 고쳐 저장한다", async () => {
+    const root = await openProfile();
+    expect(findText(root, MOCK_DEMO_ACCOUNT.email).length).toBe(1);
+    expect(findText(root, "남성").length).toBe(1);
+
+    await press(root, "수정하기");
+    await waitForText(root, "정보를 수정하려면\n비밀번호를 입력해주세요");
+    await type(root, "비밀번호 입력", "wrong1234");
+    await press(root, "입력했어요");
+    await waitForText(root, "비밀번호가 일치하지 않아요.");
+    expect(findText(root, "비밀번호 재설정").length).toBeGreaterThan(0);
+
+    await type(root, "비밀번호 입력", MOCK_DEMO_ACCOUNT.password);
+    await press(root, "입력했어요");
+    await waitForText(root, "저장하기");
+    await type(root, "이메일 아이디", "hello");
+    await pressByRole(root, "radio", "여성");
+    await press(root, "저장하기");
+    await waitForText(root, "내 정보를 수정했어요");
+    await waitForText(root, "hello@malssiat.app");
+    expect(findText(root, "여성").length).toBe(1);
+  });
+
+  test("현재 비밀번호를 확인해야 새 비밀번호를 정할 수 있고, 바꾸면 내 정보로 돌아온다", async () => {
+    const root = await openProfile();
+    await pressByRole(root, "button", "비밀번호 재설정");
+    await waitForText(root, "현재 비밀번호");
+
+    await type(root, "현재 비밀번호", "wrong1234");
+    await pressByRole(root, "button", "현재 비밀번호 확인");
+    await waitForText(root, "비밀번호가 일치하지 않아요.");
+
+    await type(root, "현재 비밀번호", MOCK_DEMO_ACCOUNT.password);
+    await pressByRole(root, "button", "현재 비밀번호 확인");
+    await waitForText(root, "비밀번호를 확인했어요.");
+
+    await type(root, "새 비밀번호", "efgh5678");
+    await type(root, "새 비밀번호 확인", "efgh567");
+    expect(findText(root, "비밀번호가 일치하지 않아요.").length).toBe(1);
+    await type(root, "새 비밀번호 확인", "efgh5678");
+    await press(root, "비밀번호 재설정 하기");
+    await waitForText(root, "비밀번호가 변경됐어요");
+    await waitForText(root, "1997년 02월 12일");
+
+    // 다음 테스트(탈퇴)가 쓰는 비밀번호로 되돌림
+    await services.auth.changePassword("efgh5678", MOCK_DEMO_ACCOUNT.password);
+  });
+});
+
 describe("회원 탈퇴", () => {
   test("확인 팝업에서 계속해서 사용하기를 누르면 닫힌다", async () => {
     const root = await openSettings();
