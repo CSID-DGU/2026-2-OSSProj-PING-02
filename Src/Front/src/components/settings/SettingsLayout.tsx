@@ -35,7 +35,11 @@ const SettingsLayout = ({
         onBack={onBack ?? (() => navigation.goBack())}
         right={<NotificationBell />}
       />
-      <ScrollView contentContainerStyle={[styles.content, { gap }]}>
+      {/* handled: 키보드가 열린 채 버튼(팝업·시트 포함, 이 아래에 그려짐)을 누르면 첫 탭이 키보드 닫기로 먹히지 않게 */}
+      <ScrollView
+        contentContainerStyle={[styles.content, { gap }]}
+        keyboardShouldPersistTaps="handled"
+      >
         {children}
       </ScrollView>
       {footer && <Footer>{footer}</Footer>}

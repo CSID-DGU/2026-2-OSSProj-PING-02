@@ -224,6 +224,7 @@ UI의 기본 서체는 `Pretendard`입니다. `조선굴림체`는 서비스명�
 | `labelToast` | Pretendard Medium | `13/20` | 오류 토스트 문구 |
 | `labelDataRow` | Pretendard Medium | `12/24` | 저장된 데이터 상세 줄 이름 ("수집 원문 개수") |
 | `labelButtonSmall` | Pretendard Medium | `12/17` | 저장된 데이터 상자 안 작은 버튼 (높이 40, 시안 행간 normal) |
+| `labelChip` | Pretendard Regular | `12/22` | 내 정보 "재설정"·비밀번호 "확인" 작은 노란 버튼 |
 
 - 설정 프로필 카드의 아이디·생년월일은 `captionHero`(11/17), 메뉴 제목·설명은 `labelForm`·`captionRegular`, 저장된 데이터 줄 값은 `labelLink`(11/17), 삭제 팝업 설명은 `bodyCompact`(13/15)를 그대로 씀
 

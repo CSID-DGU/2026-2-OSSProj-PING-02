@@ -48,6 +48,7 @@ export const fonts = {
   labelToast: fontGenerator(13, fontFamily.medium, 20), // 오류 토스트 문구
   labelDataRow: fontGenerator(12, fontFamily.medium, 24), // 저장된 데이터 상세 줄 이름 ("수집 원문 개수")
   labelButtonSmall: fontGenerator(12, fontFamily.medium, 17), // 저장된 데이터 상자 안 작은 버튼 (높이 40)
+  labelChip: fontGenerator(12, fontFamily.regular, 22), // 내 정보 "재설정"·비밀번호 "확인" 작은 노란 버튼
 
   //display / heading
   displayAuth: fontGenerator(24, fontFamily.bold, 35),

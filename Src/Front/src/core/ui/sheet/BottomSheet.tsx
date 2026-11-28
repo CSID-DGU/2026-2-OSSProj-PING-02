@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Keyboard, Modal, StyleSheet } from "react-native";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Animated, Modal, StyleSheet } from "react-native";
+import { useKeyboardHeight } from "./useKeyboardHeight";
 import styled from "styled-components/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../button";
@@ -102,26 +103,6 @@ export const BottomSheet = ({
       </Container>
     </Modal>
   );
-};
-
-// 열려 있는 동안 키보드 높이 (안드로이드는 Did 이벤트만 옴)
-const useKeyboardHeight = (active: boolean) => {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    if (!active) {
-      setHeight(0);
-      return;
-    }
-    const show = Keyboard.addListener("keyboardDidShow", e =>
-      setHeight(e.endCoordinates.height)
-    );
-    const hide = Keyboard.addListener("keyboardDidHide", () => setHeight(0));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [active]);
-  return height;
 };
 
 // 시트 아래 버튼 묶음: 노란 주요 버튼 + "취소" 텍스트 버튼 (시안 공통)

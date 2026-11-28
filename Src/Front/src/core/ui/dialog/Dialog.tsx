@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet } from "react-native";
 import styled from "styled-components/native";
 import { Button } from "../button";
 import { CloseIcon, SuccessIcon } from "../icon";
+import { useKeyboardHeight } from "../sheet/useKeyboardHeight";
 
 // Figma: Dialog / 아이디 찾기 완료, Dialog / 임시 비밀번호 발송 완료
 // 사용처: 결과 안내, 바로 보내기 전 확인, 데이터 삭제 확인 등
@@ -15,8 +16,9 @@ export interface DialogProps {
   confirmLabel: string;
   onConfirm: () => void;
   closeLabel?: string;
-  // 아래 버튼 모양: 글자 버튼(기본) 또는 연한 빨강 버튼(Figma 08 설정 H07 "128개 모두 삭제하기")
-  closeVariant?: "text" | "danger";
+  // 아래 버튼 모양: 글자 버튼(기본), 연한 빨강 버튼(Figma 08 설정 H07 "128개 모두 삭제하기"),
+  // 연노랑 버튼(H02 "비밀번호 재설정"), 없음(H02 비밀번호 확인 팝업 처음 상태: X로만 닫음)
+  closeVariant?: "text" | "danger" | "secondary" | "none";
   onClose: () => void;
   dismissOnBackdrop?: boolean; // 바깥 딤을 누르면 닫기
   // 오른쪽 위 닫기(X) 버튼 (Figma 08 설정 로그아웃·탈퇴·삭제 확인 팝업)
@@ -26,11 +28,11 @@ export interface DialogProps {
   onDismiss?: () => void;
 }
 
-const Dim = styled.View`
+const Dim = styled.View<{ $keyboard: number }>`
   flex: 1;
   justify-content: center;
   align-items: center;
-  padding: 0px 20px;
+  padding: 0px 20px ${({ $keyboard }) => $keyboard}px;
 `;
 
 const Backdrop = styled(Pressable)`
@@ -110,6 +112,8 @@ export const Dialog = ({
   onDismiss,
 }: DialogProps) => {
   const dismiss = onDismiss ?? onClose;
+  // 입력칸이 있는 팝업(H02 비밀번호 확인)에서 키보드가 올라오면 그만큼 위로
+  const keyboard = useKeyboardHeight(visible);
   return (
     <Modal
       visible={visible}
@@ -119,7 +123,7 @@ export const Dialog = ({
       navigationBarTranslucent
       onRequestClose={dismiss}
     >
-      <Dim>
+      <Dim $keyboard={keyboard}>
         <Backdrop
           style={StyleSheet.absoluteFill}
           onPress={dismissOnBackdrop ? dismiss : undefined}
@@ -147,13 +151,17 @@ export const Dialog = ({
           <Title>{title}</Title>
           {description && <Description>{description}</Description>}
           {children}
-          {closeVariant === "danger" ? (
+          {closeVariant === "none" ? (
+            <Button variant="primary" fullWidth onPress={onConfirm}>
+              {confirmLabel}
+            </Button>
+          ) : closeVariant === "danger" || closeVariant === "secondary" ? (
             // 두 버튼을 4dp 간격으로 붙임 (시안)
             <Actions>
               <Button variant="primary" fullWidth onPress={onConfirm}>
                 {confirmLabel}
               </Button>
-              <Button variant="danger" fullWidth onPress={onClose}>
+              <Button variant={closeVariant} fullWidth onPress={onClose}>
                 {closeLabel}
               </Button>
             </Actions>
