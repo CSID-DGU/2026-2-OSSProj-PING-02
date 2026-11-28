@@ -436,8 +436,8 @@ describe("createMockAiReplyService", () => {
 describe("AI 결과 개수·전체 삭제 (#60 설정 H07)", () => {
   test("요약이 있는 대화·답장 후보가 있는 대화를 세고, 모두 지운다", async () => {
     const store = createKeyValueAiReplyStore(createMemoryStorage());
-    const base = { relation: "FRIEND", needsDecision: false, summary: "요약", createdAt: Date.now() };
-    await store.save({ ...base, id: "a", conversationId: "c1", replies: [{ tone: "SHORT", text: "응" }] });
+    const base = { relation: "FRIEND" as const, needsDecision: false, summary: "요약", createdAt: Date.now() };
+    await store.save({ ...base, id: "a", conversationId: "c1", replies: [{ tone: "SHORT" as const, text: "응" }] });
     await store.save({ ...base, id: "b", conversationId: "c1", replies: [] });
     await store.save({ ...base, id: "c", conversationId: "c2", replies: [] });
 
