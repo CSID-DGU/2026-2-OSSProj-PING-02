@@ -1,25 +1,18 @@
 import { useState } from "react";
-import { View } from "react-native";
 import { Button } from "@core/ui/button";
-import { ChoiceGroup } from "@core/ui/choice";
-import { TextArea } from "@core/ui/field";
 import { BottomSheet, BottomSheetActions } from "@core/ui/sheet";
 import { useToast } from "@core/ui/toast";
 import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
+import AiMemoryForm, {
+  fromMemoryDraft,
+  isMemoryDraftEmpty,
+  toMemoryDraft,
+} from "@components/onboarding/AiMemoryForm";
 import SkipButton from "@components/onboarding/SkipButton";
-import {
-  AVOID_TOPICS,
-  MEMORY_MAX_LENGTH,
-  type AvoidTopic,
-} from "@constants/onboarding";
 import { useOnboardingStep } from "@hooks/useOnboardingStep";
 import { useOnboarding } from "@stores/OnboardingProvider";
 import * as s from "./AiMemory_styled";
-
-const CUSTOM = "직접 입력";
-type Chip = AvoidTopic | typeof CUSTOM;
-const CHIPS: Chip[] = [...AVOID_TOPICS, CUSTOM];
 
 // 11 / AI 메모리 작성 · 기본 (Figma 03 온보딩 11 최종, 선택 사항)
 // - 상자 1: 답장에 사용해도 되는 내 상황 (500자)
@@ -31,28 +24,11 @@ const AiMemory = () => {
   const { goNext } = useOnboardingStep("AiMemory");
   const { data, update } = useOnboarding();
   const toast = useToast();
-  const [status, setStatus] = useState(data.memory.status);
-  const [avoid, setAvoid] = useState(data.memory.avoid);
-  const [topics, setTopics] = useState<AvoidTopic[]>(data.memory.avoidTopics);
-  const [custom, setCustom] = useState(!!data.memory.avoid.trim());
+  const [draft, setDraft] = useState(() => toMemoryDraft(data.memory));
   const [skipOpen, setSkipOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const isEmpty =
-    !status.trim() && !(custom && avoid.trim()) && topics.length === 0;
-
-  const isSelected = (chip: Chip) =>
-    chip === CUSTOM ? custom : topics.includes(chip);
-
-  const toggleChip = (chip: Chip) => {
-    if (chip === CUSTOM) {
-      setCustom((prev) => !prev);
-      return;
-    }
-    setTopics((prev) =>
-      prev.includes(chip) ? prev.filter((t) => t !== chip) : [...prev, chip]
-    );
-  };
+  const isEmpty = isMemoryDraftEmpty(draft);
 
   const handleSave = async () => {
     if (saving) return;
@@ -62,14 +38,7 @@ const AiMemory = () => {
     }
     setSaving(true);
     try {
-      await update({
-        memory: {
-          status: status.trim(),
-          // "직접 입력"을 끄면 쓴 내용은 저장하지 않음
-          avoid: custom ? avoid.trim() : "",
-          avoidTopics: topics,
-        },
-      });
+      await update({ memory: fromMemoryDraft(draft) });
       goNext();
     } catch {
       toast.show("저장하지 못했어요. 잠시 뒤에 다시 시도해 주세요.", {
@@ -113,68 +82,7 @@ const AiMemory = () => {
           />
         </s.Top>
 
-        <s.Section>
-          <s.SectionTitle accessibilityRole="header">
-            AI 답장 맞춤 설정
-          </s.SectionTitle>
-          <s.SectionDescription>
-            {
-              "AI가 답장 생성에 참고할 내용을 작성해요.\n민감한 내용은 적지 않아도 괜찮아요."
-            }
-          </s.SectionDescription>
-        </s.Section>
-
-        <s.Boxes>
-          <TextArea
-            label="답장에 사용해도 되는 내 상황"
-            placeholder="예: 요즘 시험 준비 중이라 답장이 늦을 수 있어요"
-            value={status}
-            onChangeText={setStatus}
-            maxLength={MEMORY_MAX_LENGTH}
-          />
-          <TextArea
-            label="먼저 꺼내지 않을 이야기"
-            value={avoid}
-            onChangeText={setAvoid}
-            maxLength={MEMORY_MAX_LENGTH}
-            minHeight={167}
-            showInput={custom}
-            accessibilityLabel="먼저 꺼내지 않을 이야기 직접 입력"
-          >
-            <s.Chips>
-              {CHIPS.map((chip) => {
-                const selected = isSelected(chip);
-                return (
-                  // ChoiceGroup은 하나만 고르는 라디오라, 칩마다 감싸 여러 개를 고르는 버튼으로 읽게 함
-                  <View
-                    key={chip}
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel={chip}
-                    accessibilityState={{ selected }}
-                    accessibilityActions={[{ name: "activate" }]}
-                    onAccessibilityAction={({ nativeEvent }) => {
-                      if (nativeEvent.actionName === "activate")
-                        toggleChip(chip);
-                    }}
-                  >
-                    <View
-                      importantForAccessibility="no-hide-descendants"
-                      accessibilityElementsHidden
-                    >
-                      <ChoiceGroup
-                        shape="chip"
-                        options={[{ label: chip, value: chip }]}
-                        value={selected ? chip : undefined}
-                        onChange={toggleChip}
-                      />
-                    </View>
-                  </View>
-                );
-              })}
-            </s.Chips>
-          </TextArea>
-        </s.Boxes>
+        <AiMemoryForm value={draft} onChange={setDraft} />
       </AuthLayout>
 
       {/* 11-1 건너뛰기 확인 (화면 버튼보다 위에 그려지도록 AuthLayout 뒤에 둠) */}

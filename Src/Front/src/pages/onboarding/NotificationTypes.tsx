@@ -4,7 +4,7 @@ import AuthLayout from "@components/auth/AuthLayout";
 import AuthIntro from "@components/auth/AuthIntro";
 import PermissionGuide from "@components/onboarding/PermissionGuide";
 import SkipButton from "@components/onboarding/SkipButton";
-import SwitchLine from "@components/onboarding/SwitchLine";
+import NotificationPrefList from "@components/onboarding/NotificationPrefList";
 import {
   NOTIFICATION_PREF_OPTIONS,
   type NotificationPref,
@@ -15,10 +15,8 @@ import {
   usePermissionStep,
 } from "@hooks/usePermissionStep";
 import { useOnboarding } from "@stores/OnboardingProvider";
-import * as s from "./NotificationTypes_styled";
 
 const LABEL = "앱 알림";
-const ALL = NOTIFICATION_PREF_OPTIONS.map(o => o.value);
 
 // 06 / 받을 알림 선택 → "확인했어요"에서 06-1 시스템 알림 권한(POST_NOTIFICATIONS) 팝업
 // - 줄마다 스위치, "전체 알림"은 모두 켜져 있으면 켜짐 / 누르면 모두 켜기·끄기
@@ -33,12 +31,6 @@ const NotificationTypes = () => {
   );
   // 팝업에서 거절한 뒤에는 "이대로 넘어갈게요"를 주 버튼으로
   const askedAndOff = !state.granted && !!state.guide;
-  const allOn = ALL.every(v => selected.includes(v));
-
-  const setOne = (value: NotificationPref, on: boolean) =>
-    setSelected(prev =>
-      on ? [...prev.filter(v => v !== value), value] : prev.filter(v => v !== value)
-    );
 
   const handleNext = async () => {
     update({ notificationPrefs: selected }).catch(() => {});
@@ -80,26 +72,11 @@ const NotificationTypes = () => {
     >
       <AuthIntro variant="onboarding" title={"받을 알림을\n선택해 주세요"} />
 
-      <s.Options>
-        <s.AllBox>
-          <SwitchLine
-            box
-            label="전체 알림"
-            value={allOn}
-            onValueChange={on => setSelected(on ? ALL : [])}
-          />
-        </s.AllBox>
-        {NOTIFICATION_PREF_OPTIONS.map(option => (
-          <SwitchLine
-            key={option.value}
-            label={option.title}
-            description={option.description}
-            value={selected.includes(option.value)}
-            onValueChange={on => setOne(option.value, on)}
-            style={s.lineStyle}
-          />
-        ))}
-      </s.Options>
+      <NotificationPrefList
+        options={NOTIFICATION_PREF_OPTIONS}
+        selected={selected}
+        onChange={setSelected}
+      />
 
       {/* Figma에 없는 상태: 팝업에서 거절했거나 권한 확인 오류일 때만 부드러운 안내 (Q4) */}
       {(askedAndOff || state.load === "error") && (
