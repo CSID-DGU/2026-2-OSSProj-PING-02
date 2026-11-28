@@ -98,3 +98,49 @@ export const SETTINGS_COPY = {
   wrongPassword: "비밀번호가 맞지 않아요. 다시 확인해주세요.",
   withdrawFailed: "탈퇴하지 못했어요. 다시 시도해주세요.",
 } as const;
+
+// H07 저장된 데이터 문구 (Figma 534:23413 등). 숫자·날짜는 화면에서 채움
+const pad = (n: number) => String(n).padStart(2, "0");
+/** 시안 표기 "2026.12.21" */
+export const formatDotDate = (ms: number) => {
+  const d = new Date(ms);
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+};
+
+export const STORED_DATA_COPY = {
+  title: "저장된 데이터",
+  friendCache: "친구별 원문 캐시",
+  friendCacheDescription: "친구 상세에서 한 명씩 관리",
+  rawCache: "수집 원문 전체 캐시",
+  rawCount: "수집 원문 개수",
+  lastDelete: "마지막 전체 캐시 삭제일",
+  nextDelete: "다음 전체 캐시 삭제일",
+  // 아직 한 번도 전체 삭제를 하지 않았을 때 (시안 없음, 팀 확정)
+  noDate: "-",
+  aiRecords: "요약·답장 기록",
+  summaryCount: "요약 연락 개수",
+  replyCount: "답장 개수",
+  cancel: "취소하기",
+  rawDeleteBody:
+    "삭제된 원문은 말씨앗에서 복구할 수 없어요.\n메신저의 원본 대화와 요약·답장 기록,\n일정·관계 정보는 유지돼요.\n삭제한 원문으로 다시 요약하거나\n답장을 만들 수 없어요.",
+  aiDeleteBody:
+    "삭제된 기록은 복구할 수 없어요.\n원문 캐시와 저장된 일정·관계 정보는 유지돼요.",
+  // TODO(디자이너 공유): 삭제 실패는 시안에 없는 상태
+  deleteFailed: "삭제하지 못했어요. 다시 시도해주세요.",
+  count: (n: number) => `${n}건`,
+  rawSubtitleCollapsed: (n: number, next: number) =>
+    `${n}건 ${formatDotDate(next)} 삭제 예정`,
+  rawDeleteButton: (n: number) => `원문 ${n}개 지금 바로 삭제하기`,
+  aiDeleteButton: (n: number) => `요약·답장 기록 ${n}건 삭제하기`,
+  rawDeleteTitle: (n: number) => `말씨앗에 저장된 원문 ${n}개를\n모두 삭제할까요?`,
+  // 시안 "자동 삭제 돼요" → 맞춤법대로 붙여 씀
+  rawDeleteNote: (next: number) => {
+    const d = new Date(next);
+    return `지금 삭제하지 않아도 ${d.getMonth() + 1}월 ${d.getDate()}일에 자동 삭제돼요.`;
+  },
+  aiDeleteTitle: (n: number) => `저장된 요약·답장 기록 ${n}개를\n모두 삭제할까요?`,
+  deleteAll: (n: number) => `${n}개 모두 삭제하기`,
+  // 시안의 삭제 완료 토스트 숫자(128 → 0 등)는 오류로 보고 실제 지운 개수로 (팀 확정)
+  rawDeleted: (n: number) => `원문 ${n}개가 모두 삭제됐어요`,
+  aiDeleted: (n: number) => `저장된 요약·답장 기록 ${n}개가 모두 삭제됐어요`,
+} as const;

@@ -15,6 +15,8 @@ export interface DialogProps {
   confirmLabel: string;
   onConfirm: () => void;
   closeLabel?: string;
+  // 아래 버튼 모양: 글자 버튼(기본) 또는 연한 빨강 버튼(Figma 08 설정 H07 "128개 모두 삭제하기")
+  closeVariant?: "text" | "danger";
   onClose: () => void;
   dismissOnBackdrop?: boolean; // 바깥 딤을 누르면 닫기
   // 오른쪽 위 닫기(X) 버튼 (Figma 08 설정 로그아웃·탈퇴·삭제 확인 팝업)
@@ -75,6 +77,11 @@ const Description = styled.Text`
   text-align: center;
 `;
 
+const Actions = styled.View`
+  align-self: stretch;
+  gap: 4px;
+`;
+
 const CloseButton = styled.TouchableOpacity`
   justify-content: center;
   align-items: center;
@@ -96,6 +103,7 @@ export const Dialog = ({
   confirmLabel,
   onConfirm,
   closeLabel = "닫기",
+  closeVariant = "text",
   onClose,
   dismissOnBackdrop = true,
   showCloseIcon = false,
@@ -139,18 +147,32 @@ export const Dialog = ({
           <Title>{title}</Title>
           {description && <Description>{description}</Description>}
           {children}
-          <Button variant="primary" fullWidth onPress={onConfirm}>
-            {confirmLabel}
-          </Button>
-          <CloseButton
-            onPress={onClose}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            // 보이는 높이는 36px 그대로, 터치 영역만 48dp
-            hitSlop={{ top: 6, bottom: 6 }}
-          >
-            <CloseLabel>{closeLabel}</CloseLabel>
-          </CloseButton>
+          {closeVariant === "danger" ? (
+            // 두 버튼을 4dp 간격으로 붙임 (시안)
+            <Actions>
+              <Button variant="primary" fullWidth onPress={onConfirm}>
+                {confirmLabel}
+              </Button>
+              <Button variant="danger" fullWidth onPress={onClose}>
+                {closeLabel}
+              </Button>
+            </Actions>
+          ) : (
+            <>
+              <Button variant="primary" fullWidth onPress={onConfirm}>
+                {confirmLabel}
+              </Button>
+              <CloseButton
+                onPress={onClose}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                // 보이는 높이는 36px 그대로, 터치 영역만 48dp
+                hitSlop={{ top: 6, bottom: 6 }}
+              >
+                <CloseLabel>{closeLabel}</CloseLabel>
+              </CloseButton>
+            </>
+          )}
         </Card>
       </Dim>
     </Modal>

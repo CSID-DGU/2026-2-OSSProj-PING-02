@@ -46,6 +46,8 @@ export const fonts = {
   titleSheetCompact: fontGenerator(16, fontFamily.bold, 28), // 회원 탈퇴 시트 제목
   labelSettingSection: fontGenerator(11, fontFamily.medium, 24), // 설정 메뉴 묶음 이름 ("내 계정")
   labelToast: fontGenerator(13, fontFamily.medium, 20), // 오류 토스트 문구
+  labelDataRow: fontGenerator(12, fontFamily.medium, 24), // 저장된 데이터 상세 줄 이름 ("수집 원문 개수")
+  labelButtonSmall: fontGenerator(12, fontFamily.medium, 17), // 저장된 데이터 상자 안 작은 버튼 (높이 40)
 
   //display / heading
   displayAuth: fontGenerator(24, fontFamily.bold, 35),

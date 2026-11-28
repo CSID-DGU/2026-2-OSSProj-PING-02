@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { ScrollView } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Dialog } from "@core/ui/dialog";
-import { Header } from "@core/ui/header";
 import { useToast } from "@core/ui/toast";
-import NotificationBell from "@components/main/NotificationBell";
 import ProfileCard from "@components/settings/ProfileCard";
+import SettingsLayout from "@components/settings/SettingsLayout";
 import {
   SettingsDivider,
   SettingsMenuGroup,
@@ -33,18 +30,16 @@ import * as s from "./SettingsMain_styled";
 // - 회원 탈퇴: 확인 팝업("탈퇴 진행하기") → 비밀번호 시트 → DELETE /users/me → 기기 데이터 삭제 → 스플래시
 type Popup = "none" | "logout" | "withdrawConfirm" | "withdrawSheet";
 
-// 아직 화면이 없는 메뉴 (H02~H07). 화면을 만들면 여기서 빼고 handleMenu에 이동을 추가
+// 아직 화면이 없는 메뉴 (H02~H06). 화면을 만들면 여기서 빼고 handleMenu에 이동을 추가
 const NOT_READY = new Set<SettingsMenuItem["key"]>([
   "profile",
   "contacts",
   "linkedApps",
   "replyGuide",
   "notifications",
-  "storedData",
 ]);
 
 const SettingsMain = () => {
-  const insets = useSafeAreaInsets();
   const navigation = useAuthNavigation();
   const toast = useToast();
   const { session, signOut } = useSession();
@@ -63,6 +58,7 @@ const SettingsMain = () => {
   const handleMenu = (item: SettingsMenuItem) => {
     if (item.key === "logout") setPopup("logout");
     if (item.key === "withdraw") setPopup("withdrawConfirm");
+    if (item.key === "storedData") navigation.navigate("SettingsStoredData");
   };
 
   const handleLogout = async () => {
@@ -93,15 +89,11 @@ const SettingsMain = () => {
   };
 
   return (
-    <s.Screen $top={insets.top}>
-      <Header
-        title="설정"
-        titleAlign="center"
-        // 시안 H01에 뒤로가기가 있음: 탭 첫 화면이라 홈 탭으로 (안드로이드 뒤로가기와 같음)
-        onBack={() => navigation.navigate("Home", { screen: "home" })}
-        right={<NotificationBell />}
-      />
-      <ScrollView contentContainerStyle={s.content}>
+    <SettingsLayout
+      title="설정"
+      // 시안 H01에 뒤로가기가 있음: 탭 첫 화면이라 홈 탭으로 (안드로이드 뒤로가기와 같음)
+      onBack={() => navigation.navigate("Home", { screen: "home" })}
+    >
         {user && (
           <ProfileCard
             name={user.name}
@@ -120,7 +112,6 @@ const SettingsMain = () => {
             />
           </s.Block>
         ))}
-      </ScrollView>
 
       {/* H08 / 로그아웃 */}
       <Dialog
@@ -153,7 +144,7 @@ const SettingsMain = () => {
         onClose={() => setPopup("none")}
         onWithdraw={handleWithdraw}
       />
-    </s.Screen>
+    </SettingsLayout>
   );
 };
 

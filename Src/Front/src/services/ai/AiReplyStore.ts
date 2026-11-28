@@ -24,6 +24,13 @@ export interface AiReplyStore {
   save(reply: SavedAiReply): Promise<void>;
   /** 최근 것부터 */
   listByConversation(conversationId: string): Promise<SavedAiReply[]>;
+  /**
+   * 저장된 요약·답장 기록 수 (설정 H07 "요약·답장 기록", #60)
+   * summaries: AI 요약이 저장된 대화 수, replies: AI 답장 후보를 받은 대화 수
+   */
+  stats(): Promise<{ summaries: number; replies: number }>;
+  /** 저장된 AI 결과를 모두 지움 (H07 삭제·회원 탈퇴). 지운 기록 수(summaries + replies)를 돌려줌 */
+  clearAll(): Promise<number>;
 }
 
 /** 칸 하나 (사용자별 저장소라 실제로는 user.<id>.malssiat.aiReplies) */
@@ -126,7 +133,24 @@ export const createKeyValueAiReplyStore = (
     return isBucket(bucket) ? prune(bucket.items) : [];
   };
 
+  const countOf = (items: SavedAiReply[]) => {
+    const summaries = new Set<string>();
+    const replies = new Set<string>();
+    items.forEach(item => {
+      if (item.summary) summaries.add(item.conversationId);
+      if (item.replies.length > 0) replies.add(item.conversationId);
+    });
+    return { summaries: summaries.size, replies: replies.size };
+  };
+
   return {
+    stats: () => serial(async () => countOf(await load())),
+    clearAll: () =>
+      serial(async () => {
+        const { summaries, replies } = countOf(await load());
+        await write([]);
+        return summaries + replies;
+      }),
     save: reply =>
       serial(async () => {
         const items = await load();
